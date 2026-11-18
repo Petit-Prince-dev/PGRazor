@@ -32,7 +32,7 @@ public final class LogExport {
             root.put("speedKmh",speedKmh);root.put("settings",settings);
             root.put("preferences",groups);
             return root.toString().getBytes(StandardCharsets.UTF_8);
-        } catch(JSONException error) { throw new IOException("Cannot capture settings",error); }
+        } catch(JSONException error) { throw new IOException("Impossible de capturer les réglages",error); }
     }
     private static JSONObject preferenceGroups(Context context)throws IOException {
         String[] scopes={"pgrazor-map","pgrazor-overlays","pgrazor-livefeed","pgrazor-pogofeed"};
@@ -54,7 +54,7 @@ public final class LogExport {
             events.put("go_wild_november_2026.auto_ball_safari",dev.pgrazor.events.EventSettings.wildAutoBallSafari(context));
             groups.put("pgrazor-events-v1",events);
             return groups;
-        } catch(JSONException error) { throw new IOException("Cannot capture preferences",error); }
+        } catch(JSONException error) { throw new IOException("Impossible de capturer les préférences",error); }
     }
     static void bundle(InputStream log,String logName,byte[] settings,OutputStream destination) throws IOException {
         // The caller owns the provider stream; close the compressor without closing that stream.
@@ -69,7 +69,7 @@ public final class LogExport {
         }
     }
     public static void save(Context context,Uri uri,File file,boolean includeSettings) throws IOException {
-        if(uri==null || file==null) throw new IOException("No log or document selected");
+        if(uri==null || file==null) throw new IOException("Aucun log ni document choisi");
         try {
             byte[] settings=includeSettings?settingsJson(Control.diagnosticSettings(),Control.engine.speedKmh,preferenceGroups(context)):null;
             MessageDigest written=MessageDigest.getInstance("SHA-256");
@@ -77,7 +77,7 @@ public final class LogExport {
             long count=0,verified=0;
             Control.event("export-start",uri.toString());
             try(InputStream in=new FileInputStream(file); OutputStream out=context.getContentResolver().openOutputStream(uri,"wt")) {
-                if(out==null) throw new IOException("Document provider returned no output stream");
+                if(out==null) throw new IOException("Le fournisseur de documents n'a renvoyé aucun flux d'écriture");
                 // Digest the actual archive bytes, including the ZIP directory, before read-back verification.
                 CountingOutputStream counted=new CountingOutputStream(new DigestOutputStream(out,written));
                 if(includeSettings)bundle(in,file.getName(),settings,counted);
@@ -89,11 +89,11 @@ public final class LogExport {
                 out.flush();
             }
             try(InputStream in=context.getContentResolver().openInputStream(uri)) {
-                if(in==null) throw new IOException("Document provider returned no verification stream");
+                if(in==null) throw new IOException("Le fournisseur de documents n'a renvoyé aucun flux de vérification");
                 byte[] buffer=new byte[8192]; int n;
                 while((n=in.read(buffer))!=-1) { checked.update(buffer,0,n); verified+=n; }
             }
-            if(count!=verified || !Arrays.equals(written.digest(),checked.digest())) throw new IOException("Saved document verification failed");
+            if(count!=verified || !Arrays.equals(written.digest(),checked.digest())) throw new IOException("Échec de la vérification du document enregistré");
             Control.event("export-complete","verifiedBytes="+count+" uri="+uri);
         } catch(NoSuchAlgorithmException impossible) { throw new IOException(impossible); }
         catch(IOException error) { Control.event("export-error",error.toString()); throw error; }
@@ -109,10 +109,10 @@ public final class LogExport {
         return copyToExternal(context,file,false);
     }
     public static File copyToExternal(Context context,File file,boolean includeSettings) throws IOException {
-        if(file==null) throw new IOException("No log is available");
+        if(file==null) throw new IOException("Aucun log disponible");
         File dir=context.getExternalFilesDir("pgrazor-logs");
         if(dir==null) dir=new File(context.getFilesDir(),"pgrazor-logs/exports");
-        if(!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Cannot create export folder");
+        if(!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Impossible de créer le dossier d'export");
         String name=includeSettings?file.getName().replaceFirst("\\.txt$","")+".zip":file.getName();
         File dest=new File(dir,name),temp=new File(dir,name+".tmp");
         try {
@@ -131,13 +131,13 @@ public final class LogExport {
                 count=counted.count;
                 out.flush();
             }
-            if(dest.exists() && !dest.delete()) throw new IOException("Could not replace the previous export");
-            if(!temp.renameTo(dest)) throw new IOException("Could not finish writing the export");
+            if(dest.exists() && !dest.delete()) throw new IOException("Impossible de remplacer l'export précédent");
+            if(!temp.renameTo(dest)) throw new IOException("Impossible de terminer l'écriture de l'export");
             try(InputStream in=new FileInputStream(dest)) {
                 byte[] buffer=new byte[8192]; int n;
                 while((n=in.read(buffer))!=-1) { checked.update(buffer,0,n); verified+=n; }
             }
-            if(count!=verified || !Arrays.equals(written.digest(),checked.digest())) throw new IOException("Saved copy verification failed");
+            if(count!=verified || !Arrays.equals(written.digest(),checked.digest())) throw new IOException("Échec de la vérification de la copie");
             Control.event("export-complete","verifiedBytes="+count+" path="+dest.getAbsolutePath());
             return dest;
         } catch(NoSuchAlgorithmException impossible) { throw new IOException(impossible); }

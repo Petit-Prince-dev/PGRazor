@@ -49,7 +49,7 @@ public final class ShinyScanPreferencesTest {
         bad.dailyLimit = 123; reject(bad::validate); bad.dailyLimit = 5000; bad.validate();
         bad.species = "129,25"; reject(bad::validate); bad.species = null; reject(bad::validate);
         eq(true, ShinyScanPreferences.validLimit(0)); eq(false, ShinyScanPreferences.validLimit(-1));
-        eq("No limit", ShinyScanPreferences.limitSummary(0)); eq("5000 in 24 hours", ShinyScanPreferences.limitSummary(5000));
+        eq("Sans limite", ShinyScanPreferences.limitSummary(0)); eq("5000 en 24 heures", ShinyScanPreferences.limitSummary(5000));
 
         // write()/read() round trip, and independent repair of malformed values.
         Properties saved = new Properties();

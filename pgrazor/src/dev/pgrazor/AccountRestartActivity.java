@@ -92,7 +92,7 @@ public final class AccountRestartActivity extends Activity {
         layout.setBackgroundColor(0xFF101014);
         layout.setPadding(48, 48, 48, 48);
         status = new TextView(this);
-        status.setText("Switching account…");
+        status.setText("Changement de compte…");
         status.setTextColor(Color.WHITE);
         status.setTextSize(20);
         status.setGravity(Gravity.CENTER);
@@ -144,7 +144,7 @@ public final class AccountRestartActivity extends Activity {
                 return;
             }
             Intent launch = getPackageManager().getLaunchIntentForPackage(getPackageName());
-            if (launch == null) throw new IllegalStateException("No launcher activity for this package.");
+            if (launch == null) throw new IllegalStateException("Aucune activité de lancement pour ce package.");
             launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(launch);
             launched = true;
@@ -155,21 +155,21 @@ public final class AccountRestartActivity extends Activity {
     }
 
     private void showManualLaunch() {
-        status.setText("Couldn't finish switching accounts.\nYour saved sessions have been kept. Tap Retry to continue.");
+        status.setText("Impossible de terminer le changement de compte.\nTes sessions enregistrées sont conservées. Touche « Réessayer » pour continuer.");
         LinearLayout layout = (LinearLayout) status.getParent();
         if (layout != null && layout.getChildCount() < 2) {
             Button open = new Button(this);
-            open.setText("Retry");
+            open.setText("Réessayer");
             open.setOnClickListener(v -> launchGame());
             layout.addView(open, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             if(getIntent().getBooleanExtra("switchSession",false)){
-                Button back=new Button(this);back.setText("Return to previous account");
+                Button back=new Button(this);back.setText("Revenir au compte précédent");
                 back.setOnClickListener(v->{
                     if(processing)return;processing=true;
                     new Thread(()->{
                         try{AccountSessions.cancelSwitch(getApplicationContext());handler.post(()->{processing=false;sessionApplied=true;if(!isDestroyed())launchGame();});}
-                        catch(Exception error){handler.post(()->{processing=false;if(!isDestroyed())status.setText("Couldn't restore the previous account. Saved sessions have been kept.");});}
+                        catch(Exception error){handler.post(()->{processing=false;if(!isDestroyed())status.setText("Impossible de restaurer le compte précédent. Les sessions enregistrées sont conservées.");});}
                     },"pgrazor-session-return").start();
                 });layout.addView(back);
             }

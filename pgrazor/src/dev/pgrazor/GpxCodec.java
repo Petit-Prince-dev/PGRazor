@@ -57,11 +57,11 @@ public final class GpxCodec {
      *                     an invalid coordinate, or a route that exceeds {@link #MAX_POINTS} points.
      */
     public static List<GpxRoute> read(InputStream in, String fallbackName) throws IOException {
-        if (in == null) throw new IOException("No GPX input was provided.");
+        if (in == null) throw new IOException("Aucun fichier GPX fourni.");
         byte[] data = readBounded(in);
         // Primary defence is the parser configuration below; this guaranteed net covers parsers
         // (notably some Android builds) that quietly ignore the disallow-doctype feature.
-        if (containsDoctype(data)) throw new IOException("GPX files with a DOCTYPE are not supported.");
+        if (containsDoctype(data)) throw new IOException("Les fichiers GPX avec DOCTYPE ne sont pas pris en charge.");
         Handler handler = new Handler(fallbackName);
         try {
             SAXParserFactory factory = SAXParserFactory.newInstance();
@@ -77,16 +77,16 @@ public final class GpxCodec {
             reader.setContentHandler(handler);
             reader.setProperty("http://xml.org/sax/properties/lexical-handler", handler);
             // Any external resource an attacker names resolves to nothing.
-            reader.setEntityResolver((publicId, systemId) -> { throw new SAXException("External entities are not supported."); });
+            reader.setEntityResolver((publicId, systemId) -> { throw new SAXException("Les entités externes ne sont pas prises en charge."); });
             reader.setErrorHandler(new DefaultHandler() {
                 @Override public void error(SAXParseException e) throws SAXException { throw e; }
                 @Override public void fatalError(SAXParseException e) throws SAXException { throw e; }
             });
             reader.parse(new InputSource(new ByteArrayInputStream(data)));
         } catch (ParserConfigurationException e) {
-            throw new IOException("No XML parser is available.", e);
+            throw new IOException("Aucun analyseur XML disponible.", e);
         } catch (SAXException e) {
-            throw new IOException("This file is not valid GPX: " + message(e), e);
+            throw new IOException("Ce fichier n'est pas un GPX valide : " + message(e), e);
         }
         return handler.finish();
     }
@@ -96,8 +96,8 @@ public final class GpxCodec {
      * with an XML-escaped name. Coordinates are written with full round-trip precision.
      */
     public static void write(OutputStream out, GpxRoute route) throws IOException {
-        if (out == null) throw new IOException("No GPX destination was provided.");
-        if (route == null) throw new IOException("No route to write.");
+        if (out == null) throw new IOException("Aucune destination GPX fournie.");
+        if (route == null) throw new IOException("Aucune route à écrire.");
         StringBuilder xml = new StringBuilder();
         xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         xml.append("<gpx version=\"1.1\" creator=\"PGRazor\" xmlns=\"http://www.topografix.com/GPX/1/1\">\n");
@@ -116,7 +116,7 @@ public final class GpxCodec {
         int n;
         while ((n = in.read(chunk)) != -1) {
             total += n;
-            if (total > MAX_BYTES) throw new IOException("GPX files larger than 2 MB are not supported.");
+            if (total > MAX_BYTES) throw new IOException("Les fichiers GPX de plus de 2 Mo ne sont pas pris en charge.");
             buffer.write(chunk, 0, n);
         }
         return buffer.toByteArray();
@@ -160,7 +160,7 @@ public final class GpxCodec {
     /** Collects routes from a SAX event stream, preserving document order and enforcing limits. */
     private static final class Handler extends DefaultHandler2 {
         @Override public void startDTD(String name,String publicId,String systemId) throws SAXException {
-            throw new SAXException("GPX files with a DOCTYPE are not supported.");
+            throw new SAXException("Les fichiers GPX avec DOCTYPE ne sont pas pris en charge.");
         }
         private final String fallback;
         private final List<GpxRoute> routes = new ArrayList<>();
@@ -180,8 +180,8 @@ public final class GpxCodec {
         @Override public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
             String element = local(localName, qName);
             String parent = stack.peek();
-            if(stack.isEmpty() && !"gpx".equals(element))throw new SAXException("Expected a GPX document.");
-            if(stack.size()>128)throw new SAXException("GPX nesting is too deep.");
+            if(stack.isEmpty() && !"gpx".equals(element))throw new SAXException("Un document GPX était attendu.");
+            if(stack.size()>128)throw new SAXException("Imbrication GPX trop profonde.");
             boolean knownNamespace=uri==null||uri.isEmpty()||uri.equals("http://www.topografix.com/GPX/1/1")||uri.equals("http://www.topografix.com/GPX/1/0");
             if(!knownNamespace || !(stack.isEmpty() ||
                 ((element.equals("trk")||element.equals("rte")||element.equals("wpt"))&&"gpx".equals(parent)) ||
@@ -245,7 +245,7 @@ public final class GpxCodec {
         /** After the document ends, fall back to top-level waypoints only when no route was found. */
         List<GpxRoute> finish() throws IOException {
             if (routes.isEmpty() && !waypoints.isEmpty()) {
-                if (waypoints.size() > MAX_POINTS) throw new IOException("This file has more than " + MAX_POINTS + " waypoints.");
+                if (waypoints.size() > MAX_POINTS) throw new IOException("Ce fichier a plus de " + MAX_POINTS + " points de passage.");
                 List<double[]> points = new ArrayList<>(waypoints.size());
                 for (String[] raw : waypoints) points.add(coordinate(raw[0], raw[1]));
                 routes.add(buildIo(resolveName(null), points));
@@ -255,7 +255,7 @@ public final class GpxCodec {
 
         private void add(List<double[]> target, Attributes attributes) throws SAXException {
             target.add(toSaxCoordinate(attributes));
-            if (target.size() > MAX_POINTS) throw new SAXException("A route may contain at most " + MAX_POINTS + " points.");
+            if (target.size() > MAX_POINTS) throw new SAXException("Une route peut contenir au plus " + MAX_POINTS + " points.");
         }
 
         private double[] toSaxCoordinate(Attributes attributes) throws SAXException {
@@ -279,7 +279,7 @@ public final class GpxCodec {
         }
 
         private GpxRoute buildIo(String name, List<double[]> points) throws IOException {
-            if (points.size() > MAX_POINTS) throw new IOException("A route may contain at most " + MAX_POINTS + " points.");
+            if (points.size() > MAX_POINTS) throw new IOException("Une route peut contenir au plus " + MAX_POINTS + " points.");
             try {
                 return new GpxRoute(name, points.toArray(new double[0][]));
             } catch (IllegalArgumentException e) {
@@ -291,7 +291,7 @@ public final class GpxCodec {
             String name = candidate == null ? "" : candidate.trim();
             if (name.isEmpty()) {
                 name = fallback == null ? "" : fallback.trim();
-                if (name.isEmpty()) name = "Imported route";
+                if (name.isEmpty()) name = "Route importée";
             }
             return clip(sanitize(name));
         }
@@ -307,7 +307,7 @@ public final class GpxCodec {
 
         private static String clip(String text) {
             String trimmed = text.trim();
-            if (trimmed.isEmpty()) trimmed = "Imported route";
+            if (trimmed.isEmpty()) trimmed = "Route importée";
             return trimmed.length() > GpxRoute.NAME_LIMIT ? trimmed.substring(0, GpxRoute.NAME_LIMIT).trim() : trimmed;
         }
 
@@ -320,16 +320,16 @@ public final class GpxCodec {
     }
 
     private static double[] coordinate(String latText, String lonText) throws IOException {
-        if (latText == null || lonText == null) throw new IOException("A point is missing its latitude or longitude.");
+        if (latText == null || lonText == null) throw new IOException("Il manque la latitude ou la longitude d'un point.");
         double lat, lon;
         try {
             lat = Double.parseDouble(latText.trim());
             lon = Double.parseDouble(lonText.trim());
         } catch (NumberFormatException e) {
-            throw new IOException("A point has a non-numeric coordinate.");
+            throw new IOException("Un point a une coordonnée non numérique.");
         }
         if (!Double.isFinite(lat) || !Double.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180)
-            throw new IOException("A point is outside the valid coordinate range.");
+            throw new IOException("Un point est hors de la plage de coordonnées valide.");
         return new double[]{lat, lon};
     }
 }

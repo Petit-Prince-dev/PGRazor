@@ -43,8 +43,9 @@ public final class Pad {
     private TextView shinyBadge,shinyMark;private OverlayDrag shinyDrag;private AlertDialog shinyPopup;
     // Encounter counter badge (optional): this account's encounters in the last 24 hours; drag to move it.
     private TextView encounterBadge;private OverlayDrag encounterDrag;
-    // Shundo Sniper's black screen: above the game, below PGRazor's overlays. Its hint fades after a few s.
-    private FrameLayout blackScreen;private TextView blackHint;private boolean blackShown;
+    // "Écran éteint" (ScreenPower): a black veil above the game and every PGRazor overlay. A double tap
+    // brings the screen back; its hint fades after a few seconds.
+    private FrameLayout blackScreen;private TextView blackHint;private boolean blackShown;private long blackLastTap;
     private TextView gymAutomationStatus;
     private TextView automationStatus;
     private OverlayDrag automationDrag;
@@ -90,16 +91,29 @@ public final class Pad {
         if(gameRoutesOverlay!=null)gameRoutesOverlay.invalidate();
         if(quickMenu!=null)quickMenu.applyTheme();
     }
-    private void draggable(View handle,View target,boolean clickable){
-        handle.setOnTouchListener(new View.OnTouchListener(){float downX,downY,originX,originY;boolean moved;
-            public boolean onTouch(View v,MotionEvent e){int a=e.getActionMasked();if(a==MotionEvent.ACTION_DOWN){downX=e.getRawX();downY=e.getRawY();originX=target.getX();originY=target.getY();moved=false;return true;}
-                if(a==MotionEvent.ACTION_MOVE){float dx=e.getRawX()-downX,dy=e.getRawY()-downY;if(Math.hypot(dx,dy)>dp(6))moved=true;if(moved){Rect safe=UiViewport.bounds(parent);target.setX(UiViewportPolicy.clamp(originX+dx,safe.left,safe.right,OverlayDrag.visualWidth(target)));target.setY(UiViewportPolicy.clamp(originY+dy,safe.top,safe.bottom,OverlayDrag.visualHeight(target)));}return true;}
-                if(a==MotionEvent.ACTION_UP){if(!moved&&clickable)v.performClick();return true;}return true;}
+    private void draggable(View handle,View target,boolean clickable){draggable(handle,target,clickable,null);}
+    /** As above; a still press held for 600 ms runs longPress instead of the click (the R launcher turns the screen off). */
+    private void draggable(View handle,View target,boolean clickable,Runnable longPress){
+        handle.setOnTouchListener(new View.OnTouchListener(){float downX,downY,originX,originY;boolean moved,longFired;
+            final Runnable hold=()->{if(!moved&&longPress!=null){longFired=true;handle.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);longPress.run();}};
+            public boolean onTouch(View v,MotionEvent e){int a=e.getActionMasked();if(a==MotionEvent.ACTION_DOWN){downX=e.getRawX();downY=e.getRawY();originX=target.getX();originY=target.getY();moved=false;longFired=false;if(longPress!=null)handler.postDelayed(hold,600);return true;}
+                if(a==MotionEvent.ACTION_MOVE){float dx=e.getRawX()-downX,dy=e.getRawY()-downY;if(Math.hypot(dx,dy)>dp(6)){moved=true;handler.removeCallbacks(hold);}if(moved){Rect safe=UiViewport.bounds(parent);target.setX(UiViewportPolicy.clamp(originX+dx,safe.left,safe.right,OverlayDrag.visualWidth(target)));target.setY(UiViewportPolicy.clamp(originY+dy,safe.top,safe.bottom,OverlayDrag.visualHeight(target)));}return true;}
+                if(a==MotionEvent.ACTION_UP){handler.removeCallbacks(hold);if(!moved&&!longFired&&clickable)v.performClick();return true;}
+                if(a==MotionEvent.ACTION_CANCEL)handler.removeCallbacks(hold);
+                return true;}
         });
+    }
+    /** "Éteindre l'écran" from the quick menu, the R launcher (long press) or the Shundo Sniper card. */
+    void turnScreenOff(){
+        if(closed||activity.isFinishing()||activity.isDestroyed())return;
+        if(quickMenu!=null&&quickMenu.isShowing())quickMenu.hide();
+        stick.release(true);
+        ScreenPower.turnOff(activity);
+        blackLastTap=0;refresh();
     }
     private final class RazorIcon extends View {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
-        RazorIcon(Context c){super(c);setContentDescription("Open PGRazor settings. Drag to reposition.");setFocusable(true);setClickable(true);}
+        RazorIcon(Context c){super(c);setContentDescription("Ouvrir les paramètres PGRazor. Glisse pour déplacer.");setFocusable(true);setClickable(true);}
         protected void onDraw(Canvas c){super.onDraw(c);float scale=Math.min(getWidth(),getHeight())/48f;c.save();c.scale(scale,scale);paint.setColor(surface());c.drawCircle(24,24,23,paint);paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(1.5f);paint.setColor(accent());c.drawCircle(24,24,22,paint);paint.setStyle(Paint.Style.FILL);
             Path r=new Path();r.moveTo(13,11);r.lineTo(29,11);r.lineTo(36,18);r.lineTo(29,26);r.lineTo(36,37);r.lineTo(26,37);r.lineTo(19,26);r.lineTo(19,37);r.lineTo(12,37);r.lineTo(17,19);r.lineTo(24,19);r.lineTo(23,22);r.lineTo(27,22);r.lineTo(30,18);r.lineTo(27,16);r.lineTo(12,16);r.close();c.drawPath(r,paint);c.restore();}
     }
@@ -131,10 +145,16 @@ public final class Pad {
         parent.addView(settings.view(), new FrameLayout.LayoutParams(-1, -1));
         overlays=new FrameLayout(host);parent.addView(overlays,new FrameLayout.LayoutParams(-1,-1));
         blackScreen=new FrameLayout(host);blackScreen.setBackgroundColor(Color.BLACK);blackScreen.setVisibility(View.GONE);
-        blackHint=text("Black screen saves battery while Shundo Sniper runs.\nTap anywhere to show the game.",13,Color.rgb(140,140,140));blackHint.setGravity(Gravity.CENTER);
+        blackScreen.setClickable(true);blackScreen.setContentDescription("Écran éteint. Touche deux fois pour rallumer.");
+        blackHint=text("Écran éteint : le jeu continue de tourner.\nTouche deux fois pour rallumer.",13,Color.rgb(140,140,140));blackHint.setGravity(Gravity.CENTER);
         blackScreen.addView(blackHint,new FrameLayout.LayoutParams(-1,-2,Gravity.CENTER));
-        blackScreen.setOnClickListener(v->{ShundoSniper.setDark(false);refresh();});
-        parent.addView(blackScreen,parent.indexOfChild(overlays),new FrameLayout.LayoutParams(-1,-1));
+        blackScreen.setOnTouchListener((v,e)->{
+            if(e.getActionMasked()!=MotionEvent.ACTION_DOWN)return true;
+            long now=SystemClock.uptimeMillis();
+            if(now-blackLastTap<=450){blackLastTap=0;ScreenPower.turnOn(activity);refresh();}
+            else{blackLastTap=now;if(blackHint!=null&&blackHint.getVisibility()!=View.VISIBLE){blackHint.setVisibility(View.VISIBLE);handler.postDelayed(()->{if(blackHint!=null)blackHint.setVisibility(View.GONE);},2500);}}
+            return true;
+        });
 
         FrameLayout.LayoutParams joyLayout=new FrameLayout.LayoutParams(dp(136),-2,Gravity.LEFT|Gravity.BOTTOM);joyLayout.leftMargin=dp(16);joyLayout.bottomMargin=dp(96);overlays.addView(joystickOverlay,joyLayout);
 
@@ -142,7 +162,7 @@ public final class Pad {
         encounterBerry=new BerryOverlay(activity,this::refresh);
         FrameLayout.LayoutParams berryLayout=new FrameLayout.LayoutParams(dp(90),dp(50),Gravity.RIGHT|Gravity.CENTER_VERTICAL);berryLayout.rightMargin=dp(10);overlays.addView(encounterBerry,berryLayout);encounterBerry.setVisibility(View.GONE);
 
-        cooldownTimer=button("History  --:--");cooldownTimer.setTextSize(14);cooldownTimer.setAllCaps(false);cooldownTimer.setTextColor(accent());FrameLayout.LayoutParams timerLayout=new FrameLayout.LayoutParams(dp(165),dp(44),Gravity.TOP|Gravity.RIGHT);timerLayout.topMargin=dp(44);timerLayout.rightMargin=dp(12);overlays.addView(cooldownTimer,timerLayout);cooldownTimer.setOnClickListener(v->Cooldown.show(activity));cooldownDrag=OverlayDrag.attach(overlays,cooldownTimer,"cooldown");
+        cooldownTimer=button("Historique  --:--");cooldownTimer.setTextSize(14);cooldownTimer.setAllCaps(false);cooldownTimer.setTextColor(accent());FrameLayout.LayoutParams timerLayout=new FrameLayout.LayoutParams(dp(165),dp(44),Gravity.TOP|Gravity.RIGHT);timerLayout.topMargin=dp(44);timerLayout.rightMargin=dp(12);overlays.addView(cooldownTimer,timerLayout);cooldownTimer.setOnClickListener(v->Cooldown.show(activity));cooldownDrag=OverlayDrag.attach(overlays,cooldownTimer,"cooldown");
 
         // Small local-time overlay: the wall-clock time at the spoofed coordinates, formatted offline by the view.
         localTime=new LocalTimeOverlay(host);FrameLayout.LayoutParams localTimeLayout=new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT,dp(32),Gravity.TOP|Gravity.RIGHT);localTimeLayout.rightMargin=dp(12);localTimeLayout.topMargin=dp(94);overlays.addView(localTime,localTimeLayout);localTime.setVisibility(View.GONE);localTimeDrag=OverlayDrag.attach(overlays,localTime,"local-time");
@@ -155,7 +175,7 @@ public final class Pad {
         vgpToggle=new VgpToggle(host);FrameLayout.LayoutParams vgpButtonLayout=new FrameLayout.LayoutParams(dp(54),dp(54),Gravity.TOP|Gravity.LEFT);vgpButtonLayout.leftMargin=dp(12);vgpButtonLayout.topMargin=dp(156);overlays.addView(vgpToggle,vgpButtonLayout);vgpToggle.setOnClickListener(v->{Control.setVgpEnabled(!Control.vgpEnabled());refresh();});
         vgpActivity=text("VGP",12,ink());vgpActivity.setPadding(dp(10),dp(6),dp(10),dp(6));vgpActivity.setMaxLines(2);vgpActivity.setEllipsize(android.text.TextUtils.TruncateAt.END);
         FrameLayout.LayoutParams vgpLayout=new FrameLayout.LayoutParams(dp(220),-2,Gravity.TOP|Gravity.LEFT);vgpLayout.leftMargin=dp(12);vgpLayout.topMargin=dp(216);overlays.addView(vgpActivity,vgpLayout);vgpActivity.setVisibility(View.GONE);
-        buddyEmotionStatus=text("EP: waiting",12,ink());buddyEmotionStatus.setPadding(dp(10),dp(6),dp(10),dp(6));buddyEmotionStatus.setMaxLines(3);
+        buddyEmotionStatus=text("EP : en attente",12,ink());buddyEmotionStatus.setPadding(dp(10),dp(6),dp(10),dp(6));buddyEmotionStatus.setMaxLines(3);
         FrameLayout.LayoutParams buddyEpLayout=new FrameLayout.LayoutParams(dp(240),-2,Gravity.TOP|Gravity.LEFT);buddyEpLayout.leftMargin=dp(12);buddyEpLayout.topMargin=dp(265);overlays.addView(buddyEmotionStatus,buddyEpLayout);buddyEmotionStatus.setVisibility(View.GONE);
         buddyEmotionStatus.setOnClickListener(v->BuddyEmotionSettings.show(activity));buddyEmotionDrag=OverlayDrag.attach(overlays,buddyEmotionStatus,"buddy-emotion");
         gymFeedOverlay=new GymFeedOverlay(activity);FrameLayout.LayoutParams gymFeedLayout=new FrameLayout.LayoutParams(dp(54),dp(54),Gravity.TOP|Gravity.LEFT);gymFeedLayout.leftMargin=dp(12);gymFeedLayout.topMargin=dp(375);overlays.addView(gymFeedOverlay,gymFeedLayout);
@@ -182,7 +202,7 @@ public final class Pad {
         FrameLayout.LayoutParams encounterLayout=new FrameLayout.LayoutParams(-2,-2,Gravity.TOP|Gravity.RIGHT);encounterLayout.rightMargin=dp(12);encounterLayout.topMargin=dp(186);
         overlays.addView(encounterBadge,encounterLayout);encounterBadge.setVisibility(View.GONE);encounterDrag=OverlayDrag.attach(overlays,encounterBadge,"encounters");
         shinyMark=text("✨",19,Color.WHITE);shinyMark.setGravity(Gravity.CENTER);shinyMark.setShadowLayer(dp(4),0,0,Color.BLACK);shinyMark.setClickable(false);shinyMark.setFocusable(false);
-        shinyMark.setContentDescription("Shiny Pokémon here");overlays.addView(shinyMark,new FrameLayout.LayoutParams(dp(32),dp(32)));shinyMark.setVisibility(View.GONE);
+        shinyMark.setContentDescription("Pokémon shiny ici");overlays.addView(shinyMark,new FrameLayout.LayoutParams(dp(32),dp(32)));shinyMark.setVisibility(View.GONE);
         ShinyScanner.prepare(activity);shinyBadge=text("",13,ink());shinyBadge.setPadding(dp(12),dp(8),dp(12),dp(8));shinyBadge.setMaxLines(2);shinyBadge.setBackground(rounded(surface(),10));
         FrameLayout.LayoutParams shinyLayout=new FrameLayout.LayoutParams(dp(250),-2,Gravity.TOP|Gravity.CENTER_HORIZONTAL);shinyLayout.topMargin=dp(150);
         overlays.addView(shinyBadge,shinyLayout);shinyBadge.setVisibility(View.GONE);shinyBadge.setOnClickListener(v->{ShinyScanner.showFound();refresh();});shinyDrag=OverlayDrag.attach(overlays,shinyBadge,"shiny");
@@ -193,7 +213,7 @@ public final class Pad {
         routesLayout.rightMargin=dp(14);routesLayout.topMargin=dp(100);overlays.addView(gameRoutesOverlay,routesLayout);
         gameRoutesOverlay.setVisibility(View.GONE);gameRoutesDrag=OverlayDrag.attach(overlays,gameRoutesOverlay,"game-routes");
         launcher=new RazorIcon(host);FrameLayout.LayoutParams iconLayout=new FrameLayout.LayoutParams(dp(48),dp(48),Gravity.TOP|Gravity.LEFT);iconLayout.leftMargin=dp(12);iconLayout.topMargin=dp(100);overlays.addView(launcher,iconLayout);
-        launcher.setContentDescription("Open PGRazor quick menu. Drag to reposition.");
+        launcher.setContentDescription("Ouvrir le menu rapide PGRazor. Glisse pour déplacer. Appui long : éteindre l'écran.");
         // The R launcher now toggles the compact quick menu; Settings there opens this panel full screen.
         quickMenu=new QuickMenu(host,parent,launcher,new QuickMenu.Listener(){
             public void onMap(){openWorldMap();}
@@ -207,11 +227,13 @@ public final class Pad {
             public void onAccounts(){stick.release(true);AccountsDialog.show(activity);}
             public void onSettings(){openSettings();}
             public void onHideOverlays(){confirmHideOverlays();}
+            public void onScreenOff(){turnScreenOff();}
         });
-        launcher.setOnClickListener(v->{if(quickMenu!=null)quickMenu.toggle();});draggable(launcher,launcher,true);
+        launcher.setOnClickListener(v->{if(quickMenu!=null)quickMenu.toggle();});draggable(launcher,launcher,true,this::turnScreenOff);
 
         settings.hide();joystickOverlay.setVisibility(Control.joystickVisible()?View.VISIBLE:View.GONE);applyTheme();
         unhideWatcher=new ThreeFingerWatcher(host);parent.addView(unhideWatcher,new FrameLayout.LayoutParams(-1,-1));
+        parent.addView(blackScreen,new FrameLayout.LayoutParams(-1,-1));
         refresh();parent.post(this::applyMapScale); handler.post(tick);
     }
     /** Decode a bundled map-icon once; returns null (never throws, never hits the network) if unavailable. */
@@ -272,8 +294,8 @@ public final class Pad {
     }
     private String transferToggleDescription(){
         boolean keep=Control.transferKeepAll(),master=Control.autoTransferEnabled();
-        String state=keep?"Keep All on; manual catches are kept":(master?"Normal transfer rules apply":"Auto transfer is off");
-        return "Manual encounter transfer: "+state+". Tap to "+(keep?"use normal transfer rules":"keep manual catches")+". Drag to reposition.";
+        String state=keep?"Keep All on; manual catches are kept":(master?"Normal transfer rules apply":"Le transfert auto est désactivé");
+        return "Transfert des rencontres manuelles : "+state+". Touche pour "+(keep?"use normal transfer rules":"garder les captures manuelles")+". Glisse pour déplacer.";
     }
 
     private void applyMapScale(){
@@ -303,10 +325,10 @@ public final class Pad {
     private void refresh() {
         applyMapScale();
         if(gymFeedOverlay!=null)gymFeedOverlay.refresh(!settings.isVisible()&&!(quickMenu!=null&&quickMenu.isShowing()));
-        boolean black=ShundoSniper.dark()&&!settings.isVisible();
+        boolean black=ScreenPower.off();
         if(blackScreen!=null&&black!=blackShown){
             blackShown=black;blackScreen.setVisibility(black?View.VISIBLE:View.GONE);
-            if(black){blackHint.setVisibility(View.VISIBLE);handler.postDelayed(()->{if(blackHint!=null)blackHint.setVisibility(View.GONE);},4000);}
+            if(black){blackScreen.bringToFront();blackHint.setVisibility(View.VISIBLE);handler.postDelayed(()->{if(blackHint!=null)blackHint.setVisibility(View.GONE);},3000);}
         }
         if(encounterBadge!=null){String count=!Control.encounterOverlay()||settings.isVisible()||(quickMenu!=null&&quickMenu.isShowing())?"":EncounterCounter.label();
             encounterBadge.setVisibility(count.isEmpty()?View.GONE:View.VISIBLE);
@@ -318,16 +340,16 @@ public final class Pad {
             if(shinyPopup!=null&&shinyPopup.isShowing())shinyPopup.dismiss();
             AlertDialog.Builder popup=new AlertDialog.Builder(MapTheme.wrap(activity)).setTitle(found[0]).setMessage(found[1]);
             // A found shiny: Catch it throws for you, Dismiss lets it go, Close keeps it (the badge reopens this).
-            if("found".equals(found[2]))popup.setPositiveButton("Catch it",(d,w)->{ShinyScanner.requestCatch();refresh();}).setNeutralButton("Dismiss",(d,w)->{ShinyScanner.dismissFound();refresh();}).setNegativeButton("Close",null);
+            if("found".equals(found[2]))popup.setPositiveButton("Capturer",(d,w)->{ShinyScanner.requestCatch();refresh();}).setNeutralButton("Ignorer",(d,w)->{ShinyScanner.dismissFound();refresh();}).setNegativeButton("Fermer",null);
             else popup.setPositiveButton("OK",null);
             shinyPopup=popup.create();
             final AlertDialog shown=shinyPopup;shown.setCanceledOnTouchOutside(false);DialogLifecycle.bind(activity,shown,null);shown.setOnShowListener(d->MapTheme.styleButtons(shown));shown.show();}}
         if(shinyBadge!=null){String found=settings.isVisible()||(quickMenu!=null&&quickMenu.isShowing())?"":ShinyScanner.foundLabel();
             shinyBadge.setVisibility(found.isEmpty()?View.GONE:View.VISIBLE);
-            if(!found.isEmpty()){setTextIfChanged(shinyBadge,found);shinyBadge.setContentDescription(found+". Tap for options.");shinyBadge.setTextColor(ink());shinyBadge.setBackground(rounded(surface(),10));if(shinyDrag!=null)shinyDrag.refreshBounds();}}
+            if(!found.isEmpty()){setTextIfChanged(shinyBadge,found);shinyBadge.setContentDescription(found+". Touche pour les options.");shinyBadge.setTextColor(ink());shinyBadge.setBackground(rounded(surface(),10));if(shinyDrag!=null)shinyDrag.refreshBounds();}}
         if(shundoOverlay!=null){shundoOverlay.refresh(!settings.isVisible()&&!(quickMenu!=null&&quickMenu.isShowing()));if(shundoDrag!=null)shundoDrag.refreshBounds();}
         if(gymAutomationStatus!=null){gymAutomationStatus.setVisibility(gymFeedOverlay.getVisibility());setTextIfChanged(gymAutomationStatus,GymAutomationSettings.overlayStatus());gymAutomationStatus.setTextColor(ink());gymFeedDrag.refreshBounds();}
-        if(vgpToggle!=null){vgpToggle.setVisibility(Control.vgpOverlayVisible()&&!settings.isVisible()&&!(quickMenu!=null&&quickMenu.isShowing())?View.VISIBLE:View.GONE);vgpToggle.setContentDescription("Virtual Go Plus "+(Control.vgpEnabled()?"on; tap to turn off":"off; tap to turn on")+". "+Control.vgpStatus());vgpToggle.invalidate();}
+        if(vgpToggle!=null){vgpToggle.setVisibility(Control.vgpOverlayVisible()&&!settings.isVisible()&&!(quickMenu!=null&&quickMenu.isShowing())?View.VISIBLE:View.GONE);vgpToggle.setContentDescription("Virtual Go Plus "+(Control.vgpEnabled()?"on; tap to turn off":"désactivé ; touche pour activer")+". "+Control.vgpStatus());vgpToggle.invalidate();}
 
         // Pair the status line with the toggle so the cooldown shutoff reason is visible even when VGP is off.
         if(buddyEmotionStatus!=null){buddyEmotionStatus.setVisibility(BuddyEmotionSettings.overlayEnabled()&&!settings.isVisible()&&!(quickMenu!=null&&quickMenu.isShowing())?View.VISIBLE:View.GONE);setTextIfChanged(buddyEmotionStatus,BuddyEmotionSettings.status());buddyEmotionStatus.setTextColor(ink());}
@@ -394,11 +416,11 @@ public final class Pad {
         if (Control.engine.walking) Control.event("walk-cancelled", "Coordinates editor opened");
         stick.release(); refresh();
         LinearLayout form = new LinearLayout(activity); form.setOrientation(LinearLayout.VERTICAL); form.setPadding(dp(24),dp(8),dp(24),dp(8));
-        EditText lat = input(Double.toString(Control.engine.latitude), "Latitude (-90 to 90)");
-        EditText lon = input(Double.toString(Control.engine.longitude), "Longitude (-180 to 180)");
-        EditText speed = input(Double.toString(Control.engine.speedKmh), "Speed (0.5–30 km/h)");
+        EditText lat = input(Double.toString(Control.engine.latitude), "Latitude (-90 à 90)");
+        EditText lon = input(Double.toString(Control.engine.longitude), "Longitude (-180 à 180)");
+        EditText speed = input(Double.toString(Control.engine.speedKmh), "Vitesse (0,5–30 km/h)");
         for (EditText field : new EditText[]{lat, lon, speed}) form.addView(field);
-        AlertDialog dialog = new AlertDialog.Builder(dialogContext()).setTitle("Coordinates & speed").setView(form).setNegativeButton("Cancel",null).setPositiveButton("Apply",null).create();
+        AlertDialog dialog = new AlertDialog.Builder(dialogContext()).setTitle("Coordonnées & vitesse").setView(form).setNegativeButton("Annuler",null).setPositiveButton("Appliquer",null).create();
         final AlertDialog[] confirmation = {null};
         DialogLifecycle.bind(activity,dialog,()->{if(confirmation[0]!=null)confirmation[0].dismiss();});
         dialog.setOnShowListener(d -> dialog.getButton(-1).setOnClickListener(v -> {
@@ -411,17 +433,17 @@ public final class Pad {
                     Control.event("coordinates-set", latitude + "," + longitude + " speed=" + check.speedKmh);
                     refresh(); dialog.dismiss(); return true;
                 });
-            } catch (IllegalArgumentException error) { speed.setError("Enter valid coordinates and speed (0.5–30)."); }
+            } catch (IllegalArgumentException error) { speed.setError("Entre des coordonnées et une vitesse valides (0,5–30)."); }
         })); dialog.show();styleTree(form);
     }
     /** "Hide overlay": confirm first, naming the three-finger tap that shows the overlays again. */
     void confirmHideOverlays() {
         if(closed||overlaysHidden||activity.isFinishing()||activity.isDestroyed()||hideOverlaysDialog!=null)return;
         AlertDialog dialog=new AlertDialog.Builder(dialogContext())
-            .setTitle("Hide overlay?")
-            .setMessage("All PGRazor buttons, status bars, messages and in-game IV text will be hidden so the game looks stock. To show them again, tap the screen with three fingers at once.")
-            .setNegativeButton("Cancel",null)
-            .setPositiveButton("Hide",(d,w)->setOverlaysHidden(true)).create();
+            .setTitle("Masquer l'overlay ?")
+            .setMessage("Tous les boutons, barres d'état, messages et textes d'IV de PGRazor seront masqués pour que le jeu ait l'air d'origine. Pour les réafficher, touche l'écran avec trois doigts en même temps.")
+            .setNegativeButton("Annuler",null)
+            .setPositiveButton("Masquer",(d,w)->setOverlaysHidden(true)).create();
         hideOverlaysDialog=dialog;
         DialogLifecycle.bind(activity,dialog,()->{if(hideOverlaysDialog==dialog)hideOverlaysDialog=null;});
         dialog.setOnShowListener(d->MapTheme.styleButtons(dialog));
@@ -433,7 +455,7 @@ public final class Pad {
         if(hidden){stick.release(true);if(quickMenu!=null&&quickMenu.isShowing())quickMenu.hide();}
         overlays.setVisibility(hidden?View.GONE:View.VISIBLE);
         Control.event("overlays",hidden?"hidden":"shown");
-        if(!hidden){Toast.makeText(activity,"PGRazor overlay shown",Toast.LENGTH_SHORT).show();refresh();}
+        if(!hidden){Toast.makeText(activity,"Overlay PGRazor affiché",Toast.LENGTH_SHORT).show();refresh();}
     }
     /**
      * Sees every finger that touches down anywhere on screen and never takes the touch, so the game
@@ -468,10 +490,10 @@ public final class Pad {
         if(closed||activity.isFinishing()||activity.isDestroyed()||stopRouteDialog!=null)return;
         final long token=Control.engine.activeRouteToken();if(token==0)return;
         AlertDialog dialog=new AlertDialog.Builder(dialogContext())
-            .setTitle("Stop route?")
-            .setMessage("A route or Autowalk is running. Do you want to stop it?")
-            .setNegativeButton("Keep walking",null)
-            .setPositiveButton("Stop route",(d,w)->{
+            .setTitle("Arrêter la route ?")
+            .setMessage("Une route ou l'Autowalk est en cours. Tu veux l'arrêter ?")
+            .setNegativeButton("Continuer à marcher",null)
+            .setPositiveButton("Arrêter la route",(d,w)->{
                 if(!closed&&Control.engine.stopRoute(token)){
                     Control.saveState();Control.event("route-stopped","Confirmed after map tap");refresh();
                 }
@@ -488,22 +510,22 @@ public final class Pad {
         stick.release(true);
         Control.event("map-open", "Browsing does not apply a destination; current walk=" + Control.engine.walking);
         WorldMapDialog.show(activity, Control.engine.latitude, Control.engine.longitude, (lat, lon) -> {
-            if (!Control.canEnable()) { Toast.makeText(activity,"Location adapter is not ready",Toast.LENGTH_SHORT).show(); return false; }
+            if (!Control.canEnable()) { Toast.makeText(activity,"L'adaptateur de position n'est pas prêt",Toast.LENGTH_SHORT).show(); return false; }
             try {
                 stick.release(); Control.teleport(lat, lon);
                 Control.event("map-teleport", String.format(Locale.US,"lat=%.7f lon=%.7f",lat,lon));
                 refresh(); return true;
-            } catch (IllegalArgumentException error) { Toast.makeText(activity,"Select valid coordinates",Toast.LENGTH_SHORT).show(); return false; }
+            } catch (IllegalArgumentException error) { Toast.makeText(activity,"Choisis des coordonnées valides",Toast.LENGTH_SHORT).show(); return false; }
         }, (lat, lon) -> {
-            if (!Control.canEnable()) { Toast.makeText(activity,"Location adapter is not ready",Toast.LENGTH_SHORT).show(); return false; }
+            if (!Control.canEnable()) { Toast.makeText(activity,"L'adaptateur de position n'est pas prêt",Toast.LENGTH_SHORT).show(); return false; }
             try {
                 stick.release(); Control.walkTo(lat, lon);
                 Control.event("walk-started", String.format(Locale.US,"targetLat=%.7f targetLon=%.7f speedKmh=%.2f",lat,lon,Control.engine.speedKmh));
                 if (!Control.engine.walking) Control.event("walk-arrived", "Already at selected destination");
                 refresh(); return true;
-            } catch (IllegalArgumentException error) { Toast.makeText(activity,"Select valid coordinates",Toast.LENGTH_SHORT).show(); return false; }
+            } catch (IllegalArgumentException error) { Toast.makeText(activity,"Choisis des coordonnées valides",Toast.LENGTH_SHORT).show(); return false; }
         }, (waypoints, loop) -> {
-            if (!Control.canEnable()) { Toast.makeText(activity,"Location adapter is not ready",Toast.LENGTH_SHORT).show(); return false; }
+            if (!Control.canEnable()) { Toast.makeText(activity,"L'adaptateur de position n'est pas prêt",Toast.LENGTH_SHORT).show(); return false; }
             try {
                 stick.release(true); Control.walkRoute(waypoints, loop);
                 MotionEngine.RouteProgress progress=Control.engine.routeProgress();
@@ -522,29 +544,29 @@ public final class Pad {
     }
     /** Shared quick teleport for the Favorites and Teleport modals; validates readiness. */
     private boolean quickTeleport(double latitude, double longitude) {
-        if (!Control.canEnable()) { Toast.makeText(activity,"Location adapter is not ready",Toast.LENGTH_SHORT).show(); return false; }
+        if (!Control.canEnable()) { Toast.makeText(activity,"L'adaptateur de position n'est pas prêt",Toast.LENGTH_SHORT).show(); return false; }
         try {
             stick.release(); Control.teleport(latitude, longitude);
             Control.event("quick-teleport", String.format(Locale.US,"lat=%.7f lon=%.7f",latitude,longitude));
             refresh(); return true;
-        } catch (IllegalArgumentException error) { Toast.makeText(activity,"Enter valid coordinates",Toast.LENGTH_SHORT).show(); return false; }
+        } catch (IllegalArgumentException error) { Toast.makeText(activity,"Entre des coordonnées valides",Toast.LENGTH_SHORT).show(); return false; }
     }
     void confirmMapTeleport(double latitude,double longitude,int mode,int epoch) {
         TeleportDialog.confirm(activity,latitude,longitude,(lat,lon)->{
             if(closed||!Control.mapTapAllowed()||mode!=Control.mapTapMode()||epoch!=Control.mapTapEpoch()||Control.engine.activeRouteToken()!=0) {
-                Toast.makeText(activity,"Map-tap settings changed; tap the map again.",Toast.LENGTH_SHORT).show();return true;
+                Toast.makeText(activity,"Réglages du tap sur la carte modifiés ; touche à nouveau la carte.",Toast.LENGTH_SHORT).show();return true;
             }
             if(!quickTeleport(lat,lon))return false;
             Control.event("map-tap-applied",String.format(Locale.US,"mode=%d lat=%.7f lon=%.7f",mode,lat,lon));return true;
         });
     }
     private boolean quickWalk(double latitude,double longitude) {
-        if(!Control.canEnable()){Toast.makeText(activity,"Location adapter is not ready",Toast.LENGTH_SHORT).show();return false;}
+        if(!Control.canEnable()){Toast.makeText(activity,"L'adaptateur de position n'est pas prêt",Toast.LENGTH_SHORT).show();return false;}
         try {
             stick.release();Control.walkTo(latitude,longitude);
             Control.event("quick-walk",String.format(Locale.US,"lat=%.7f lon=%.7f",latitude,longitude));
             refresh();return true;
-        } catch(IllegalArgumentException error){Toast.makeText(activity,"Select valid coordinates",Toast.LENGTH_SHORT).show();return false;}
+        } catch(IllegalArgumentException error){Toast.makeText(activity,"Choisis des coordonnées valides",Toast.LENGTH_SHORT).show();return false;}
     }
     public void close() {
         if (closed) return;
@@ -566,8 +588,9 @@ public final class Pad {
         settings.close();if(hideOverlaysDialog!=null)hideOverlaysDialog.dismiss();
         parent.removeView(settings.view());overlays.removeView(launcher);overlays.removeView(joystickOverlay);if(encounterBerry!=null){encounterBerry.close();overlays.removeView(encounterBerry);}if(cooldownTimer!=null)overlays.removeView(cooldownTimer);if(vgpToggle!=null)overlays.removeView(vgpToggle);if(vgpActivity!=null)overlays.removeView(vgpActivity);if(vgpMarker!=null)overlays.removeView(vgpMarker);if(mapCatchBadge!=null){overlays.removeView(mapCatchBadge);mapCatchBadge=null;}if(transferToggle!=null)overlays.removeView(transferToggle);if(gameRoutesOverlay!=null){gameRoutesOverlay.close();overlays.removeView(gameRoutesOverlay);}
         parent.removeView(overlays);if(unhideWatcher!=null)parent.removeView(unhideWatcher);
-        if(blackScreen!=null){blackScreen.setOnClickListener(null);parent.removeView(blackScreen);blackScreen=null;blackHint=null;}
-        ShundoSniper.setDark(false);  // leaving the game ends the black screen; it is not brought back on return
+        if(blackScreen!=null){blackScreen.setOnTouchListener(null);parent.removeView(blackScreen);blackScreen=null;blackHint=null;}
+        ShundoSniper.setDark(false);
+        ScreenPower.turnOn(activity);  // leaving the game always brings the screen back; it stays on when the game returns
         settings.view().setOnApplyWindowInsetsListener(null);
         Control.event("panel-closed", "Runtime suspended on activity change; desiredEnabled=" + Control.desiredEnabled() + "; movement stopped");
     }
@@ -577,7 +600,7 @@ public final class Pad {
         int pointer = -1;
         long cameraGesture=-1;
         boolean gestureCamera;
-        Stick(Context c) { super(c); setContentDescription("Location joystick: drag to move, release to stop"); }
+        Stick(Context c) { super(c); setContentDescription("Joystick de position : glisse pour bouger, relâche pour t'arrêter"); }
         void release() { release(false); }
         void release(boolean preserveWalk) { x=y=0; pointer=-1; cameraGesture=-1; if (!preserveWalk || !Control.engine.walking) Control.engine.stop(); Control.saveState(); invalidate(); }
         void applyMotion(long now) {

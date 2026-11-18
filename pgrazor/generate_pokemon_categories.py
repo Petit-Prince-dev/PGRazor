@@ -122,8 +122,8 @@ final class PokemonCategories {
     private PokemonCategories() {}
     static final int ALL = 0, LEGENDARY = 1, MYTHICAL = 2, ULTRA_BEAST = 3,
         MEGA = 4, PRIMAL = 5, STAGE_2 = 6, STAGE_3 = 7, MIGHTY = 8, SELECTED = 9;
-    static final String[] LABELS = {"All Pokemon", "Legendary", "Mythical", "Ultra Beasts",
-        "Mega-capable", "Primal-capable", "Stage 2 (e.g. Ivysaur)", "Stage 3 (e.g. Venusaur)", "Mighty (GO Wild Area)", "Selected"};
+    static final String[] LABELS = {"Tous les Pokémon", "Légendaires", "Fabuleux", "Ultra-Chimères",
+        "Méga-évolution possible", "Primo-résurgence possible", "Stade 2 (ex. Herbizarre)", "Stade 3 (ex. Florizarre)", "Colossal (GO Wild Area)", "Sélectionnés"};
 ARRAYS
 
     static boolean matches(int category, int dexId, boolean selected) {

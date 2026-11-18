@@ -114,7 +114,7 @@ public final class RootedRuntime {
         if (file.isFile() && file.length() == data.length && java.util.Arrays.equals(read(file), data)) return;
         File temp = new File(file.getPath() + ".tmp");
         try (FileOutputStream out = new FileOutputStream(temp)) { out.write(data); out.getFD().sync(); }
-        if (!temp.renameTo(file)) throw new IOException("Cannot replace " + file);
+        if (!temp.renameTo(file)) throw new IOException("Impossible de remplacer " + file);
     }
 
     private static byte[] read(File file) throws IOException {
@@ -133,7 +133,7 @@ public final class RootedRuntime {
                 int count;
                 while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
             }
-            if (destination.exists() && !destination.setWritable(true)) throw new IOException("Cannot replace " + destination);
+            if (destination.exists() && !destination.setWritable(true)) throw new IOException("Impossible de remplacer " + destination);
             if (!temp.renameTo(destination) || !destination.setReadOnly()) throw new IOException("Cannot install " + destination);
         }
         return destination;

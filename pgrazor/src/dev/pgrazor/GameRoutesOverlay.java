@@ -29,7 +29,7 @@ final class GameRoutesOverlay extends View {
     void refresh(boolean allowed) {
         boolean active=Control.gameRoutesRunning();
         setVisibility(allowed&&active?VISIBLE:GONE);
-        if(active)setContentDescription("In-game Routes: "+Control.gameRoutesStatus()+". Tap for current path; drag to move.");
+        if(active)setContentDescription("Routes du jeu : "+Control.gameRoutesStatus()+". Touche pour le trajet en cours ; glisse pour déplacer.");
         invalidate();
     }
 

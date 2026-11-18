@@ -34,7 +34,7 @@ final class MapTileCache {
     void remember(String key, Bitmap bitmap) { MEMORY.put(key, bitmap); }
 
     void ensureDirectory() throws IOException {
-        if (!directory.isDirectory() && !directory.mkdirs()) throw new IOException("Cannot create map cache");
+        if (!directory.isDirectory() && !directory.mkdirs()) throw new IOException("Impossible de créer le cache de la carte");
     }
 
     /** Fresh on-disk tile decoded to a bitmap, or null when missing/stale; a corrupt file is dropped. */
@@ -77,8 +77,8 @@ final class MapTileCache {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         byte[] buffer = new byte[8192]; int count;
         while ((count = stream.read(buffer)) != -1) {
-            if (Thread.currentThread().isInterrupted()) throw new IOException("Map closed");
-            if (out.size() + count > TILE_BYTE_LIMIT) throw new IOException("Oversize map tile");
+            if (Thread.currentThread().isInterrupted()) throw new IOException("Carte fermée");
+            if (out.size() + count > TILE_BYTE_LIMIT) throw new IOException("Tuile de carte trop grande");
             out.write(buffer, 0, count);
         }
         return out.toByteArray();
@@ -87,9 +87,9 @@ final class MapTileCache {
     static Bitmap decode(byte[] bytes) throws IOException {
         BitmapFactory.Options bounds = new BitmapFactory.Options(); bounds.inJustDecodeBounds = true;
         BitmapFactory.decodeByteArray(bytes, 0, bytes.length, bounds);
-        if (bounds.outWidth != 256 || bounds.outHeight != 256) throw new IOException("Invalid tile dimensions");
+        if (bounds.outWidth != 256 || bounds.outHeight != 256) throw new IOException("Dimensions de tuile invalides");
         Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-        if (bitmap == null) throw new IOException("Invalid map tile");
+        if (bitmap == null) throw new IOException("Tuile de carte invalide");
         return bitmap;
     }
 }

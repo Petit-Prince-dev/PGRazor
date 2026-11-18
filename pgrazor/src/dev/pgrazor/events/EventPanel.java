@@ -20,8 +20,8 @@ public final class EventPanel {
     public static void showSelector(Activity activity, boolean dark) {
         if (activity.isFinishing() || activity.isDestroyed()) return;
         AlertDialog dialog = dev.pgrazor.ChoiceList.attach(new AlertDialog.Builder(theme(activity, dark))
-            .setTitle("Events")
-            .setNegativeButton("Close", null).create(), new String[]{"Halloween 2026", "Go Wild November 2026"},
+            .setTitle("Événements")
+            .setNegativeButton("Fermer", null).create(), new String[]{"Halloween 2026", "Go Wild November 2026"},
             index -> { if (index == 0) showHalloween(activity, dark); else showGoWild(activity, dark); });
         bind(activity, dialog, () -> {});
         dialog.show();
@@ -40,7 +40,7 @@ public final class EventPanel {
         int pad = Math.round(20 * context.getResources().getDisplayMetrics().density);
         content.setPadding(pad, pad / 2, pad, pad / 2);
         TextView description = new TextView(context);
-        description.setText("Opens every visible map box and skips the encounter screen for any Pokemon result.");
+        description.setText("Ouvre chaque boîte visible sur la carte et passe l'écran de rencontre pour les Pokémon obtenus.");
         description.setTextSize(15);
         content.addView(description);
         TextView status = new TextView(context);
@@ -48,7 +48,7 @@ public final class EventPanel {
         status.setTextSize(13);
         content.addView(status);
         Switch collector = new Switch(context);
-        collector.setText("Open boxes and skip encounters");
+        collector.setText("Ouvrir les boîtes et passer les rencontres");
         collector.setTextSize(15);
         content.addView(collector);
 
@@ -56,7 +56,7 @@ public final class EventPanel {
         scroller.addView(content);
 
         AlertDialog dialog = new AlertDialog.Builder(context).setTitle("Halloween 2026")
-            .setView(scroller).setNegativeButton("Close", null).create();
+            .setView(scroller).setNegativeButton("Fermer", null).create();
         Handler handler = new Handler(Looper.getMainLooper());
         Runnable refresh = new Runnable() {
             public void run() {
@@ -65,8 +65,8 @@ public final class EventPanel {
                 collector.setEnabled(available);
                 collector.setChecked(EventSettings.boxCollectorEnabled(activity));
                 status.setText(available
-                    ? "Ready to open visible boxes. Encounter screens are skipped without catching."
-                    : "Unavailable: the box collector has not been verified. Collection is off.");
+                    ? "Prêt à ouvrir les boîtes visibles. Les écrans de rencontre sont passés sans capture."
+                    : "Indisponible : le collecteur de boîtes n'a pas été vérifié. La collecte est désactivée.");
                 handler.postDelayed(this, 500);
             }
         };
@@ -88,29 +88,29 @@ public final class EventPanel {
         int pad = Math.round(20 * context.getResources().getDisplayMetrics().density);
         content.setPadding(pad, pad / 2, pad, pad / 2);
         TextView description = new TextView(context);
-        description.setText("Prefer GO Safari Balls for Mighty Pokemon. If Safari Balls are unavailable"
-            + " or not allowed, your normal ball settings apply.");
+        description.setText("Privilégier les Safari Balls GO pour les Pokémon Colossaux. Si les Safari Balls sont indisponibles"
+            + " ou interdites, tes réglages de Ball normaux s'appliquent.");
         description.setTextSize(15);
         content.addView(description);
 
         Switch vgp = new Switch(context);
-        vgp.setText("Use Safari Balls in VGP+");
+        vgp.setText("Utiliser les Safari Balls dans le VGP+");
         vgp.setTextSize(15);
         vgp.setChecked(EventSettings.wildVgpSafari(activity));
         content.addView(vgp);
         TextView vgpHelp = new TextView(context);
-        vgpHelp.setText("Applies while VGP+ is running.");
+        vgpHelp.setText("S'applique pendant que le VGP+ tourne.");
         vgpHelp.setTextSize(13);
         vgpHelp.setPadding(0, 0, 0, pad / 2);
         content.addView(vgpHelp);
 
         Switch autoBall = new Switch(context);
-        autoBall.setText("Use Safari Balls in Auto Ball");
+        autoBall.setText("Utiliser les Safari Balls dans Ball auto");
         autoBall.setTextSize(15);
         autoBall.setChecked(EventSettings.wildAutoBallSafari(activity));
         content.addView(autoBall);
         TextView autoHelp = new TextView(context);
-        autoHelp.setText("Applies while Auto Ball is enabled.");
+        autoHelp.setText("S'applique quand Ball auto est activé.");
         autoHelp.setTextSize(13);
         content.addView(autoHelp);
 
@@ -123,11 +123,11 @@ public final class EventPanel {
         scroller.addView(content);
 
         AlertDialog dialog = new AlertDialog.Builder(context).setTitle("Go Wild November 2026")
-            .setView(scroller).setNegativeButton("Close", null).create();
+            .setView(scroller).setNegativeButton("Fermer", null).create();
         vgp.setOnCheckedChangeListener((button, checked) -> {
             if (checked == EventSettings.wildVgpSafari(activity)) return;
             if (!EventSettings.setWildVgpSafari(activity, checked)) {
-                status.setText("Couldn't save that change. Please try again.");
+                status.setText("Impossible d'enregistrer ce changement. Réessaie.");
                 button.setChecked(EventSettings.wildVgpSafari(activity));
                 return;
             }
@@ -137,7 +137,7 @@ public final class EventPanel {
         autoBall.setOnCheckedChangeListener((button, checked) -> {
             if (checked == EventSettings.wildAutoBallSafari(activity)) return;
             if (!EventSettings.setWildAutoBallSafari(activity, checked)) {
-                status.setText("Couldn't save that change. Please try again.");
+                status.setText("Impossible d'enregistrer ce changement. Réessaie.");
                 button.setChecked(EventSettings.wildAutoBallSafari(activity));
                 return;
             }

@@ -5,10 +5,10 @@ public final class BerryPriority {
     private BerryPriority() {}
     public static boolean validId(int id) { return id==701||id==703||id==705||id==706||id==707; }
     public static int[] parse(String value) {
-        if(value==null||value.length()>11)throw new IllegalArgumentException("Invalid berry priorities");
+        if(value==null||value.length()>11)throw new IllegalArgumentException("Priorités de baies invalides");
         if(value.isEmpty())return new int[0];
         String[] parts=value.split(",",-1);
-        if(parts.length>3)throw new IllegalArgumentException("Too many berry priorities");
+        if(parts.length>3)throw new IllegalArgumentException("Trop de priorités de baies");
         int[] ids=new int[parts.length];
         for(int i=0;i<parts.length;i++){
             if(!parts[i].matches("[0-9]{3}"))throw new IllegalArgumentException("Invalid berry");

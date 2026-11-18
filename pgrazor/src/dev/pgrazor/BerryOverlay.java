@@ -27,7 +27,7 @@ final class BerryOverlay extends View {
         boolean visible=Control.encounterBerryVisible();setVisibility(visible?VISIBLE:GONE);
         if(!visible)picker.close();
         int id=Control.autoBerrySelected();
-        setContentDescription("Catch berry: "+NAMES[index(id)]+(id==0?"":", "+Control.berryCount(id)+" available")+". Tap to choose berry priorities.");
+        setContentDescription("Baie de capture : "+NAMES[index(id)]+(id==0?"":", "+Control.berryCount(id)+" disponible(s)")+". Touche pour choisir les priorités de baies.");
         setEnabled(!Control.encounterBerryBusy());invalidate();picker.refresh();
     }
     void close(){picker.close();}

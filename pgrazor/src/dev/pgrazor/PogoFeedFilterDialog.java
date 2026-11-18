@@ -70,7 +70,7 @@ public final class PogoFeedFilterDialog {
         private LinearLayout content;   // repopulated on Reset / preset apply
         private TextView status;
         private final List<NumField> numbers = new ArrayList<>();
-        private Button speciesButton;   // "Choose species (N)"; label refreshed on change
+        private Button speciesButton;   // "Choisir les espèces (N)"; label refreshed on change
         private Button[] speciesModeButtons;
         private String editingPreset;   // PGRazorX: the saved preset being edited (Edit in Saved presets), or null
 
@@ -91,11 +91,11 @@ public final class PogoFeedFilterDialog {
             populate();
 
             dialog = new AlertDialog.Builder(ui)
-                .setTitle(myShinies ? "My Shinies filters" : "Filters")
+                .setTitle(myShinies ? "Filtres Mes shiny" : "Filtres")
                 .setView(scroll)
-                .setPositiveButton("Apply", null)   // overridden so invalid input does not dismiss
-                .setNeutralButton("Reset", null)     // overridden so Reset does not dismiss
-                .setNegativeButton("Cancel", null)   // default dismiss: no change applied
+                .setPositiveButton("Appliquer", null)   // overridden so invalid input does not dismiss
+                .setNeutralButton("Réinitialiser", null)     // overridden so Reset does not dismiss
+                .setNegativeButton("Annuler", null)   // default dismiss: no change applied
                 .create();
             if (sink != null) sink.track(dialog);
             FeedTheme.style(scroll); FeedTheme.styleGameButtons(scroll);
@@ -122,7 +122,7 @@ public final class PogoFeedFilterDialog {
             content.addView(status);
 
             if (myShinies) {
-                content.addView(caption("Applies to My Shinies only. Your other Nearby settings are kept."));
+                content.addView(caption("S'applique seulement à Mes shiny. Tes autres réglages À proximité sont conservés."));
                 speciesSection();
                 ivLevelSection();
                 sizeSection();
@@ -141,53 +141,53 @@ public final class PogoFeedFilterDialog {
         }
 
         private void generalSection() {
-            header("General");
-            content.addView(checkbox("Show everything (overrides the filters below)", "show_all"));
+            header("Général");
+            content.addView(checkbox("Tout afficher (ignore les filtres ci-dessous)", "show_all"));
         }
 
         private void ivLevelSection() {
-            header("IV & level");
-            content.addView(numberRow("Min IV", "min_iv", 0, 100));
-            content.addView(numberRow("Max IV", "max_iv", 0, 100));
-            content.addView(numberRow("Min level", "min_level", 0, 50));
-            content.addView(numberRow("Max level", "max_level", 0, 50));
+            header("IV & niveau");
+            content.addView(numberRow("IV min", "min_iv", 0, 100));
+            content.addView(numberRow("IV max", "max_iv", 0, 100));
+            content.addView(numberRow("Niveau min", "min_level", 0, 50));
+            content.addView(numberRow("Niveau max", "max_level", 0, 50));
         }
 
         private void alwaysShowSection() {
-            header("Always show (exceptions to the filters)");
-            content.addView(checkbox("Perfect (100% IV)", "always_show_perfect"));
-            content.addView(checkbox("Zero (0% IV)", "always_show_zero"));
-            content.addView(checkbox("Rare species", "always_show_rare"));
-            content.addView(checkbox("Notable size", "always_show_size"));
+            header("Toujours afficher (exceptions aux filtres)");
+            content.addView(checkbox("Parfait (100 % IV)", "always_show_perfect"));
+            content.addView(checkbox("Zéro (0 % IV)", "always_show_zero"));
+            content.addView(checkbox("Espèces rares", "always_show_rare"));
+            content.addView(checkbox("Taille notable", "always_show_size"));
         }
 
         private void sizeSection() {
-            header("Size");
-            content.addView(checkbox("XXS filter", "filter_xxs"));
-            content.addView(checkbox("XXL filter", "filter_xxl"));
+            header("Taille");
+            content.addView(checkbox("Filtre XXS", "filter_xxs"));
+            content.addView(checkbox("Filtre XXL", "filter_xxl"));
         }
 
         private void pvpSection() {
             header("PvP");
-            content.addView(checkbox("Great League", "show_pvp_great"));
-            content.addView(checkbox("Ultra League", "show_pvp_ultra"));
-            content.addView(numberRow("Max PvP rank", "pvp_max_rank", 1, PogoFeedFilters.MAX_PVP_RANK));
-            content.addView(caption("With a league ticked, each refresh searches one by one, 10 s apart: first by IV, then Great League, then Ultra League. All results are added to the feed."));
+            content.addView(checkbox("Super Ligue", "show_pvp_great"));
+            content.addView(checkbox("Hyper Ligue", "show_pvp_ultra"));
+            content.addView(numberRow("Rang PvP max", "pvp_max_rank", 1, PogoFeedFilters.MAX_PVP_RANK));
+            content.addView(caption("Avec une ligue cochée, chaque actualisation cherche une par une, à 10 s d'intervalle : d'abord par IV, puis Super Ligue, puis Hyper Ligue. Tous les résultats sont ajoutés au flux."));
         }
 
         private void shiniesSection() {
             header("Shiny");
-            content.addView(checkbox("Shiny only", "shiny_only"));
-            content.addView(checkbox("Background only", "background_only"));
+            content.addView(checkbox("Shiny uniquement", "shiny_only"));
+            content.addView(checkbox("Fond spécial uniquement", "background_only"));
         }
 
         private void speciesSection() {
-            header("Species");
+            header("Espèces");
             LinearLayout modeRow = new LinearLayout(ui);
             modeRow.setOrientation(LinearLayout.HORIZONTAL);
             speciesModeButtons = new Button[2];
             final String[] modes = {"off", "allowlist"};
-            final String[] labels = {"All species", "Allowlist"};
+            final String[] labels = {"Toutes les espèces", "Liste autorisée"};
             for (int i = 0; i < 2; i++) {
                 final String mode = modes[i];
                 Button b = segButton(labels[i]);
@@ -196,33 +196,33 @@ public final class PogoFeedFilterDialog {
                 speciesModeButtons[i] = b;
             }
             content.addView(modeRow);
-            speciesButton = button("Choose species");
+            speciesButton = button("Choisir les espèces");
             speciesButton.setOnClickListener(v -> openSpeciesPicker());
             content.addView(speciesButton, new LinearLayout.LayoutParams(-1, dp(44)));
             refreshSpeciesButton();
         }
 
         private void presetsSection() {
-            header("Presets");
-            Button presets = button("Saved presets…");
+            header("Préréglages");
+            Button presets = button("Préréglages enregistrés…");
             presets.setOnClickListener(v -> openPresets());
             content.addView(presets, new LinearLayout.LayoutParams(-1, dp(44)));
             // PGRazorX: while a saved preset is being edited, its changes are written back to it here.
             if (editingPreset != null) {
                 final String n = editingPreset;
-                content.addView(caption("Editing \"" + n + "\": change the filters below, then save."));
+                content.addView(caption("Modification de «" + n + " » : change les filtres ci-dessous, puis enregistre."));
                 LinearLayout row = new LinearLayout(ui);
                 row.setOrientation(LinearLayout.HORIZONTAL);
-                Button saveTo = button("Save to \"" + n + "\""), stop = button("Stop editing");
+                Button saveTo = button("Enregistrer dans «" + n + "\""), stop = button("Arrêter la modification");
                 row.addView(saveTo, new LinearLayout.LayoutParams(0, dp(44), 1));
                 row.addView(stop, new LinearLayout.LayoutParams(0, dp(44), 1));
                 content.addView(row, new LinearLayout.LayoutParams(-1, -2));
                 saveTo.setOnClickListener(v -> {
                     JSONObject saved = readPresets();
-                    if (!saved.has(n)) { toast("That preset no longer exists."); editingPreset = null; populate(); return; }
-                    if (savePreset(saved, n)) { status.setText("Preset \"" + n + "\" updated."); toast("Preset updated."); }
+                    if (!saved.has(n)) { toast("Ce préréglage n'existe plus."); editingPreset = null; populate(); return; }
+                    if (savePreset(saved, n)) { status.setText("Préréglage «" + n + " » mis à jour."); toast("Préréglage mis à jour."); }
                 });
-                stop.setOnClickListener(v -> { editingPreset = null; populate(); status.setText("Stopped editing the preset; the filters stay as they are."); });
+                stop.setOnClickListener(v -> { editingPreset = null; populate(); status.setText("Modification du préréglage arrêtée ; les filtres restent tels quels."); });
             }
         }
 
@@ -232,11 +232,11 @@ public final class PogoFeedFilterDialog {
             try {
                 JSONObject validated = PogoFeedFilters.fromJson(working).toViewportJson();
                 JSONObject next = new JSONObject(presets.toString()); next.put(n, validated);
-                if (next.toString().length() > 150000) { toast("Saved presets are too large."); return false; }
+                if (next.toString().length() > 150000) { toast("Les préréglages enregistrés sont trop gros."); return false; }
                 presets.put(n, validated);
                 writePresets(presets);
                 return true;
-            } catch (JSONException e) { toast("Couldn't save that preset."); return false; }
+            } catch (JSONException e) { toast("Impossible d'enregistrer ce préréglage."); return false; }
         }
 
         // ------------------------------------------------------------------ species mode state
@@ -257,7 +257,7 @@ public final class PogoFeedFilterDialog {
             if (speciesButton == null) return;
             JSONArray list = working.optJSONArray("species_filter_list");
             int n = list == null ? 0 : list.length();
-            speciesButton.setText(n == 0 ? "Choose species" : "Choose species (" + n + ")");
+            speciesButton.setText(n == 0 ? "Choisir les espèces" : "Choisir les espèces (" + n + ")");
         }
 
         // ------------------------------------------------------------------ apply / reset
@@ -265,14 +265,14 @@ public final class PogoFeedFilterDialog {
         private void onApplyClicked() {
             collectNumbers();
             if (onApply != null && onApply.apply(working)) { dialog.dismiss(); return; }
-            status.setText("Some values look off (e.g. min above max). Please review and try again.");
+            status.setText("Certaines valeurs semblent incorrectes (ex. min au-dessus du max). Vérifie et réessaie.");
         }
 
         private void onResetClicked() {
             JSONObject defaults;
             try {
                 defaults = new PogoFeedFilters().toViewportJson();
-            } catch (JSONException e) { toast("Couldn't reset the filters."); return; }
+            } catch (JSONException e) { toast("Impossible de réinitialiser les filtres."); return; }
             if (myShinies) {
                 // Only reset the keys the shinies endpoint honours; leave Nearby-only keys in place.
                 copyKeys(defaults, working, SHINIES_KEYS);
@@ -280,7 +280,7 @@ public final class PogoFeedFilterDialog {
                 copyAll(defaults, working); // same 21-key set; overwrite in place
             }
             populate();
-            status.setText("Filters reset to defaults. Apply to use them.");
+            status.setText("Filtres réinitialisés. Applique pour les utiliser.");
         }
 
         /** Reads every numeric field into the working copy, clamped to its allowed range. */
@@ -302,9 +302,9 @@ public final class PogoFeedFilterDialog {
 
         /** Opens the shared species allowlist picker, wiring it to the working filter JSON. */
         private void openSpeciesPicker() {
-            PokemonSpeciesDialog.show(activity, "Species allowlist", "species", MAX_SPECIES_ID,
+            PokemonSpeciesDialog.show(activity, "Espèces autorisées", "species", MAX_SPECIES_ID,
                 this::loadSpeciesCsv, this::saveSpeciesCsv, this::refreshSpeciesMode,
-                "No species selected", sink == null ? null : sink::track);
+                "Aucune espèce sélectionnée", sink == null ? null : sink::track);
         }
 
         /** Canonical sorted comma-separated IDs from the working allowlist, restricted to the selectable range. */
@@ -351,10 +351,10 @@ public final class PogoFeedFilterDialog {
             body.setPadding(pad, dp(8), pad, 0);
 
             final EditText name = new EditText(ui);
-            name.setHint("Name this preset");
+            name.setHint("Nomme ce préréglage");
             name.setSingleLine(true);
             body.addView(name, new LinearLayout.LayoutParams(-1, dp(48)));
-            Button save = button("Save current filters");
+            Button save = button("Enregistrer les filtres actuels");
             body.addView(save, new LinearLayout.LayoutParams(-1, dp(44)));
 
             final LinearLayout listCol = new LinearLayout(ui);
@@ -365,16 +365,16 @@ public final class PogoFeedFilterDialog {
             body.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1));
 
             AlertDialog manager = new AlertDialog.Builder(ui)
-                .setTitle("Filter presets")
+                .setTitle("Préréglages de filtres")
                 .setView(body)
-                .setNegativeButton("Close", null)
+                .setNegativeButton("Fermer", null)
                 .create();
             if (sink != null) sink.track(manager);
 
             final Runnable[] rebuild = new Runnable[1];
             rebuild[0] = () -> {
                 listCol.removeAllViews();
-                if (names.isEmpty()) { listCol.addView(caption("No saved presets yet.")); }
+                if (names.isEmpty()) { listCol.addView(caption("Aucun préréglage enregistré.")); }
                 for (String n : new ArrayList<>(names)) {
                     // PGRazorX: name on its own line, then Apply / Edit / Rename / Delete.
                     LinearLayout row = new LinearLayout(ui);
@@ -384,7 +384,7 @@ public final class PogoFeedFilterDialog {
                     row.addView(nameView, new LinearLayout.LayoutParams(-1, -2));
                     LinearLayout actions = new LinearLayout(ui);
                     actions.setOrientation(LinearLayout.HORIZONTAL);
-                    Button apply = button("Apply"), edit = button("Edit"), rename = button("Rename"), del = button("Delete");
+                    Button apply = button("Appliquer"), edit = button("Modifier"), rename = button("Renommer"), del = button("Supprimer");
                     for (Button b : new Button[]{apply, edit, rename, del}) actions.addView(b, new LinearLayout.LayoutParams(0, dp(40), 1));
                     row.addView(actions, new LinearLayout.LayoutParams(-1, -2));
                     listCol.addView(row, new LinearLayout.LayoutParams(-1, -2));
@@ -393,7 +393,7 @@ public final class PogoFeedFilterDialog {
                         if (p != null) {
                             editingPreset = null;
                             copyAll(p, working); populate();
-                            status.setText("Preset \"" + n + "\" loaded. Apply to use it.");
+                            status.setText("Préréglage «" + n + " » chargé. Applique pour l'utiliser.");
                         }
                         manager.dismiss();
                     });
@@ -402,7 +402,7 @@ public final class PogoFeedFilterDialog {
                         if (p != null) {
                             editingPreset = n;
                             copyAll(p, working); populate();
-                            status.setText("Editing preset \"" + n + "\". Change the filters, then tap Save to \"" + n + "\".");
+                            status.setText("Modification du préréglage «" + n + " ». Change les filtres, puis touche Enregistrer dans «" + n + "\".");
                         }
                         manager.dismiss();
                     });
@@ -410,27 +410,27 @@ public final class PogoFeedFilterDialog {
                         final EditText field = new EditText(ui);
                         field.setSingleLine(true); field.setText(n); field.setSelection(n.length());
                         AlertDialog ask = new AlertDialog.Builder(ui)
-                            .setTitle("Rename preset")
+                            .setTitle("Renommer le préréglage")
                             .setView(field)
-                            .setPositiveButton("Rename", null)
-                            .setNegativeButton("Cancel", null)
+                            .setPositiveButton("Renommer", null)
+                            .setNegativeButton("Annuler", null)
                             .create();
                         if (sink != null) sink.track(ask);
                         ask.setOnShowListener(d2 -> {
                             FeedTheme.styleButtons(ask); FeedTheme.gameFooter(ask, null);
                             ask.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v2 -> {
                                 String next = field.getText().toString().trim();
-                                if (next.isEmpty() || next.length() > 40) { toast("Use a preset name of 1 to 40 characters."); return; }
+                                if (next.isEmpty() || next.length() > 40) { toast("Utilise un nom de préréglage de 1 à 40 caractères."); return; }
                                 if (next.equals(n)) { ask.dismiss(); return; }
-                                if (presets.has(next)) { toast("A preset with that name already exists."); return; }
+                                if (presets.has(next)) { toast("Un préréglage avec ce nom existe déjà."); return; }
                                 try {
                                     JSONObject value = presets.optJSONObject(n);
                                     if (value == null) { ask.dismiss(); return; }
                                     presets.remove(n); presets.put(next, value); writePresets(presets);
                                     names.remove(n); names.add(next); java.util.Collections.sort(names);
                                     if (n.equals(editingPreset)) { editingPreset = next; populate(); }
-                                    rebuild[0].run(); ask.dismiss(); toast("Preset renamed.");
-                                } catch (JSONException e) { toast("Couldn't rename that preset."); }
+                                    rebuild[0].run(); ask.dismiss(); toast("Préréglage renommé.");
+                                } catch (JSONException e) { toast("Impossible de renommer ce préréglage."); }
                             });
                         });
                         ask.show();
@@ -445,14 +445,14 @@ public final class PogoFeedFilterDialog {
             };
             save.setOnClickListener(v -> {
                 String n = name.getText().toString().trim();
-                if (n.isEmpty() || n.length() > 40) { toast("Use a preset name of 1 to 40 characters."); return; }
-                if (!presets.has(n) && presets.length() >= 25) { toast("You can save up to 25 presets."); return; }
+                if (n.isEmpty() || n.length() > 40) { toast("Utilise un nom de préréglage de 1 à 40 caractères."); return; }
+                if (!presets.has(n) && presets.length() >= 25) { toast("Tu peux enregistrer jusqu'à 25 préréglages."); return; }
                 if (!savePreset(presets, n)) return;
                 if (!names.contains(n)) names.add(n);
                 java.util.Collections.sort(names);
                 name.setText("");
                 rebuild[0].run();
-                toast("Preset saved.");
+                toast("Préréglage enregistré.");
             });
 
             manager.setOnShowListener(d -> { FeedTheme.style(body); FeedTheme.styleGameButtons(body); FeedTheme.styleButtons(manager); FeedTheme.gameFooter(manager, null); rebuild[0].run(); });

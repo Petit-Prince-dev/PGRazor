@@ -21,7 +21,7 @@ final class CoordinateClipboard {
         ClipboardManager clipboard = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
         if (clipboard == null) return;
         String text = text(latitude, longitude);
-        clipboard.setPrimaryClip(ClipData.newPlainText("Coordinates", text));
+        clipboard.setPrimaryClip(ClipData.newPlainText("Coordonnées", text));
         Toast.makeText(activity, done + ": " + text, Toast.LENGTH_SHORT).show();
     }
 }

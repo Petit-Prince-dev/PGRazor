@@ -22,7 +22,7 @@ public final class RootToggleTest {
         check(RootModuleState.parse(values,true).rebootNeeded);
         check(!RootModuleState.parse(values,true).canToggle());
         values.put("MODVER","v0.2.5-root-fix1");
-        check(RootModuleState.parse(values,true).label.contains("update and reboot once"));
+        check(RootModuleState.parse(values,true).label.contains("redémarre une fois"));
         values.put("MODTOGGLE","1");
         check(RootModuleState.parse(values,true).canToggle());
         check(!RootModuleState.parse(values,false).canToggle());
@@ -30,7 +30,7 @@ public final class RootToggleTest {
         check(!RootModuleState.parse(values,true).rebootNeeded);
         values.put("MODOFF","1");
         check(RootModuleState.parse(values,true).injectionOff);
-        check(RootModuleState.parse(values,true).label.contains("off (module stays installed)"));
+        check(RootModuleState.parse(values,true).label.contains("désactivé (le module reste installé)"));
         values.put("MODDISABLED","1"); check(!RootModuleState.parse(values,true).canToggle());
         values.remove("MODDISABLED"); values.put("MODREMOVE","1");
         check(!RootModuleState.parse(values,true).canToggle());

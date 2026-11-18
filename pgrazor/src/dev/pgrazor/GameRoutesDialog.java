@@ -40,14 +40,14 @@ public final class GameRoutesDialog {
         int pad = MapTheme.dp(ctx, 18);
         layout.setPadding(pad, MapTheme.dp(ctx, 8), pad, 0);
 
-        layout.addView(label(ctx, "Walk eligible in-game Routes automatically, shortest total walk first. Each Route is "
-            + "started, walked once and completed in game before the next.", 13));
+        layout.addView(label(ctx, "Parcourt automatiquement les Routes éligibles du jeu, la plus courte d'abord. Chaque Route est "
+            + "démarrée, parcourue une fois et validée dans le jeu avant la suivante.", 13));
 
         LinearLayout countRow = new LinearLayout(ctx);
         countRow.setOrientation(LinearLayout.HORIZONTAL);
         countRow.setGravity(Gravity.CENTER_VERTICAL);
         countRow.setPadding(0, MapTheme.dp(ctx, 10), 0, 0);
-        countRow.addView(label(ctx, "Max completions (1–" + MAX_COMPLETIONS + "):", 15), new LinearLayout.LayoutParams(0, -2, 1));
+        countRow.addView(label(ctx, "Validations max (1–" + MAX_COMPLETIONS + "):", 15), new LinearLayout.LayoutParams(0, -2, 1));
         EditText countField = new EditText(ctx);
         countField.setInputType(InputType.TYPE_CLASS_NUMBER);
         countField.setFilters(new InputFilter[]{new InputFilter.LengthFilter(2)});
@@ -56,7 +56,7 @@ public final class GameRoutesDialog {
         countRow.addView(countField, new LinearLayout.LayoutParams(MapTheme.dp(ctx, 72), -2));
         layout.addView(countRow);
 
-        TextView status = label(ctx, "Waiting for Route support…", 13);
+        TextView status = label(ctx, "En attente du support des Routes…", 13);
         status.setPadding(0, MapTheme.dp(ctx, 10), 0, 0);
         layout.addView(status);
         TextView nearby = label(ctx, "", 13);
@@ -64,11 +64,11 @@ public final class GameRoutesDialog {
         layout.addView(nearby);
 
         AlertDialog dialog = new AlertDialog.Builder(ctx)
-            .setTitle("Walk Routes")
+            .setTitle("Parcourir les Routes")
             .setView(layout)
-            .setNegativeButton("Close", null)
-            .setNeutralButton("Stop", null)
-            .setPositiveButton("Start walking routes", null)
+            .setNegativeButton("Fermer", null)
+            .setNeutralButton("Arrêter", null)
+            .setPositiveButton("Lancer le parcours des Routes", null)
             .create();
 
         Controller controller = new Controller(activity, dialog, countField, status, nearby);
@@ -101,8 +101,8 @@ public final class GameRoutesDialog {
             Control.setGameRoutesPlanning(true); // renew the native discovery stream while visible
             boolean ready = Control.gameRoutesReady(), running = Control.gameRoutesRunning();
             String reward=Control.gameRoutesLastReward();
-            status.setText((ready ? Control.gameRoutesStatus() : "Waiting for Route support…")
-                +(reward.isEmpty()?"":"\nLast rewards received: "+reward));
+            status.setText((ready ? Control.gameRoutesStatus() : "En attente du support des Routes…")
+                +(reward.isEmpty()?"":"\nDernières récompenses reçues : "+reward));
             nearby.setText(describeNearby(Control.gameRoutesSnapshot()));
             Button start = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
             if (start != null) start.setEnabled(ready && !running);
@@ -115,8 +115,8 @@ public final class GameRoutesDialog {
             if (closed) return;
             int count;
             try { count = Integer.parseInt(countField.getText().toString().trim()); }
-            catch (NumberFormatException e) { countField.setError("Enter 1–" + MAX_COMPLETIONS); return; }
-            if (count < 1 || count > MAX_COMPLETIONS) { countField.setError("Enter 1–" + MAX_COMPLETIONS); return; }
+            catch (NumberFormatException e) { countField.setError("Entre 1–" + MAX_COMPLETIONS); return; }
+            if (count < 1 || count > MAX_COMPLETIONS) { countField.setError("Entre 1–" + MAX_COMPLETIONS); return; }
             try { Control.startGameRoutes(count); }
             catch(IllegalArgumentException e){Toast.makeText(activity,e.getMessage(),Toast.LENGTH_SHORT).show();}
             // Dismiss only once a run truly began; otherwise keep the dialog so validation/errors stay visible.
@@ -127,7 +127,7 @@ public final class GameRoutesDialog {
         private void stop() {
             if (closed) return;
             Control.stopGameRoutes();
-            Toast.makeText(activity, "Route automation stopped.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(activity, "Automatisation des Routes arrêtée.", Toast.LENGTH_SHORT).show();
             poll();
         }
 
@@ -141,10 +141,10 @@ public final class GameRoutesDialog {
 
     /** Reads the native snapshot into a short, readable nearby list; never throws on bad data. */
     private static String describeNearby(String snapshot) {
-        if (snapshot == null || snapshot.isEmpty()) return "No Routes loaded yet. Move around in-game to discover some.";
+        if (snapshot == null || snapshot.isEmpty()) return "Aucune Route chargée. Déplace-toi en jeu pour en découvrir.";
         try {
             JSONArray routes = new JSONObject(snapshot).optJSONArray("routes");
-            if (routes == null || routes.length() == 0) return "No Routes loaded yet. Move around in-game to discover some.";
+            if (routes == null || routes.length() == 0) return "Aucune Route chargée. Déplace-toi en jeu pour en découvrir.";
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < routes.length() && i < 8; i++) {
                 JSONObject r = routes.optJSONObject(i);
@@ -152,11 +152,11 @@ public final class GameRoutesDialog {
                 sb.append("• ").append(r.optString("name", r.optString("id", "Route")));
                 double meters = r.optDouble("distanceMeters", 0);
                 if (meters > 0) sb.append(String.format(Locale.US, " — %.0f m", meters));
-                if (r.optBoolean("reversible")) sb.append(" (reversible)");
+                if (r.optBoolean("reversible")) sb.append(" (réversible)");
                 sb.append('\n');
             }
-            return sb.length() == 0 ? "No Routes loaded yet." : sb.toString().trim();
-        } catch (org.json.JSONException bad) { return "Nearby Routes are unavailable right now."; }
+            return sb.length() == 0 ? "Aucune Route chargée." : sb.toString().trim();
+        } catch (org.json.JSONException bad) { return "Les Routes proches sont indisponibles pour l'instant."; }
     }
 
     private static TextView label(Context c, String text, int size) { TextView v = new TextView(c); v.setText(text); v.setTextSize(size); return v; }

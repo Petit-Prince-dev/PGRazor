@@ -162,7 +162,7 @@ public final class AccountProfileStore {
     public synchronized Profile add(String label) throws IOException {
         String clean = requireLabel(label);
         if (profiles.size() >= MAX_PROFILES)
-            throw new IOException("The profile index is full (" + MAX_PROFILES + ").");
+            throw new IOException("La liste des profils est pleine (" + MAX_PROFILES + ").");
         String id;
         do { id = UUID.randomUUID().toString(); } while (profiles.containsKey(id));
         LinkedHashMap<String, Profile> next = copyProfiles();
@@ -187,8 +187,8 @@ public final class AccountProfileStore {
     /** Protects active state and any in-flight switch before storage is removed. */
     public synchronized void requireRemovable(String id) {
         requireKnownId(id);
-        if(selected.equals(id))throw new IllegalStateException("Switch accounts before deleting the current account.");
-        if(!pending.isEmpty())throw new IllegalStateException("An account switch is pending.");
+        if(selected.equals(id))throw new IllegalStateException("Change de compte avant de supprimer le compte actuel.");
+        if(!pending.isEmpty())throw new IllegalStateException("Un changement de compte est en attente.");
     }
 
     /** Removes an inactive index entry after its saved session and local data are deleted. */
@@ -213,7 +213,7 @@ public final class AccountProfileStore {
      * calls this after it has verified a clean logout, immediately before restarting.
      */
     public synchronized void activatePending() throws IOException {
-        if (pending.isEmpty()) throw new IllegalStateException("No pending switch to activate.");
+        if (pending.isEmpty()) throw new IllegalStateException("Aucun changement en attente à activer.");
         if (!profiles.containsKey(pending)) throw new IllegalStateException("Pending target no longer exists.");
         persist(profiles, pending, "");
         commit(profiles, pending, "");
@@ -278,7 +278,7 @@ public final class AccountProfileStore {
         }
 
         if (profiles.size() >= MAX_PROFILES)
-            throw new IOException("The profile index is full (" + MAX_PROFILES + ").");
+            throw new IOException("La liste des profils est pleine (" + MAX_PROFILES + ").");
         String id;
         do { id = UUID.randomUUID().toString(); } while (profiles.containsKey(id));
         LinkedHashMap<String, Profile> next = copyProfiles();
@@ -303,7 +303,7 @@ public final class AccountProfileStore {
             target = new File(filesDir, name);
         } else {
             File dir = new File(new File(baseDir, PROFILES_DIR), profileId);
-            if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Could not create profile storage.");
+            if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Impossible de créer le stockage des profils.");
             target = new File(dir, name);
         }
         // Defence in depth: the resolved path must stay inside its intended root.
@@ -332,10 +332,10 @@ public final class AccountProfileStore {
     }
 
     private static String requireLabel(String label) {
-        if (label == null) throw new IllegalArgumentException("Label is required.");
+        if (label == null) throw new IllegalArgumentException("Un nom est requis.");
         String trimmed = label.trim();
-        if (trimmed.isEmpty()) throw new IllegalArgumentException("Label is required.");
-        if (trimmed.length() > 200) throw new IllegalArgumentException("Label is too long.");
+        if (trimmed.isEmpty()) throw new IllegalArgumentException("Un nom est requis.");
+        if (trimmed.length() > 200) throw new IllegalArgumentException("Le nom est trop long.");
         return trimmed;
     }
 
@@ -414,7 +414,7 @@ public final class AccountProfileStore {
         byte[] bytes = buffer.toByteArray();
         if (bytes.length > MAX_INDEX_BYTES) throw new IOException("Index would exceed the size bound.");
 
-        if (!baseDir.isDirectory() && !baseDir.mkdirs()) throw new IOException("Could not create the account store.");
+        if (!baseDir.isDirectory() && !baseDir.mkdirs()) throw new IOException("Impossible de créer le stockage des comptes.");
         Path dir = baseDir.toPath();
         Path temp = Files.createTempFile(dir, "index", ".tmp");
         boolean moved = false;

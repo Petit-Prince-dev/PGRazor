@@ -18,7 +18,7 @@ final class MapCatchBadge extends View {
     void refresh(boolean visible) {
         label = visible ? Control.mapCatchLabel() : "";
         setVisibility(label.isEmpty() ? GONE : VISIBLE);
-        setContentDescription("Map Auto Throw: " + label);
+        setContentDescription("Lancer auto sur la carte : " + label);
         if (!label.isEmpty()) invalidate();
     }
     @Override protected void onDraw(Canvas canvas) {

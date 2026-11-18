@@ -7,9 +7,9 @@ public final class ShundoPacingTest {
 
     public static void main(String[] args) {
         check(ShundoPacing.waitReason(true,true,true,true,true).isEmpty(), "healthy search is unchanged");
-        check(ShundoPacing.waitReason(true,true,true,false,false).contains("game account"), "location working during account handoff must not permit teleport");
-        check(ShundoPacing.waitReason(true,true,true,true,false).contains("game readiness"), "native prerequisites are required");
-        check(ShundoPacing.waitReason(true,true,false,true,true).startsWith("Paused"), "background or disabled location cannot teleport");
+        check(ShundoPacing.waitReason(true,true,true,false,false).contains("compte de jeu"), "location working during account handoff must not permit teleport");
+        check(ShundoPacing.waitReason(true,true,true,true,false).contains("jeu soit prêt"), "native prerequisites are required");
+        check(ShundoPacing.waitReason(true,true,false,true,true).startsWith("En pause"), "background or disabled location cannot teleport");
         check(!ShundoPacing.waitReason(false,true,true,true,true).isEmpty(), "adapter absent");
         check(!ShundoPacing.waitReason(true,false,true,true,true).isEmpty(), "location unknown");
         check(ShundoPacing.feedDelay(4000, false) == ShundoPacing.FEED_MS, "a full queue waits the long interval");

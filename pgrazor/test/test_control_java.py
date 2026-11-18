@@ -180,6 +180,14 @@ public final class ShundoSniper {
  public static void read(java.util.Properties p){}
  public static void write(java.util.Properties p){}
 }''',
+    'dev/pgrazor/ScreenPower.java': '''package dev.pgrazor;
+final class ScreenPower {
+ static boolean off(){return false;}
+}''',
+    'dev/pgrazor/RootUpdates.java': '''package dev.pgrazor;
+final class RootUpdates {
+ static void onGameStart(Object context){}
+}''',
     'dev/pgrazor/SmartCatchSettings.java': '''package dev.pgrazor;
 public final class SmartCatchSettings {
  private static final SmartCatchPreferences prefs=new SmartCatchPreferences();

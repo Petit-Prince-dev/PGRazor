@@ -55,7 +55,7 @@ public final class LiveFeedDataTest {
         String rankedRow=LiveFeedData.parse(new JSONObject().put("pokemon",ranked),now).entries.get(0).details;
         check(rankedRow.contains("GL #8")&&!rankedRow.contains("UL #"),"Row shows top-100 league ranks only: "+rankedRow);
         check(LiveFeedData.parse(new JSONObject().put("data",new JSONObject().put("span_tier","perfect")),now).note
-            .contains("100% IV"),"Wide-span tier explains the 100%-only results");
+            .contains("100 % IV"),"Wide-span tier explains the 100%-only results");
         check(LiveFeedData.parse(new JSONObject().put("data",new JSONObject().put("span_tier","size")),now).note
             .isEmpty(),"Nearby tier adds no note");
         System.out.println("PASS: live feed fort types, expiry, unknown stats, coordinates and 64-bit IDs");

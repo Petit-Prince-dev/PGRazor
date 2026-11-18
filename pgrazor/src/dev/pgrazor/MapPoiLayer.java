@@ -97,9 +97,9 @@ final class MapPoiLayer {
         if (closed) return; snapshots.setOpen(layers != 0);
         String snapshot = snapshots.read();
         if (!snapshot.equals(lastPois)) { lastPois = snapshot; try { pois = new JSONObject(snapshot).optJSONArray("points"); } catch (Exception e) { pois = null; } if (pois == null) pois = new JSONArray(); invalidate.run(); }
-        if (poiStatus != null) { String message = layers == 0 ? "Nearby layers off" : "Nearby locations loaded by the game (" + pois.length() + ")";
-            if (layers != 0 && snapshot.isEmpty()) message = "Waiting for nearby game locations";
-            else if (layers != 0) try { if (new JSONObject(snapshot).has("error")) message = "Nearby layers unavailable"; } catch (Exception ignored) {}
+        if (poiStatus != null) { String message = layers == 0 ? "Calques proches désactivés" : "Lieux proches chargés par le jeu (" + pois.length() + ")";
+            if (layers != 0 && snapshot.isEmpty()) message = "En attente des lieux proches du jeu";
+            else if (layers != 0) try { if (new JSONObject(snapshot).has("error")) message = "Calques proches indisponibles"; } catch (Exception ignored) {}
             poiStatus.setText(message);
         }
         invalidate.run(); main.removeCallbacks(poiRefresh); main.postDelayed(poiRefresh, 1000);
@@ -235,15 +235,15 @@ final class MapPoiLayer {
         if (closed || hits.isEmpty()) return;
         if (hits.size() == 1) { showPoiDetails(hits.get(0)); return; }
         String[] labels = new String[hits.size()]; for (int i = 0; i < labels.length; i++) labels[i] = poiShortLabel(hits.get(i));
-        AlertDialog chooser = ChoiceList.attach(new AlertDialog.Builder(dialogContext).setTitle("Nearby here (" + hits.size() + ")")
-            .setNegativeButton("Close", null).create(), labels, which -> showPoiDetails(hits.get(which)));
+        AlertDialog chooser = ChoiceList.attach(new AlertDialog.Builder(dialogContext).setTitle("Proches ici (" + hits.size() + ")")
+            .setNegativeButton("Fermer", null).create(), labels, which -> showPoiDetails(hits.get(which)));
         registerPoiDialog(chooser); chooser.show();
     }
     private String poiShortLabel(JSONObject point) {
         long now = System.currentTimeMillis();
-        if (point.optLong("raidEnd") > now) { String tier = point.optString("tier", ""); return "Raid" + (tier.isEmpty() ? "" : " " + tier) + (point.optBoolean("egg") ? " (egg)" : ""); }
+        if (point.optLong("raidEnd") > now) { String tier = point.optString("tier", ""); return "Raid" + (tier.isEmpty() ? "" : " " + tier) + (point.optBoolean("egg") ? " (œuf)" : ""); }
         if ("stop".equals(point.optString("kind"))) { String rocket = rocketName(point, now); return rocket == null ? "PokéStop" : "PokéStop · Team GO Rocket " + rocket; }
-        String team = point.optString("team", ""); return "Gym" + (team.isEmpty() ? "" : " (" + team + ")");
+        String team = point.optString("team", ""); return "Arène" + (team.isEmpty() ? "" : " (" + team + ")");
     }
     private void registerPoiDialog(AlertDialog dialog) {
         poiDialogs.add(dialog); dialog.setOnDismissListener(d -> poiDialogs.remove(dialog));
@@ -255,9 +255,9 @@ final class MapPoiLayer {
         int pad = dp(18); body.setPadding(pad, pad, pad, pad); body.setTextSize(14);
         final double latitude = initial.optDouble("lat", Double.NaN), longitude = initial.optDouble("lon", Double.NaN);
         final boolean valid = Double.isFinite(latitude) && Double.isFinite(longitude) && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
-        AlertDialog.Builder builder = new AlertDialog.Builder(dialogContext).setTitle(poiTitle(initial)).setView(body).setNegativeButton("Close", null);
-        if (walk != null) builder.setNeutralButton("Walk", null);
-        if (teleport != null) builder.setPositiveButton("Teleport", null);
+        AlertDialog.Builder builder = new AlertDialog.Builder(dialogContext).setTitle(poiTitle(initial)).setView(body).setNegativeButton("Fermer", null);
+        if (walk != null) builder.setNeutralButton("Marcher", null);
+        if (teleport != null) builder.setPositiveButton("Téléporter", null);
         final AlertDialog dialog = builder.create();
         dialog.setOnShowListener(d -> {
             MapTheme.styleButtons(dialog);
@@ -292,7 +292,7 @@ final class MapPoiLayer {
     private static String poiTitle(JSONObject point) {
         long now = System.currentTimeMillis();
         if (point.optLong("raidEnd") > now) return "Raid";
-        return "stop".equals(point.optString("kind")) ? "PokéStop" : "Gym";
+        return "stop".equals(point.optString("kind")) ? "PokéStop" : "Arène";
     }
     /** Read-only; never changes the selected destination. "Unknown"/"unavailable" stay explicit. */
     private String poiDetailsText(JSONObject p, boolean gone) {
@@ -302,35 +302,35 @@ final class MapPoiLayer {
         long now = System.currentTimeMillis();
         boolean stop = "stop".equals(p.optString("kind"));
         if (stop) {
-            sb.append("PokéStop loaded nearby by the game.\n");
+            sb.append("PokéStop chargé à proximité par le jeu.\n");
             String rocket = rocketName(p, now);
-            if (rocket != null) sb.append("\nTeam GO Rocket ").append(rocket).append(" — ends in ").append(countdown(p.optLong("incidentEnd") - now)).append('\n');
+            if (rocket != null) sb.append("\nTeam GO Rocket ").append(rocket).append(" — se termine dans ").append(countdown(p.optLong("incidentEnd") - now)).append('\n');
         }
         else {
             String team = p.optString("team", "");
-            sb.append("Team: ").append(team.isEmpty() ? "Unknown" : team).append('\n');
+            sb.append("Équipe : ").append(team.isEmpty() ? "Inconnue" : team).append('\n');
             // Six defenders per gym: official Pokemon GO Help Center, Battling at Gyms (verified 2026-10-21).
             int slots = p.optInt("slots", -1);
-            if (slots >= 0 && slots <= 6) sb.append("Defenders: ").append(6 - slots).append("/6 (" + slots + " slots open)\n");
-            else sb.append("Defenders: unavailable\n");
+            if (slots >= 0 && slots <= 6) sb.append("Défenseurs : ").append(6 - slots).append("/6 (" + slots + " places libres)\n");
+            else sb.append("Défenseurs : indisponible\n");
         }
         if (p.optLong("raidEnd") > now) {
             sb.append('\n'); boolean egg = p.optBoolean("egg"); String tier = p.optString("tier", "");
-            sb.append("Raid tier: ").append(tier.isEmpty() ? "Unknown" : tier.replace("_", " ").replaceAll("([0-9])([A-Za-z])", "$1 $2").trim()).append('\n');
+            sb.append("Niveau du raid : ").append(tier.isEmpty() ? "Inconnue" : tier.replace("_", " ").replaceAll("([0-9])([A-Za-z])", "$1 $2").trim()).append('\n');
             if (egg) {
                 long start = p.optLong("raidStart", 0);
-                sb.append("Egg — boss not yet revealed");
-                if (start > now) sb.append("; hatches in ").append(countdown(start - now));
+                sb.append("Œuf — boss pas encore révélé");
+                if (start > now) sb.append("; éclot dans ").append(countdown(start - now));
                 sb.append('\n');
             } else {
                 int boss = p.optInt("boss", 0);
                 String name = boss > 0 ? bossName(boss) : null; // base species only; forms (e.g. Mega X/Y) not inferred
-                sb.append("Boss: ").append(boss > 0 ? (name != null ? name : ("#" + boss)) : "unknown").append('\n');
+                sb.append("Boss : ").append(boss > 0 ? (name != null ? name : ("#" + boss)) : "unknown").append('\n');
             }
-            long end = p.optLong("raidEnd", 0); if (end > now) sb.append("Ends in ").append(countdown(end - now)).append('\n');
+            long end = p.optLong("raidEnd", 0); if (end > now) sb.append("Se termine dans ").append(countdown(end - now)).append('\n');
         }
-        if (p.optLong("raidEnd") > 0 && p.optLong("raidEnd") <= now) sb.append("\nRaid ended.\n");
-        if (gone) sb.insert(0, "Last known data - no fresh nearby snapshot.\n\n");
+        if (p.optLong("raidEnd") > 0 && p.optLong("raidEnd") <= now) sb.append("\nRaid terminé.\n");
+        if (gone) sb.insert(0, "Dernières données connues - pas d'instantané récent.\n\n");
         return sb.toString().trim();
     }
     /** "Grunt", "Leader" or "Giovanni" for a stop with an unexpired Team GO Rocket invasion, else null.

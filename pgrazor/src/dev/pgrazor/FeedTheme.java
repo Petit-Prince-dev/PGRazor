@@ -523,7 +523,7 @@ final class FeedTheme {
         private final android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
         CloseButton(Context c) {
             super(c);
-            setContentDescription("Close"); setFocusable(true); setClickable(true);
+            setContentDescription("Fermer"); setFocusable(true); setClickable(true);
             setOutlineProvider(new android.view.ViewOutlineProvider() { public void getOutline(View v, android.graphics.Outline o) { o.setOval(0, 0, v.getWidth(), v.getHeight()); } });
             setForeground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff), null, new android.graphics.drawable.ShapeDrawable(new android.graphics.drawable.shapes.OvalShape())));
             setElevation(dp(c, 4));
@@ -733,7 +733,7 @@ final class FeedTheme {
         AlertDialog dialog = new AlertDialog.Builder(context)
             .setTitle(title)
             .setView(layout)
-            .setNegativeButton("Close", null)
+            .setNegativeButton("Fermer", null)
             .create();
 
         list.setBackground(mintBlock(context));

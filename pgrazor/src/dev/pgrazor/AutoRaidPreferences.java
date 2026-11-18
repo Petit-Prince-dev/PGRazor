@@ -20,7 +20,7 @@ public final class AutoRaidPreferences {
         TIER_MEGA = 8, TIER_SHADOW = 16, TIER_PRIMAL = 32, TIER_ULTRA_BEAST = 64;
     public static final int TIER_ANY = 0, TIER_MASK_ALL = 127;
     public static final String[] TIER_LABELS =
-        {"1-star", "3-star", "5-star / Legendary", "Mega", "Shadow", "Primal", "Ultra Beast"};
+        {"1-star", "3-star", "5 étoiles / Légendaire", "Méga", "Obscur", "Primo", "Ultra-Chimère"};
 
     public static final int MAX_BOSSES = 200, MIN_BOSS_ID = 1, MAX_BOSS_ID = 2000;
     public static final int MAX_RAIDS_DEFAULT = 5, MAX_RAIDS_MIN = 1, MAX_RAIDS_MAX = 100;
@@ -77,7 +77,7 @@ public final class AutoRaidPreferences {
     }
 
     /** "No limit" or e.g. "5 km". */
-    public static String distanceSummary(int km) { return km <= 0 ? "No limit" : km + " km"; }
+    public static String distanceSummary(int km) { return km <= 0 ? "Sans limite" : km + " km"; }
 
     /**
      * The canonical form of a comma-separated boss list: whitespace trimmed, IDs sorted ascending and
@@ -85,18 +85,18 @@ public final class AutoRaidPreferences {
      * null input, a non-integer token, an ID outside 1-2000, or more than {@link #MAX_BOSSES} entries.
      */
     public static String normalizeBosses(String value) {
-        if (value == null) throw new IllegalArgumentException("Enter comma-separated boss Dex IDs, or leave blank for any.");
-        if (value.length() > 20000) throw new IllegalArgumentException("Enter at most " + MAX_BOSSES + " boss IDs.");
+        if (value == null) throw new IllegalArgumentException("Entre les numéros Pokédex des boss séparés par des virgules, ou laisse vide pour tous.");
+        if (value.length() > 20000) throw new IllegalArgumentException("Entre au plus " + MAX_BOSSES + " numéros de boss.");
         String trimmed = value.trim();
         if (trimmed.isEmpty()) return "";
         String[] parts = trimmed.split(",", -1);
-        if (parts.length > MAX_BOSSES) throw new IllegalArgumentException("Enter at most " + MAX_BOSSES + " boss IDs.");
+        if (parts.length > MAX_BOSSES) throw new IllegalArgumentException("Entre au plus " + MAX_BOSSES + " numéros de boss.");
         TreeSet<Integer> ids = new TreeSet<>();
         for (String part : parts) {
             int id;
             try { id = Integer.parseInt(part.trim()); }
-            catch (NumberFormatException e) { throw new IllegalArgumentException("Use comma-separated National Dex IDs (1-2000)."); }
-            if (id < MIN_BOSS_ID || id > MAX_BOSS_ID) throw new IllegalArgumentException("Boss IDs must be 1-2000.");
+            catch (NumberFormatException e) { throw new IllegalArgumentException("Utilise des numéros du Pokédex national séparés par des virgules (1-2000)."); }
+            if (id < MIN_BOSS_ID || id > MAX_BOSS_ID) throw new IllegalArgumentException("Les numéros de boss doivent être entre 1 et 2000.");
             ids.add(id);
         }
         StringBuilder out = new StringBuilder();
@@ -106,7 +106,7 @@ public final class AutoRaidPreferences {
 
     /** Human-readable tier filter: "Any tier" when no bits are set, else the selected labels in order. */
     public static String tierSummary(int mask) {
-        if ((mask & TIER_MASK_ALL) == 0) return "Any tier";
+        if ((mask & TIER_MASK_ALL) == 0) return "Tous les niveaux";
         StringBuilder out = new StringBuilder();
         for (int i = 0; i < TIER_LABELS.length; i++)
             if ((mask & (1 << i)) != 0) { if (out.length() > 0) out.append(", "); out.append(TIER_LABELS[i]); }
@@ -134,19 +134,19 @@ public final class AutoRaidPreferences {
     /** Throws {@link IllegalArgumentException} describing the first field that cannot be launched. */
     public synchronized void validate() {
         if (tierMask < 0 || (tierMask & ~TIER_MASK_ALL) != 0)
-            throw new IllegalArgumentException("Choose raid tiers to include, or none for any tier.");
+            throw new IllegalArgumentException("Choisis les niveaux de raid à inclure, ou aucun pour tous.");
         if (bosses == null || !normalizeBosses(bosses).equals(bosses))
-            throw new IllegalArgumentException("Boss list must be comma-separated Dex IDs (1-2000), sorted and unique.");
+            throw new IllegalArgumentException("La liste de boss doit contenir des numéros Pokédex (1-2000) séparés par des virgules, triés et uniques.");
         if (maxRaids < MAX_RAIDS_MIN || maxRaids > MAX_RAIDS_MAX)
-            throw new IllegalArgumentException("Maximum raids must be " + MAX_RAIDS_MIN + "-" + MAX_RAIDS_MAX + ".");
+            throw new IllegalArgumentException("Le nombre max de raids doit être " + MAX_RAIDS_MIN + "-" + MAX_RAIDS_MAX + ".");
         if (minPlayers < MIN_PLAYERS_MIN || minPlayers > MIN_PLAYERS_MAX)
-            throw new IllegalArgumentException("Minimum players must be " + MIN_PLAYERS_MIN + "-" + MIN_PLAYERS_MAX + ".");
+            throw new IllegalArgumentException("Le nombre min de joueurs doit être " + MIN_PLAYERS_MIN + "-" + MIN_PLAYERS_MAX + ".");
         if (waitSeconds < WAIT_MIN || waitSeconds > WAIT_MAX)
-            throw new IllegalArgumentException("Lobby wait must be " + WAIT_MIN + "-" + WAIT_MAX + " seconds.");
+            throw new IllegalArgumentException("L'attente au lobby doit être " + WAIT_MIN + "-" + WAIT_MAX + " secondes.");
         if (!validDistance(maxDistanceKm))
-            throw new IllegalArgumentException("Choose a distance limit of 1, 2, 5 or 10 km, or no limit.");
+            throw new IllegalArgumentException("Choisis une limite de distance de 1, 2, 5 ou 10 km, ou sans limite.");
         if (!freePass && !premiumPass)
-            throw new IllegalArgumentException("Allow the free daily pass or Premium passes before starting.");
+            throw new IllegalArgumentException("Autorise le passe gratuit du jour ou les passes Premium avant de démarrer.");
     }
 
     private static int number(Properties p, String key, int fallback, int min, int max) {

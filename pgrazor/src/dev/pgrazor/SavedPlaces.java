@@ -29,12 +29,12 @@ public final class SavedPlaces {
         }
         private Entry(String id, String name, double latitude, double longitude) {
             if (id == null || id.length() == 0 || id.length() > 64) throw new IllegalArgumentException("Invalid saved place ID");
-            if (name == null || name.trim().length() == 0) throw new IllegalArgumentException("Enter a name for this place.");
+            if (name == null || name.trim().length() == 0) throw new IllegalArgumentException("Entre un nom pour ce lieu.");
             name = name.trim();
-            if (name.length() > NAME_LIMIT) throw new IllegalArgumentException("Names can contain at most 40 characters.");
-            for (int i = 0; i < name.length(); i++) if (Character.isISOControl(name.charAt(i))) throw new IllegalArgumentException("Use a name without line breaks or control characters.");
+            if (name.length() > NAME_LIMIT) throw new IllegalArgumentException("Les noms peuvent contenir au plus 40 caractères.");
+            for (int i = 0; i < name.length(); i++) if (Character.isISOControl(name.charAt(i))) throw new IllegalArgumentException("Utilise un nom sans retour à la ligne ni caractère de contrôle.");
             if (!Double.isFinite(latitude) || !Double.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)
-                throw new IllegalArgumentException("Coordinates are outside the valid range.");
+                throw new IllegalArgumentException("Les coordonnées sont hors de la plage valide.");
             this.id = id; this.name = name; this.latitude = latitude; this.longitude = longitude;
         }
     }
@@ -71,8 +71,8 @@ public final class SavedPlaces {
 
     public synchronized void add(Entry entry) throws IOException {
         List<Entry> entries = new ArrayList<>(read().entries);
-        if (entries.size() >= LIMIT) throw new IllegalArgumentException("You have 50 saved places. Delete one before adding another.");
-        for (Entry existing : entries) if (existing.name.equalsIgnoreCase(entry.name)) throw new IllegalArgumentException("A place with this name already exists. Choose another name.");
+        if (entries.size() >= LIMIT) throw new IllegalArgumentException("Tu as 50 lieux enregistrés. Supprimes-en un avant d'en ajouter un autre.");
+        for (Entry existing : entries) if (existing.name.equalsIgnoreCase(entry.name)) throw new IllegalArgumentException("Un lieu avec ce nom existe déjà. Choisis un autre nom.");
         entries.add(entry);
         write(entries);
     }
@@ -93,9 +93,9 @@ public final class SavedPlaces {
                 object.put("id", entry.id); object.put("name", entry.name); object.put("latitude", entry.latitude); object.put("longitude", entry.longitude);
                 array.put(object);
             }
-        } catch (JSONException e) { throw new IOException("Could not encode saved places.", e); }
+        } catch (JSONException e) { throw new IOException("Impossible d'encoder les lieux enregistrés.", e); }
         String encoded = array.toString();
-        if (encoded.length() > JSON_LIMIT) throw new IOException("Saved places exceed the storage limit.");
+        if (encoded.length() > JSON_LIMIT) throw new IOException("Les lieux enregistrés dépassent la limite de stockage.");
         SharedPreferences.Editor editor = preferences.edit();
         // Preserve one bounded copy of a damaged document before replacing it with salvaged valid entries.
         if (read().damaged) {
@@ -104,6 +104,6 @@ public final class SavedPlaces {
                 if (raw != null && raw.length() <= JSON_LIMIT) editor.putString("recovered-from", raw);
             } catch (ClassCastException ignored) { }
         }
-        if (!editor.putString("places", encoded).commit()) throw new IOException("Could not save places to device storage. Please retry.");
+        if (!editor.putString("places", encoded).commit()) throw new IOException("Impossible d'enregistrer les lieux sur l'appareil. Réessaie.");
     }
 }

@@ -16,15 +16,15 @@ public final class TeleportDialog {
     }
     private static String warning(double lat,double lon) {
         return String.format(Locale.US,"Destination: %.6f, %.6f\n\n",lat,lon)
-            +"Cooldown when you arrive: "+duration(Cooldown.remainingAt(lat,lon));
+            +"Cooldown à l'arrivée : "+duration(Cooldown.remainingAt(lat,lon));
     }
     public static AlertDialog confirm(Activity activity,double lat,double lon,Action teleport) {
         if(activity.isFinishing()||activity.isDestroyed())return null;
-        if(!CooldownState.valid(lat,lon))throw new IllegalArgumentException("Invalid teleport coordinates");
+        if(!CooldownState.valid(lat,lon))throw new IllegalArgumentException("Coordonnées de téléportation invalides");
         if(active!=null&&active.isShowing())return active;
         Handler main=new Handler(Looper.getMainLooper());
-        AlertDialog dialog=new AlertDialog.Builder(MapTheme.wrap(activity)).setTitle("Teleport cooldown")
-            .setMessage(warning(lat,lon)).setNegativeButton("Cancel",null).setPositiveButton("Teleport",null).create();
+        AlertDialog dialog=new AlertDialog.Builder(MapTheme.wrap(activity)).setTitle("Cooldown de téléportation")
+            .setMessage(warning(lat,lon)).setNegativeButton("Annuler",null).setPositiveButton("Téléporter",null).create();
         Runnable refresh=new Runnable(){public void run(){if(dialog.isShowing()){dialog.setMessage(warning(lat,lon));main.postDelayed(this,1000);}}};
         active=dialog;
         DialogLifecycle.bind(activity,dialog,()->{main.removeCallbacksAndMessages(null);if(active==dialog)active=null;});

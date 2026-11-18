@@ -62,12 +62,12 @@ restart(false);require(Handler.queue.size()==1); // duplicate request cannot rep
 Control.activity=new Activity();Handler.next();require(AccountRestartActivity.launches==1&&AccountRestartActivity.lastSwitch&&Handler.queue.isEmpty());
 require(!AccountProfiles.allowed()); // only the fresh process may verify the new namespace
 reset();restart(false);for(int i=0;i<20;i++)Handler.next();
-require(Handler.queue.isEmpty()&&AccountRestartActivity.launches==0&&AccountProfiles.status().contains("Close and reopen"));
+require(Handler.queue.isEmpty()&&AccountRestartActivity.launches==0&&AccountProfiles.status().contains("Ferme et rouvre"));
 require(!AccountProfiles.allowed()&&Control.events.size()==2); // bounded retry/logging
 reset();Control.activity=new Activity();Control.activity.destroyed=true;restart(false);
 require(AccountRestartActivity.launches==0);Control.activity=new Activity();Handler.next();require(AccountRestartActivity.launches==1);
 reset();Control.activity=new Activity();AccountRestartActivity.result=false;restart(false);
-require(AccountRestartActivity.launches==1&&Handler.queue.isEmpty()&&!AccountProfiles.allowed()&&AccountProfiles.status().contains("Close and reopen"));
+require(AccountRestartActivity.launches==1&&Handler.queue.isEmpty()&&!AccountProfiles.allowed()&&AccountProfiles.status().contains("Ferme et rouvre"));
 reset();Control.activity=new Activity();restart(false);require(AccountRestartActivity.launches==1&&!AccountRestartActivity.lastSwitch&&Handler.queue.isEmpty());
 reset();restart(true);Field generation=AccountProfiles.class.getDeclaredField("generation");generation.setAccessible(true);generation.setLong(null,generation.getLong(null)+1);
 Control.activity=new Activity();Handler.next();require(AccountRestartActivity.launches==0&&Handler.queue.isEmpty()&&!AccountProfiles.allowed());

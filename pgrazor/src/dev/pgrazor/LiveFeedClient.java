@@ -72,7 +72,7 @@ public final class LiveFeedClient {
     /** Signs in and stores the returned bearer token encrypted. Call off the UI thread. */
     public void login(String username, String password) throws Exception {
         if (username == null || username.trim().isEmpty() || password == null || password.isEmpty())
-            throw new FeedException("Enter your username and password.");
+            throw new FeedException("Entre ton nom d'utilisateur et ton mot de passe.");
         long requestEpoch; synchronized(requestLock) { requestEpoch = epoch; }
         JSONObject body = new JSONObject();
         body.put("username", username.trim());
@@ -83,7 +83,7 @@ public final class LiveFeedClient {
         JSONObject data = response.optJSONObject("data");
         if (data != null) token = nonEmpty(data.optString("token", ""));
         if (token == null) token = nonEmpty(response.optString("token", ""));
-        if (token == null) throw new FeedException("Sign-in did not return a session. Please try again.");
+        if (token == null) throw new FeedException("La connexion n'a pas renvoyé de session. Réessaie.");
         synchronized(requestLock) { checkActive(requestEpoch); session.save(token); }
     }
 
@@ -123,13 +123,13 @@ public final class LiveFeedClient {
 
     private String requireToken() throws FeedException {
         String token = session.token();
-        if (token == null) throw new FeedException("Please sign in to load the live map.", 401, 0);
+        if (token == null) throw new FeedException("Connecte-toi pour charger la carte en direct.", 401, 0);
         return token;
     }
 
     private static void requireLocation(double lat, double lon) throws FeedException {
         if (!Double.isFinite(lat) || !Double.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180)
-            throw new FeedException("That location is outside the valid range.");
+            throw new FeedException("Cette position est hors de la plage valide.");
     }
 
     // Issues the POST and, on an expired-session 401 for this still-current request, clears the token so
@@ -196,7 +196,7 @@ public final class LiveFeedClient {
 
     private JSONObject request(String path, JSONObject body, String bearer, long requestEpoch) throws Exception {
         URL url = new URL(BASE + path);
-        if (!"https".equalsIgnoreCase(url.getProtocol())) throw new FeedException("A secure connection is required.");
+        if (!"https".equalsIgnoreCase(url.getProtocol())) throw new FeedException("Une connexion sécurisée est nécessaire.");
         HttpURLConnection http = (HttpURLConnection) url.openConnection();
         synchronized(requestLock) { checkActive(requestEpoch); connection = http; }
         try {
@@ -215,15 +215,15 @@ public final class LiveFeedClient {
 
             int code = http.getResponseCode();
             if (code >= 300 && code < 400)
-                throw new FeedException("The service redirected the request; refusing to continue.", code, 0);
+                throw new FeedException("Le service a redirigé la requête ; abandon.", code, 0);
             if (code == 401)
-                throw new FeedException("Your session has expired. Please sign in again.", 401, 0);
+                throw new FeedException("Ta session a expiré. Reconnecte-toi.", 401, 0);
             if (code == 403)
-                throw new FeedException("Your account doesn't have access to this feature.", 403, 0);
+                throw new FeedException("Ton compte n'a pas accès à cette fonction.", 403, 0);
             if (code == 429)
-                throw new FeedException("Too many requests. Please wait before refreshing.", 429, retryAfterMs(http));
+                throw new FeedException("Trop de requêtes. Patiente avant d'actualiser.", 429, retryAfterMs(http));
             if (code < 200 || code >= 300)
-                throw new FeedException("The live map service is unavailable (HTTP " + code + ").", code, 0);
+                throw new FeedException("Le service de carte en direct est indisponible (HTTP " + code + ").", code, 0);
 
             byte[] bytes;
             try (InputStream in = http.getInputStream()) { bytes = readBounded(in); }
@@ -231,18 +231,18 @@ public final class LiveFeedClient {
             try {
                 json = new JSONObject(new String(bytes, StandardCharsets.UTF_8));
             } catch (JSONException e) {
-                throw new FeedException("The live map service returned an unexpected response.", code, 0);
+                throw new FeedException("Le service de carte en direct a renvoyé une réponse inattendue.", code, 0);
             }
             // A structured failure envelope: report safely without echoing the server's message.
             if (json.has("success") && !json.optBoolean("success", true))
-                throw new FeedException("The live map service could not complete the request.", code, 0);
+                throw new FeedException("Le service de carte en direct n'a pas pu traiter la requête.", code, 0);
             synchronized(requestLock) { checkActive(requestEpoch); }
             return json;
         } catch (SocketTimeoutException e) {
-            throw new FeedException("The live map service timed out. Please retry.");
+            throw new FeedException("Le service de carte en direct n'a pas répondu à temps. Réessaie.");
         } catch (IOException e) {
             synchronized(requestLock) { checkActive(requestEpoch); }
-            throw new FeedException("Could not reach the live map service.");
+            throw new FeedException("Impossible de joindre le service de carte en direct.");
         } finally {
             try { http.disconnect(); } catch (Exception ignored) { }
             if (connection == http) connection = null;
@@ -250,7 +250,7 @@ public final class LiveFeedClient {
     }
 
     private void checkActive(long requestEpoch) throws FeedException {
-        if(epoch != requestEpoch || Thread.currentThread().isInterrupted()) throw new FeedException("Request cancelled.");
+        if(epoch != requestEpoch || Thread.currentThread().isInterrupted()) throw new FeedException("Requête annulée.");
     }
 
     private static long retryAfterMs(HttpURLConnection http) {

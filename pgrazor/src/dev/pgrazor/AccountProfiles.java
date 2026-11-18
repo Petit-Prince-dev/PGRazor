@@ -26,7 +26,7 @@ final class AccountProfiles {
     private static volatile boolean supportKnown, storageMissingNoted;
     private static volatile long generation;
     private static long restartGeneration = -1;
-    private static volatile String message = "Waiting for game account";
+    private static volatile String message = "En attente du compte du jeu";
     private static final AccountCommandState commands = new AccountCommandState();
     private static String observed = "";
 
@@ -52,7 +52,7 @@ final class AccountProfiles {
             store.cancelPending();
             diag("account-storage","opened profiles="+store.list().size()+" namespace="+("default".equals(startupId)?"default":"profile")+" unappliedSwitch="+unapplied);
         }
-        catch(Exception error) { message="Account data could not be opened. Existing data has been kept."; diag("account-storage","unavailable; existing data kept"); }
+        catch(Exception error) { message="Impossible d'ouvrir les données du compte. Les données existantes sont conservées."; diag("account-storage","unavailable; existing data kept"); }
         finally { StrictMode.setThreadPolicy(policy); }
     }
     // When account switching could not start this session there is no identity to wait for. Gameplay
@@ -69,18 +69,18 @@ final class AccountProfiles {
     static boolean canResetSignIn(){return store!=null&&available&&!verified&&!switching&&!restarting&&!deleting;}
     static void resetSignIn(){
         if(!canResetSignIn())return;
-        switching=true;commands.issue("reset-login:"+java.util.UUID.randomUUID());message="Restoring sign-in choices...";
+        switching=true;commands.issue("reset-login:"+java.util.UUID.randomUUID());message="Restauration des choix de connexion…";
         final String request=commands.current();diag("account-command","issued "+AccountCommandState.kind(request));
         main.postDelayed(()->{if(request.equals(commands.current())&&!restarting){diag("account-command","timed out "+AccountCommandState.kind(request));logoutFailed();}},20000);
     }
     static void signInResetComplete(){main.post(()->{
         if(!commands.current().startsWith("reset-login:"))return;
-        commands.clear();message="Reopening date-of-birth screen";diag("account-command","sign-in reset; reopening");
-        io.execute(()->{try{flush();main.post(AccountProfiles::restart);}catch(IOException error){main.post(()->fail("Close and reopen the game to finish resetting sign-in."));}});
+        commands.clear();message="Réouverture de l'écran de date de naissance";diag("account-command","sign-in reset; reopening");
+        io.execute(()->{try{flush();main.post(AccountProfiles::restart);}catch(IOException error){main.post(()->fail("Ferme et rouvre le jeu pour finir la réinitialisation de la connexion."));}});
     });}
     static File file(Context context,String name){
         if(store==null)return new File(context.getFilesDir(),name);
-        try{return store.dataFile(startupId,name);}catch(IOException error){throw new IllegalStateException("Cannot open account storage",error);}
+        try{return store.dataFile(startupId,name);}catch(IOException error){throw new IllegalStateException("Impossible d'ouvrir le stockage des comptes",error);}
     }
     static SharedPreferences preferences(Context context,String scope){
         SharedPreferences prefs=context.getSharedPreferences(store==null?scope:store.preferenceName(startupId,scope),Context.MODE_PRIVATE);
@@ -88,11 +88,11 @@ final class AccountProfiles {
     }
     private static void flush() throws IOException {
         Control.flushAccountWrites();
-        for(SharedPreferences prefs:openPreferences)if(!prefs.edit().commit())throw new IOException("Preferences save did not finish");
+        for(SharedPreferences prefs:openPreferences)if(!prefs.edit().commit())throw new IOException("L'enregistrement des préférences n'a pas abouti");
     }
     static void support(boolean value){
         boolean changed=!supportKnown||available!=value;supportKnown=true;
-        available=value;if(!value)message="Account switching could not start this session. Restart the game to try again; other features are not affected.";
+        available=value;if(!value)message="Le changement de compte n'a pas pu démarrer dans cette session. Relance le jeu pour réessayer ; les autres fonctions ne sont pas touchées.";
         if(changed)diag("account-support",value?"switching supported":"switching unavailable this session; other features continue on the startup profile");
     }
     static void identity(String id,String trainer) {
@@ -116,20 +116,20 @@ final class AccountProfiles {
                     main.post(()->{
                         if(epoch!=generation)return;
                         if(actual.id.equals(startupId)){verified=true;message=actual.label;diag("account-state","active account verified");return;}
-                        switching=true;message="Restoring " + actual.label;diag("account-state",created?"new account profile created; restarting with default settings":"restoring a saved account");
-                        try{Control.quiesceAccounts();}catch(IOException error){fail("Could not save outgoing location. Reopen the game.");return;}
+                        switching=true;message="Restauration de " + actual.label;diag("account-state",created?"new account profile created; restarting with default settings":"restoring a saved account");
+                        try{Control.quiesceAccounts();}catch(IOException error){fail("Impossible d'enregistrer la position de départ. Rouvre le jeu.");return;}
                         io.execute(()->{
                             try{flush();store.selectVerified(actual.id);main.post(AccountProfiles::restart);}
-                            catch(Exception error){main.post(()->fail("Could not restore account. Reopen the game."));}
+                            catch(Exception error){main.post(()->fail("Impossible de restaurer le compte. Rouvre le jeu."));}
                         });
                     });
-                }catch(Exception error){main.post(()->{observed="";verified=false;message="Could not save this account. Automation is paused.";diag("account-state","identity save failed; automation paused");});}
+                }catch(Exception error){main.post(()->{observed="";verified=false;message="Impossible d'enregistrer ce compte. L'automatisation est en pause.";diag("account-state","identity save failed; automation paused");});}
             });
         });
     }
     static void sessionEnded(){
         verified=false;generation++;
-        main.post(()->{observed="";try{Control.quiesceAccounts();}catch(IOException ignored){}message="Signed out; choose Google or PTC to continue";diag("account-state","session ended; sign-in required");});
+        main.post(()->{observed="";try{Control.quiesceAccounts();}catch(IOException ignored){}message="Déconnecté ; choisis Google ou PTC pour continuer";diag("account-state","session ended; sign-in required");});
     }
     static void logoutComplete(){
         main.post(()->{
@@ -139,26 +139,26 @@ final class AccountProfiles {
                 try{
                     if(store.pendingId().isEmpty()){logoutFailed();return;}
                     flush();store.activatePending();
-                    main.post(()->{commands.clear();message="Opening sign-in";diag("account-command","logout complete; opening sign-in");restart();});
+                    main.post(()->{commands.clear();message="Ouverture de la connexion";diag("account-command","logout complete; opening sign-in");restart();});
                 }catch(Exception error){logoutFailed();}
             });
         });
     }
     static void sessionSaved(){main.post(()->{
         if(!switching||restarting||!commands.current().startsWith("save-session:"))return;
-        commands.clear();message="Restoring saved session...";diag("account-command","saved session captured; restoring");
+        commands.clear();message="Restauration de la session enregistrée…";diag("account-command","saved session captured; restoring");
         io.execute(()->{try{flush();main.post(()->restart(true));}catch(IOException error){logoutFailed();}});
     });}
     static void switchTo(Activity activity,String id) {
         if(!canSwitch())return;
         switching=true;verified=false;generation++;diag("account-command","switch requested");
-        try{Control.quiesceAccounts();}catch(IOException error){fail("Could not save outgoing location. Reopen the game.");return;}
-        message="Saving account...";
+        try{Control.quiesceAccounts();}catch(IOException error){fail("Impossible d'enregistrer la position de départ. Rouvre le jeu.");return;}
+        message="Enregistrement du compte…";
         io.execute(()->{
             try{
                 flush();store.prepareSwitch(id);
                 main.post(()->{
-                    commands.issue("save-session:"+java.util.UUID.randomUUID());message="Saving sign-in...";
+                    commands.issue("save-session:"+java.util.UUID.randomUUID());message="Enregistrement de la connexion…";
                     final String request=commands.current();diag("account-command","issued "+AccountCommandState.kind(request));
                     main.postDelayed(()->{if(request.equals(commands.current())&&!restarting){diag("account-command","timed out "+AccountCommandState.kind(request));logoutFailed();}},20000);
                 });
@@ -169,28 +169,28 @@ final class AccountProfiles {
         commands.clear(); observed="";
         io.execute(()->{
             try{if(store!=null)store.cancelPending();main.post(()->{
-                switching=false;message="Sign-out did not finish. Return to the map to retry, or sign in if prompted.";diag("account-command","sign-out did not finish");
-            });}catch(IOException error){main.post(()->fail("Could not cancel switching. Reopen the game."));}
+                switching=false;message="La déconnexion n'a pas abouti. Reviens sur la carte pour réessayer, ou connecte-toi si demandé.";diag("account-command","sign-out did not finish");
+            });}catch(IOException error){main.post(()->fail("Impossible d'annuler le changement. Rouvre le jeu."));}
         });
     });}
     static void add(Activity activity,String label){
         if(!canSwitch())return;
         io.execute(()->{
             try{AccountProfileStore.Profile profile=store.add(label);main.post(()->switchTo(activity,profile.id));}
-            catch(Exception error){main.post(()->{message="Could not add account";diag("account-command","add account failed");});}
+            catch(Exception error){main.post(()->{message="Impossible d'ajouter le compte";diag("account-command","add account failed");});}
         });
     }
     static void rename(String id,String label,Runnable updated){io.execute(()->{
         try{store.rename(id,label);main.post(updated);}
-        catch(Exception error){main.post(()->{message="Could not rename account";diag("account-command","rename account failed");});}
+        catch(Exception error){main.post(()->{message="Impossible de renommer le compte";diag("account-command","rename account failed");});}
     });}
     static void delete(Activity activity,String id,Runnable removed){
         if(!canDelete(id))return;
-        deleting=true;message="Deleting saved account...";
+        deleting=true;message="Suppression du compte enregistré…";
         Context context=activity.getApplicationContext();
         io.execute(()->{
             try{AccountSessions.deleteProfile(context,store,id);main.post(()->{deleting=false;message=store.selected().label;diag("account-command","account removed");removed.run();});}
-            catch(Exception error){main.post(()->{deleting=false;message="Could not finish deleting the account. Please retry.";diag("account-command","account delete failed");});}
+            catch(Exception error){main.post(()->{deleting=false;message="Impossible de finir la suppression du compte. Réessaie.";diag("account-command","account delete failed");});}
         });
     }
     private static void fail(String value){verified=false;message=value;diag("account-state","blocked: "+value);}
@@ -218,11 +218,11 @@ final class AccountProfiles {
                 return;
             }
             restarting=false;
-            fail("Account saved. Close and reopen the game to finish switching.");return;
+            fail("Compte enregistré. Ferme et rouvre le jeu pour finir le changement.");return;
         }
         diag("account-command","restarting app to apply account change");
         if(!AccountRestartActivity.launch(activity,switchSession)){
-            restarting=false;fail("Account saved. Close and reopen the game to finish switching.");
+            restarting=false;fail("Compte enregistré. Ferme et rouvre le jeu pour finir le changement.");
         }
     }
 }

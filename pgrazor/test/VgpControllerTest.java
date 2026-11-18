@@ -43,7 +43,7 @@ public final class VgpControllerTest {
         // A live cooldown trips VGP off through the heartbeat and shows the sticky pause reason.
         Cooldown.remaining=5000;
         check(!Control.vgpEnabled(),"Live cooldown trips VGP off");
-        check(Control.vgpStatus().equals("Paused for active cooldown; tap VGP to resume once it clears"),"Pause reason shown");
+        check(Control.vgpStatus().equals("En pause pendant le cooldown ; touche VGP pour reprendre quand il est fini"),"Pause reason shown");
         check(logged("vgp-cooldown-guard","VGP switched off; cooldown active"),"Guard trip logged");
 
         // No auto-resume: clearing the cooldown does not turn VGP back on.
@@ -60,7 +60,7 @@ public final class VgpControllerTest {
         Cooldown.remaining=5000;
         Control.setVgpEnabled(true);
         check(!Control.vgpEnabled(),"Enable refused during live cooldown");
-        check(Control.vgpStatus().equals("Cooldown active; tap VGP after it clears"),"Refusal reason shown");
+        check(Control.vgpStatus().equals("Cooldown actif ; touche VGP quand il est fini"),"Refusal reason shown");
         check(logged("vgp-cooldown-guard","Enable refused; cooldown active"),"Refusal logged");
 
         // Disarming the guard clears the lingering reason; status falls back to the native text.
@@ -75,7 +75,7 @@ public final class VgpControllerTest {
         Control.suspendForBackground();
         android.os.Handler.drain();
         check(!Control.vgpEnabled(),"Background switches VGP off");
-        check(Control.vgpStatus().equals("App left foreground; tap VGP to start"),"Background reason shown");
+        check(Control.vgpStatus().equals("L'appli n'est plus au premier plan ; touche VGP pour démarrer"),"Background reason shown");
 
         // Returning to the foreground and turning the overlay off clears the runtime enable.
         foreground(true);

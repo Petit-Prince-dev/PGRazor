@@ -15,7 +15,7 @@ final class AccountSessions {
         File lockFile=new File(context.getNoBackupFilesDir(),"pgrazor-account-switch.lock");
         try(RandomAccessFile lock=new RandomAccessFile(lockFile,"rw");FileLock held=acquire(lock)){
             profiles.requireRemovable(id);
-            if(new File(context.getNoBackupFilesDir(),"pgrazor-account-sessions-v1/switch-journal.bin").exists())throw new IOException("Finish switching before deleting an account");
+            if(new File(context.getNoBackupFilesDir(),"pgrazor-account-sessions-v1/switch-journal.bin").exists())throw new IOException("Termine le changement avant de supprimer un compte");
             new AccountSessionVault(context).delete(id);
             AccountProfileData.delete(profiles,context.getFilesDir(),new File(context.getApplicationInfo().dataDir,"shared_prefs"),id);
             profiles.remove(id);
@@ -56,8 +56,8 @@ final class AccountSessions {
         long deadline=android.os.SystemClock.elapsedRealtime()+1500;
         do{
             FileLock lock=file.getChannel().tryLock();if(lock!=null)return lock;
-            try{Thread.sleep(25);}catch(InterruptedException interrupted){Thread.currentThread().interrupt();throw new IOException("Account switch interrupted");}
+            try{Thread.sleep(25);}catch(InterruptedException interrupted){Thread.currentThread().interrupt();throw new IOException("Changement de compte interrompu");}
         }while(android.os.SystemClock.elapsedRealtime()<deadline);
-        throw new IOException("Another account switch is finishing; reopen the game");
+        throw new IOException("Un autre changement de compte se termine ; rouvre le jeu");
     }
 }

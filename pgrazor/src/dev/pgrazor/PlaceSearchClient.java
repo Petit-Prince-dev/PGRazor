@@ -42,23 +42,23 @@ public final class PlaceSearchClient {
     }
     static String requestUrl(String query, double lat, double lon) throws IOException {
         if (query==null || query.trim().length()<2 || query.trim().length()>200 || !valid(lat,lon))
-            throw new IOException("Enter a place name or address (2 to 200 characters).");
+            throw new IOException("Entre un nom de lieu ou une adresse (2 à 200 caractères).");
         // Round the viewed-map bias; do not send the device/account location.
         return ENDPOINT+"?q="+URLEncoder.encode(query.trim(),"UTF-8")
             +String.format(Locale.US,"&lat=%.3f&lon=%.3f&limit=%d",lat,lon,LIMIT);
     }
     public List<Place> search(String query, double lat, double lon) throws IOException {
         String url=requestUrl(query,lat,lon);
-        synchronized(this) { if(closed) throw new IOException("Search closed."); }
+        synchronized(this) { if(closed) throw new IOException("Recherche fermée."); }
         long now=System.nanoTime();
         synchronized(CACHE) {
             Cached cached=CACHE.get(url);
             if(cached!=null && now-cached.at<600_000_000_000L) return cached.places;
-            if(now<nextRequest) throw new IOException("Please wait before searching again.");
+            if(now<nextRequest) throw new IOException("Patiente avant de relancer une recherche.");
             nextRequest=now+1_000_000_000L;
         }
         HttpURLConnection http=(HttpURLConnection)new URL(url).openConnection();
-        synchronized(this) { if(closed) { http.disconnect(); throw new IOException("Search closed."); } active=http; }
+        synchronized(this) { if(closed) { http.disconnect(); throw new IOException("Recherche fermée."); } active=http; }
         try {
             http.setConnectTimeout(8000); http.setReadTimeout(8000);
             http.setInstanceFollowRedirects(false);
@@ -71,14 +71,14 @@ public final class PlaceSearchClient {
                 try { seconds=Math.max(seconds,Math.min(3600,Long.parseLong(http.getHeaderField("Retry-After")))); }
                 catch(Exception ignored) {}
                 synchronized(CACHE) { nextRequest=System.nanoTime()+seconds*1_000_000_000L; }
-                throw new IOException("Place search is busy. Please try again later.");
+                throw new IOException("La recherche de lieux est occupée. Réessaie plus tard.");
             }
-            if(code!=200) throw new IOException("Place search is unavailable. Please try again later.");
-            if(http.getContentLength()>MAX_BYTES) throw new IOException("Search response is too large.");
+            if(code!=200) throw new IOException("La recherche de lieux est indisponible. Réessaie plus tard.");
+            if(http.getContentLength()>MAX_BYTES) throw new IOException("Réponse de recherche trop grosse.");
             byte[] body;
             try(InputStream input=http.getInputStream()) { body=readBounded(input); }
             List<Place> places=parse(new String(body,StandardCharsets.UTF_8));
-            synchronized(this) { if(closed) throw new IOException("Search closed."); }
+            synchronized(this) { if(closed) throw new IOException("Recherche fermée."); }
             synchronized(CACHE) {
                 CACHE.put(url,new Cached(places,System.nanoTime()));
                 while(CACHE.size()>20) CACHE.remove(CACHE.keySet().iterator().next());
@@ -93,9 +93,9 @@ public final class PlaceSearchClient {
         ByteArrayOutputStream out=new ByteArrayOutputStream(); byte[] buffer=new byte[4096]; int count;
         long started=System.nanoTime();
         while((count=input.read(buffer))!=-1) {
-            if(Thread.currentThread().isInterrupted()) throw new IOException("Search cancelled.");
-            if(System.nanoTime()-started>20_000_000_000L) throw new IOException("Search timed out.");
-            if(out.size()+count>MAX_BYTES) throw new IOException("Search response is too large.");
+            if(Thread.currentThread().isInterrupted()) throw new IOException("Recherche annulée.");
+            if(System.nanoTime()-started>20_000_000_000L) throw new IOException("La recherche a expiré.");
+            if(out.size()+count>MAX_BYTES) throw new IOException("Réponse de recherche trop grosse.");
             out.write(buffer,0,count);
         }
         return out.toByteArray();
@@ -108,7 +108,7 @@ public final class PlaceSearchClient {
     static List<Place> parse(String json) throws IOException {
         try {
             JSONArray features=new JSONObject(json).optJSONArray("features");
-            if(features==null) throw new IOException("Invalid place search response.");
+            if(features==null) throw new IOException("Réponse de recherche de lieu invalide.");
             List<Place> places=new ArrayList<>(); LinkedHashSet<String> seen=new LinkedHashSet<>();
             for(int i=0;i<Math.min(features.length(),200) && places.size()<LIMIT;i++) {
                 JSONObject feature=features.optJSONObject(i);
@@ -134,7 +134,7 @@ public final class PlaceSearchClient {
                 places.add(new Place(name,String.join(", ",parts),lat,lon));
             }
             return Collections.unmodifiableList(places);
-        } catch(JSONException e) { throw new IOException("Invalid place search response.",e); }
+        } catch(JSONException e) { throw new IOException("Réponse de recherche de lieu invalide.",e); }
     }
     public void close() {
         HttpURLConnection http;

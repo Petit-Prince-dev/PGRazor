@@ -34,7 +34,7 @@ public final class CatchChance {
     public static String status() { synchronized (LOCK) { return status; } }
 
     static String ballName(int item) {
-        switch (item) { case 1: return "Poké"; case 2: return "Great"; case 3: return "Ultra"; case 4: return "Master"; default: return "Ball " + item; }
+        switch (item) { case 1: return "Poké"; case 2: return "Super"; case 3: return "Hyper"; case 4: return "Master"; default: return "Ball " + item; }
     }
     /**
      * "Poké 41% · Great 55% · ▸Ultra 66%" with the selected ball marked (auto ball moves the mark).

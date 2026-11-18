@@ -76,21 +76,21 @@ final class RootModuleState {
                                 boolean injectionOff, boolean disabled, boolean removalPending,
                                 boolean updatePending) {
         if (!installed) {
-            if (updatePending) return "Install pending — reboot to activate";
-            return rooted ? "Not installed" : "Unknown (root access required)";
+            if (updatePending) return "Installation en attente — redémarre pour activer";
+            return rooted ? "Non installé" : "Inconnu (accès root requis)";
         }
         String state;
         if (removalPending) {
-            state = "removal pending";
+            state = "suppression en attente";
         } else if (disabled) {
             state = "disabled";
         } else if (toggleSupported) {
-            state = injectionOff ? "PGRazor off (module stays installed)" : "PGRazor on";
+            state = injectionOff ? "PGRazor désactivé (le module reste installé)" : "PGRazor activé";
         } else {
-            state = "update and reboot once to use the on/off switch";
+            state = "mets à jour et redémarre une fois pour utiliser l'interrupteur on/off";
         }
-        String text = "Installed " + version + " — " + state;
-        if (updatePending) text += "; update pending, reboot to apply";
+        String text = "Installé " + version + " — " + state;
+        if (updatePending) text += " ; mise à jour en attente, redémarre pour appliquer";
         return text;
     }
 }

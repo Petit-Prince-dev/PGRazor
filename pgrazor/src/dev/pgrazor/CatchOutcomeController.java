@@ -37,11 +37,11 @@ final class CatchOutcomeController {
 
     /** Visible text for a natively confirmed outcome; anything else is rejected. */
     static String text(String outcome) {
-        if("transferred".equals(outcome))return "Transferred";
-        if("transfer-error".equals(outcome))return "Transfer Error";
-        if("caught".equals(outcome))return "Caught";
-        if("broke-free".equals(outcome))return "Not caught - broke free";
-        if("fled".equals(outcome))return "Not caught - fled";
+        if("transferred".equals(outcome))return "Transféré";
+        if("transfer-error".equals(outcome))return "Erreur de transfert";
+        if("caught".equals(outcome))return "Capturé";
+        if("broke-free".equals(outcome))return "Pas capturé - s'est échappé";
+        if("fled".equals(outcome))return "Pas capturé - s'est enfui";
         return null;
     }
     private boolean outcomeAllowed(String outcome) {

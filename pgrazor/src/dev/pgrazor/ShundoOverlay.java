@@ -45,9 +45,9 @@ public final class ShundoOverlay extends LinearLayout {
         LayoutParams badgeLayout = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
         badgeLayout.rightMargin = SettingsUi.dp(activity, 6);
         top.addView(badge, badgeLayout);
-        dark = button(activity, "Dark");
-        dark.setContentDescription("Black out the screen to save battery while the sniper runs. Tap the black screen to bring the game back.");
-        dark.setOnClickListener(v -> ShundoSniper.setDark(true));
+        dark = button(activity, "Écran off");
+        dark.setContentDescription("Éteint l'écran pour économiser la batterie pendant le sniper. Touche deux fois l'écran noir pour revenir au jeu.");
+        dark.setOnClickListener(v -> ScreenPower.turnOff(activity));
         LayoutParams darkLayout = new LayoutParams(LayoutParams.WRAP_CONTENT, SettingsUi.dp(activity, 30));
         darkLayout.rightMargin = SettingsUi.dp(activity, 6);
         top.addView(dark, darkLayout);
@@ -58,7 +58,7 @@ public final class ShundoOverlay extends LinearLayout {
         close.setText("×");
         close.setTextSize(18);
         close.setGravity(Gravity.CENTER);
-        close.setContentDescription("Stop Shundo Sniper and hide this card");
+        close.setContentDescription("Arrêter le Shundo Sniper et masquer cette carte");
         close.setOnClickListener(v -> { ShundoSniper.closeOverlay(activity); refresh(true); });
         LayoutParams closeLayout = new LayoutParams(SettingsUi.dp(activity, 28), SettingsUi.dp(activity, 30));
         closeLayout.leftMargin = SettingsUi.dp(activity, 2);
@@ -105,10 +105,10 @@ public final class ShundoOverlay extends LinearLayout {
             badge.setText(running ? "RUNNING" : "STOPPED");
             badge.setTextColor(running ? Color.WHITE : MapTheme.muted());
             badge.setBackground(SettingsUi.rounded(activity, running ? Color.rgb(56, 181, 112) : 0x22808080, SettingsUi.dp(activity, 9)));
-            toggle.setText(running ? "Stop" : "Start");
+            toggle.setText(running ? "Arrêter" : "Démarrer");
             dark.setVisibility(running ? VISIBLE : GONE);
             toggle.setTextColor(running ? MapTheme.ink() : MapTheme.accent());
-            setContentDescription("Shundo Sniper " + (running ? "running" : "stopped") + ". Drag to reposition.");
+            setContentDescription("Shundo Sniper " + (running ? "running" : "stopped") + ". Glisse pour déplacer.");
         }
         for (TextView t : new TextView[]{(TextView) ((LinearLayout) getChildAt(0)).getChildAt(0), step}) t.setTextColor(MapTheme.ink());
         stats.setTextColor(MapTheme.muted());

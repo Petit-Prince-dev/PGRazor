@@ -30,7 +30,7 @@ final class VgpController {
     private final Object lock = new Object();
     /** Sticky reason for the current VGP pause/refusal; takes priority over native status when set. */
     private volatile String guardReason = "";
-    private volatile String status = "Waiting for VGP support";
+    private volatile String status = "En attente du support VGP";
     private volatile float targetX, targetY;
     private volatile long targetAt;
     private volatile boolean targetSpin;
@@ -81,7 +81,7 @@ final class VgpController {
         boolean refused=false,on=false;
         synchronized(lock){
             if(!overlay.getAsBoolean()||!foreground.getAsBoolean()){enabledWriter.accept(false);targetAt=0;}
-            else if(cooldownActive){enabledWriter.accept(false);targetAt=0;guardReason="Cooldown active; tap VGP after it clears";refused=true;}
+            else if(cooldownActive){enabledWriter.accept(false);targetAt=0;guardReason="Cooldown actif ; touche VGP quand il est fini";refused=true;}
             else{enabledWriter.accept(true);guardReason="";on=true;}
         }
         if(refused)event.accept("vgp-cooldown-guard","Enable refused; cooldown active");
@@ -97,7 +97,7 @@ final class VgpController {
         synchronized(lock){
             stopWriter.accept(value);
             if(!value)guardReason="";
-            else if(enabled.getAsBoolean()&&cooldownActive){enabledWriter.accept(false);targetAt=0;guardReason="Paused for active cooldown; tap VGP to resume once it clears";tripped=true;}
+            else if(enabled.getAsBoolean()&&cooldownActive){enabledWriter.accept(false);targetAt=0;guardReason="En pause pendant le cooldown ; touche VGP pour reprendre quand il est fini";tripped=true;}
         }
         save.run();
         event.accept("vgp-stop-on-cooldown",value?(tripped?"ON; switched VGP off for active cooldown":"ON"):"OFF");
@@ -112,7 +112,7 @@ final class VgpController {
         if(cooldownRemaining.getAsLong()<=0)return;
         boolean tripped=false;
         synchronized(lock){
-            if(enabled.getAsBoolean()&&stopOnCooldown.getAsBoolean()){enabledWriter.accept(false);targetAt=0;guardReason="Paused for active cooldown; tap VGP to resume once it clears";tripped=true;}
+            if(enabled.getAsBoolean()&&stopOnCooldown.getAsBoolean()){enabledWriter.accept(false);targetAt=0;guardReason="En pause pendant le cooldown ; touche VGP pour reprendre quand il est fini";tripped=true;}
         }
         if(tripped)event.accept("vgp-cooldown-guard","VGP switched off; cooldown active");
     }
@@ -136,17 +136,17 @@ final class VgpController {
     boolean targetSpin() { return targetSpin; }
 
     void result(String action,boolean success) {
-        if(success&&action.equals("spin"))cooldownAction.accept("Pokestop spin");
+        if(success&&action.equals("spin"))cooldownAction.accept("Spin de PokéStop");
         Application app=application;if(!enabled.getAsBoolean()||(options.getAsInt()&4)==0||app==null)return;
         if(android.os.Build.VERSION.SDK_INT>=33&&app.checkSelfPermission("android.permission.POST_NOTIFICATIONS")!=android.content.pm.PackageManager.PERMISSION_GRANTED)return;
         try{android.app.NotificationManager manager=(android.app.NotificationManager)app.getSystemService(android.content.Context.NOTIFICATION_SERVICE);
             manager.createNotificationChannel(new android.app.NotificationChannel("pgrazor-vgp","PGRazor VGP",android.app.NotificationManager.IMPORTANCE_LOW));
-            String message=action.equals("catch")?(success?"Pokémon caught":"Pokémon not caught"):(success?"PokéStop spun":"Spin unsuccessful");
+            String message=action.equals("catch")?(success?"Pokémon caught":"Pokémon non capturé"):(success?"PokéStop spun":"Spin raté");
             manager.notify(7301,new android.app.Notification.Builder(app,"pgrazor-vgp").setSmallIcon(android.R.drawable.stat_notify_sync).setContentTitle("PGRazor VGP").setContentText(message).setAutoCancel(true).build());
         }catch(RuntimeException error){event.accept("vgp-notification-error",error.toString());}
     }
     /** Losing the foreground switches VGP off, clears any target, and never auto-resumes. */
     void suspend() {
-        synchronized(lock){enabledWriter.accept(false);targetAt=0;guardReason="App left foreground; tap VGP to start";}
+        synchronized(lock){enabledWriter.accept(false);targetAt=0;guardReason="L'appli n'est plus au premier plan ; touche VGP pour démarrer";}
     }
 }

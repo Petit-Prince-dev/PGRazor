@@ -59,22 +59,22 @@ final class RootedLogDialog {
         actions.setOrientation(LinearLayout.HORIZONTAL);
         body.addView(actions);
         Button refresh = new Button(ui);
-        refresh.setText("Refresh");
+        refresh.setText("Actualiser");
         actions.addView(refresh, new LinearLayout.LayoutParams(0, -2, 1));
         Button save = new Button(ui);
-        save.setText("Save .txt");
+        save.setText("Enregistrer .txt");
         actions.addView(save, new LinearLayout.LayoutParams(0, -2, 1));
         Button bundle=new Button(ui);
-        bundle.setText("Save log + settings (.zip)");
+        bundle.setText("Enregistrer log + réglages (.zip)");
         body.addView(bundle);
 
         Runnable reload = () -> load(hint, text);
         refresh.setOnClickListener(v -> reload.run());
 
         AlertDialog dialog = new AlertDialog.Builder(ui)
-                .setTitle("PGRazor · current run")
+                .setTitle("PGRazor · session en cours")
                 .setView(body)
-                .setPositiveButton("Close", null)
+                .setPositiveButton("Fermer", null)
                 .create();
 
         // Export off the main thread; the copy re-reads and digests the whole file.
@@ -82,7 +82,7 @@ final class RootedLogDialog {
         Handler handler = new Handler(Looper.getMainLooper());
         View.OnClickListener export = v -> {
             File file = Control.currentLog();
-            if (file == null) { Toast.makeText(activity, "No log file to save", Toast.LENGTH_SHORT).show(); return; }
+            if (file == null) { Toast.makeText(activity, "Aucun fichier log à enregistrer", Toast.LENGTH_SHORT).show(); return; }
             save.setEnabled(false);
             bundle.setEnabled(false);
             boolean includeSettings=v==bundle;
@@ -91,12 +91,12 @@ final class RootedLogDialog {
                     File saved = LogExport.copyToExternal(app, file,includeSettings);
                     handler.post(() -> {
                         if (dialog.isShowing()) {save.setEnabled(true);bundle.setEnabled(true);}
-                        Toast.makeText(app, "Saved to " + saved.getAbsolutePath(), Toast.LENGTH_LONG).show();
+                        Toast.makeText(app, "Enregistré dans " + saved.getAbsolutePath(), Toast.LENGTH_LONG).show();
                     });
                 } catch (IOException error) {
                     handler.post(() -> {
                         if (dialog.isShowing()) {save.setEnabled(true);bundle.setEnabled(true);}
-                        Toast.makeText(app, "Save failed: " + error.getMessage(), Toast.LENGTH_LONG).show();
+                        Toast.makeText(app, "Échec de l'enregistrement : " + error.getMessage(), Toast.LENGTH_LONG).show();
                     });
                 }
             }, "pgrazor-log-export").start();
@@ -118,7 +118,7 @@ final class RootedLogDialog {
         File file = Control.currentLog();
         if (file == null) {
             hint.setText("");
-            text.setText("No log file is available yet. Android logcat may contain startup errors.");
+            text.setText("Aucun fichier log disponible pour l'instant. Le logcat Android peut contenir des erreurs de démarrage.");
             return;
         }
         try (RandomAccessFile input = new RandomAccessFile(file, "r")) {
@@ -126,12 +126,12 @@ final class RootedLogDialog {
             input.seek(start);
             byte[] bytes = new byte[(int) (input.length() - start)];
             input.readFully(bytes);
-            hint.setText((start > 0 ? "Showing the latest 64 KiB. " : "")
-                    + "Save exports the current log segment with retained startup diagnostics to this device. ZIP also includes a single-line settings.json; the settings snapshot excludes login tokens, account data and saved locations.");
+            hint.setText((start > 0 ? "Affichage des derniers 64 Kio. " : "")
+                    + "Enregistrer exporte le segment de log actuel avec les diagnostics de démarrage sur cet appareil. Le ZIP inclut aussi un settings.json sur une ligne ; cet instantané exclut les jetons de connexion, les données de compte et les positions enregistrées.");
             text.setText(new String(bytes, StandardCharsets.UTF_8));
         } catch (IOException error) {
             hint.setText("");
-            text.setText("Cannot read log: " + error.getMessage());
+            text.setText("Impossible de lire le log : " + error.getMessage());
         }
     }
 }

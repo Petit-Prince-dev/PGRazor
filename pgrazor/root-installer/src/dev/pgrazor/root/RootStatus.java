@@ -39,13 +39,13 @@ final class RootStatus {
     boolean rooted;
     Manager manager = Manager.NONE;
     String managerBinary;                 // binary/path used to install the module
-    String managerLabel = "Not detected";
+    String managerLabel = "Non détecté";
     boolean managerSupported;             // Magisk >= 27000, or KernelSU/APatch present
     int magiskVersion;
 
-    String zygiskLabel = "Unknown";
+    String zygiskLabel = "Inconnu";
 
-    String moduleLabel = "Not installed";
+    String moduleLabel = "Non installé";
     boolean toggleSupported;              // live module advertises the on/off switch (toggle-v1 marker)
     boolean injectionOff;                 // live injection-off flag set: installed but injection paused
     boolean rebootNeeded;                 // a staged update must be rebooted once to apply
@@ -90,7 +90,7 @@ final class RootStatus {
             manager = Manager.MAGISK;
             managerBinary = "magisk";
             managerSupported = magiskVersion >= 27000;
-            managerLabel = "Magisk (" + magiskVersion + ")" + (managerSupported ? "" : " — needs v27+ (27000)");
+            managerLabel = "Magisk (" + magiskVersion + ")" + (managerSupported ? "" : " — v27+ requis (27000)");
             return;
         }
         String ksu = firstNonEmpty(values.get("KSUD"), values.get("DUSK"), values.get("KSUDPATH"));
@@ -118,13 +118,13 @@ final class RootStatus {
         } else if (magiskSetting != null && magiskSetting.contains("value=1")) {
             zygiskLabel = "Enabled";
         } else if (values.containsKey("ZYGDISABLED")) {
-            zygiskLabel = "Provider disabled or pending removal";
+            zygiskLabel = "Fournisseur désactivé ou suppression en attente";
         } else if (magiskSetting != null && magiskSetting.contains("value=0")) {
-            zygiskLabel = "Disabled — turn Zygisk on";
+            zygiskLabel = "Désactivé — active Zygisk";
         } else if (manager == Manager.MAGISK) {
-            zygiskLabel = "Unknown — check Zygisk in Magisk";
+            zygiskLabel = "Inconnu — vérifie Zygisk dans Magisk";
         } else if (manager == Manager.KERNELSU || manager == Manager.APATCH) {
-            zygiskLabel = "Unknown — needs Zygisk Next or ReZygisk";
+            zygiskLabel = "Inconnu — Zygisk Next ou ReZygisk requis";
         }
     }
 
@@ -176,10 +176,10 @@ final class RootStatus {
      * partial failure never looks like success. The module stays installed either way. Off-main-thread.
      */
     RootShell.Result setInjection(boolean on) {
-        if (!canToggle()) return new RootShell.Result(false,false,-1,"The installed module cannot be switched. Re-check its status.");
+        if (!canToggle()) return new RootShell.Result(false,false,-1,"Le module installé ne peut pas être basculé. Revérifie son état.");
         RootShell.Result result = RootShell.run(RootToggleCommand.command(on), TOGGLE_TIMEOUT);
         if (result.ok() && !RootToggleCommand.confirmed(on,result.output))
-            return new RootShell.Result(true,false,1,result.output + "\nSwitch confirmation was missing.");
+            return new RootShell.Result(true,false,1,result.output + "\nLa confirmation du changement est absente.");
         return result;
     }
 
@@ -193,7 +193,7 @@ final class RootStatus {
     RootShell.Result install(File zip) {
         RootShell.Result choice = RootShell.run(RootToggleCommand.LIVE_INJECTION_PROBE, 15000);
         if (!choice.ok()) return new RootShell.Result(choice.started,choice.timedOut,1,
-            "Could not read the current on/off choice; module install was not started.\n" + choice.output);
+            "Impossible de lire le choix on/off actuel ; l'installation du module n'a pas été lancée.\n" + choice.output);
         boolean wasOff = RootToggleCommand.injectionOffFromProbe(choice.output);
 
         RootShell.Result installed = runInstall(zip);
@@ -202,13 +202,13 @@ final class RootStatus {
         RootShell.Result preserved = RootShell.run(RootToggleCommand.preserveOffCommand(), TOGGLE_TIMEOUT);
         String note;
         if (preserved.ok() && RootToggleCommand.hasLine(preserved.output,RootToggleCommand.OK_PREFIX + "=preserved_off")) {
-            note = "PGRazor was Off; the update keeps it Off (reboot to apply).";
+            note = "PGRazor était désactivé ; la mise à jour le garde désactivé (redémarre pour appliquer).";
         } else if (preserved.timedOut) {
-            note = "WARNING: PGRazor was Off, but keeping it Off in the update could not be confirmed. "
-                + "After rebooting, turn PGRazor Off again if it came back On.";
+            note = "ATTENTION : PGRazor était désactivé, mais son maintien en Off dans la mise à jour n'a pas pu être confirmé. "
+                + "Après le redémarrage, désactive à nouveau PGRazor s'il est revenu en On.";
         } else {
-            note = "WARNING: PGRazor was Off, but the update may not have kept it Off. "
-                + "After rebooting, turn PGRazor Off again if it came back On.";
+            note = "ATTENTION : PGRazor était désactivé, mais la mise à jour ne l'a peut-être pas gardé en Off. "
+                + "Après le redémarrage, désactive à nouveau PGRazor s'il est revenu en On.";
         }
         String combined = installed.output
             + (preserved.output.isEmpty() ? "" : "\n" + preserved.output)
@@ -229,7 +229,7 @@ final class RootStatus {
                 command = "\"" + managerBinary + "\" module install " + path;
                 break;
             default:
-                return new RootShell.Result(false, false, -1, "No supported root manager detected.");
+                return new RootShell.Result(false, false, -1, "Aucun gestionnaire root compatible détecté.");
         }
         return RootShell.run(command, 180000);
     }
@@ -241,20 +241,20 @@ final class RootStatus {
 
     String describe() {
         StringBuilder text = new StringBuilder();
-        text.append("Root access: ").append(rooted ? "granted" : "not granted").append('\n');
-        text.append("Root manager: ").append(managerLabel).append('\n');
+        text.append("Accès root : ").append(rooted ? "granted" : "non accordé").append('\n');
+        text.append("Gestionnaire root : ").append(managerLabel).append('\n');
         text.append("Zygisk: ").append(zygiskLabel).append('\n');
-        text.append("PGRazor module: ").append(moduleLabel).append('\n');
-        text.append("Pokémon GO: ").append(describeGame());
+        text.append("Module PGRazor : ").append(moduleLabel).append('\n');
+        text.append("Pokémon GO : ").append(describeGame());
         return text.toString();
     }
 
     private String describeGame() {
-        if (!gameInstalled) return "not installed";
+        if (!gameInstalled) return "non installé";
         String base = (gameVersionName.isEmpty() ? "?" : gameVersionName) + " (" + gameVersionCode + ")";
-        if (!gameCertTrusted) return base + " — not the official Niantic signature";
-        if (gameVersionMatch) return base + " — supported";
-        return base + " — not " + InstallerConfig.GAME_VERSION_NAME + "; PGRazor will stay off until it matches";
+        if (!gameCertTrusted) return base + " — pas la signature officielle Niantic";
+        if (gameVersionMatch) return base + " — compatible";
+        return base + " — pas " + InstallerConfig.GAME_VERSION_NAME + " ; PGRazor restera désactivé tant que ça ne correspond pas";
     }
 
     private static String firstNonEmpty(String... options) {

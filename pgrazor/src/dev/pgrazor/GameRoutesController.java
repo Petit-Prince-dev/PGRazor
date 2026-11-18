@@ -73,7 +73,7 @@ final class GameRoutesController {
     private boolean planning;
     private boolean running;
     private Phase phase = Phase.IDLE;
-    private String status = "Route automation idle.";
+    private String status = "Automatisation des Routes inactive.";
 
     private String rawSnapshot = "";
     private RouteInfo[] routes = new RouteInfo[0];
@@ -95,7 +95,7 @@ final class GameRoutesController {
         this.engine = engine; this.monotonic = monotonic; this.wallClock = wallClock;
     }
 
-    void setReady(boolean value) { synchronized(lock) { ready=value; if(!value) { halt("Waiting for Route support."); snapshotReceived=false; } } }
+    void setReady(boolean value) { synchronized(lock) { ready=value; if(!value) { halt("En attente du support des Routes."); snapshotReceived=false; } } }
     boolean ready() { return ready; }
     boolean running() { synchronized (lock) { return running; } }
     String status() { synchronized (lock) { return status; } }
@@ -192,7 +192,7 @@ final class GameRoutesController {
                 String head=pending.peek();
                 if(head!=null&&new JSONObject(head).optInt("seq",-2)==ackSeq)pending.poll();
                 if (running && ackSeq == outstandingSeq && "error".equals(st))
-                    halt("Game rejected " + outstandingAction + ": " + o.optString("reason","unknown error"));
+                    halt("Le jeu a refusé " + outstandingAction + ": " + o.optString("reason","unknown error"));
             } catch (JSONException ignored) { /* ignore unparsable acks */ }
         }
     }
@@ -201,10 +201,10 @@ final class GameRoutesController {
     void start(int max) {
         synchronized (lock) {
             if (running) return;
-            if (!ready) { status = "Route support is not ready yet."; return; }
-            if(!freshSnapshot()) { status="Waiting for a fresh Route list."; return; }
-            if(engine.walking) { status="Stop the current walk first."; return; }
-            if(engine.speedKmh<=0) { status="Choose a walking speed first."; return; }
+            if (!ready) { status = "Le support des Routes n'est pas encore prêt."; return; }
+            if(!freshSnapshot()) { status="En attente d'une liste de Routes à jour."; return; }
+            if(engine.walking) { status="Arrête d'abord la marche en cours."; return; }
+            if(engine.speedKmh<=0) { status="Choisis d'abord une vitesse de marche."; return; }
             if (hasCurrent && !current.acquiredReward) {
                 // Explicit Start can recover a completed walk that still needs its end/reward.
                 if(current.started && current.completedWalk && !current.paused && !current.isCompleting) {
@@ -212,29 +212,29 @@ final class GameRoutesController {
                         maxCompletions=max<=0?DEFAULT_MAX_COMPLETIONS:Math.min(max,MAX_COMPLETIONS_CAP);
                         pending.clear();completions=0;visited.clear();running=true;selectedId=r.id;selectedReversed=current.reversed;
                         selectedPoints=current.reversed?reversed(r.points):copy(r.points);
-                        if(!issueWalk(new double[][]{selectedPoints[selectedPoints.length-1]})){halt("Could not reach the Route endpoint.");return;}
-                        phase=Phase.TRAVERSE;status="Returning to the completed Route's endpoint…";return;
+                        if(!issueWalk(new double[][]{selectedPoints[selectedPoints.length-1]})){halt("Impossible d'atteindre la fin de la Route.");return;}
+                        phase=Phase.TRAVERSE;status="Retour à la fin de la Route terminée…";return;
                     }
                 }
-                status = "A game Route is already active. Finish or cancel it first."; return;
+                status = "Une Route est déjà active dans le jeu. Termine-la ou annule-la d'abord."; return;
             }
             maxCompletions = max <= 0 ? DEFAULT_MAX_COMPLETIONS : Math.min(max, MAX_COMPLETIONS_CAP);
             pending.clear(); completions = 0; visited.clear(); running = true; selectedId = null; selectedPoints = null;
-            status = "Selecting a route…";
+            status = "Choix d'une route…";
             selectNext();
         }
     }
 
-    void stop(String reason) { synchronized (lock) { halt(reason == null ? "Automation stopped." : reason); } }
+    void stop(String reason) { synchronized (lock) { halt(reason == null ? "Automatisation arrêtée." : reason); } }
 
     void tick(boolean hostAllowed) {
         synchronized (lock) {
             if (!running) return;
-            if (!ready) { halt("Route support became unavailable."); return; }
-            if (!hostAllowed) { halt("Automation stopped: host or hooks unavailable."); return; }
+            if (!ready) { halt("Le support des Routes est devenu indisponible."); return; }
+            if (!hostAllowed) { halt("Automatisation arrêtée : hôte ou hooks indisponibles."); return; }
             // A different planned route taking over MotionEngine means a manual/other-route takeover.
-            if(!freshSnapshot()){halt("Stopped: Route state is stale.");return;}
-            if (phase != Phase.IDLE && ownedToken != 0 && engine.routeGeneration() != ownedToken) { halt("Stopped: movement was taken over."); return; }
+            if(!freshSnapshot()){halt("Arrêté : l'état de la Route est périmé.");return;}
+            if (phase != Phase.IDLE && ownedToken != 0 && engine.routeGeneration() != ownedToken) { halt("Arrêté : le déplacement a été repris en main."); return; }
             switch (phase) {
                 case WALK_TO_START: pumpWalkToStart(); break;
                 case AWAIT_START: pumpAwaitStart(); break;
@@ -249,7 +249,7 @@ final class GameRoutesController {
     // --- phases -------------------------------------------------------------
 
     private void selectNext() {
-        if (completions >= maxCompletions) { finish("Done: " + completions + " route(s) completed."); return; }
+        if (completions >= maxCompletions) { finish("Terminé : " + completions + " route(s) terminée(s)."); return; }
         long now = wallClock.getAsLong();
         RouteInfo best = null; boolean bestReversed = false; double bestDistance = Double.MAX_VALUE;
         for (RouteInfo r : routes) {
@@ -263,22 +263,22 @@ final class GameRoutesController {
                 if (reverse < bestDistance) { best = r; bestReversed = true; bestDistance = reverse; }
             }
         }
-        if (best == null) { finish("No eligible routes available."); return; }
+        if (best == null) { finish("Aucune route éligible disponible."); return; }
         selectedId = best.id; selectedReversed = bestReversed;
         selectedPoints = bestReversed ? reversed(best.points) : copy(best.points);
-        status = "Walking to the start of " + label(best) + "…";
-        if (!issueWalk(new double[][]{selectedPoints[0]})) { halt("Could not walk to the route start."); return; }
+        status = "Marche vers le départ de " + label(best) + "…";
+        if (!issueWalk(new double[][]{selectedPoints[0]})) { halt("Impossible de marcher jusqu'au départ de la route."); return; }
         phase = Phase.WALK_TO_START;
     }
 
     private void pumpWalkToStart() {
         switch (observeMovement()) {
             case WALKING: return;
-            case LOST: halt("Stopped before reaching the route start."); return;
+            case LOST: halt("Arrêté avant d'atteindre le départ de la route."); return;
             case ARRIVED:
                 queue("start", selectedId, selectedReversed);
                 requestDeadline = monotonic.getAsLong() + REQUEST_TIMEOUT_MS;
-                status = "Requesting the game to start the route…";
+                status = "Demande au jeu de démarrer la route…";
                 phase = Phase.AWAIT_START;
         }
     }
@@ -286,25 +286,25 @@ final class GameRoutesController {
     private void pumpAwaitStart() {
         CurrentRoute c = freshCurrent();
         if (c != null && selectedId.equals(c.id) && c.started) {
-            if(c.paused){halt("Route is paused in game.");return;}
-            if (!issueWalk(selectedPoints)) { halt("Could not begin the route walk."); return; }
-            status = "Walking the route…";
+            if(c.paused){halt("La Route est en pause dans le jeu.");return;}
+            if (!issueWalk(selectedPoints)) { halt("Impossible de commencer la marche de la route."); return; }
+            status = "Parcours de la route…";
             phase = Phase.TRAVERSE;
             return;
         }
-        if (timedOut()) halt("The game did not confirm the route start in time.");
+        if (timedOut()) halt("Le jeu n'a pas confirmé le départ de la route à temps.");
     }
 
     private void pumpTraverse() {
         CurrentRoute c = freshCurrent();
-        if(c==null||!selectedId.equals(c.id)){halt("Stopped: active game Route changed.");return;}
-        if (c.paused) { halt("Route paused. Finish or cancel it in game before restarting."); return; }
+        if(c==null||!selectedId.equals(c.id)){halt("Arrêté : la Route active du jeu a changé.");return;}
+        if (c.paused) { halt("Route en pause. Termine-la ou annule-la dans le jeu avant de relancer."); return; }
         if(c.started && c.completedWalk && c.inRangeOfEnd && !c.isCompleting) { requestCompletion(); return; }
         switch (observeMovement()) {
             case WALKING: return;
-            case LOST: halt("Stopped mid-route before the end."); return;
+            case LOST: halt("Arrêté en cours de route avant la fin."); return;
             case ARRIVED:
-                status = "At the end — waiting for the game to allow completion…";
+                status = "À la fin — attente que le jeu autorise la validation…";
                 requestDeadline = monotonic.getAsLong() + REQUEST_TIMEOUT_MS;
                 phase = Phase.AWAIT_ELIGIBLE;
         }
@@ -312,20 +312,20 @@ final class GameRoutesController {
 
     private void pumpAwaitEligible() {
         CurrentRoute c = freshCurrent();
-        if (c == null || !selectedId.equals(c.id)) { if (timedOut()) halt("Lost the active route before completion."); return; }
-        if (c.paused) { halt("Route paused. Finish or cancel it in game before restarting."); return; }
+        if (c == null || !selectedId.equals(c.id)) { if (timedOut()) halt("Route active perdue avant la fin."); return; }
+        if (c.paused) { halt("Route en pause. Termine-la ou annule-la dans le jeu avant de relancer."); return; }
         if (c.inRangeOfEnd && c.completedWalk && !c.isCompleting) {
             requestCompletion();
             return;
         }
-        if (timedOut()) halt("The route did not become eligible for completion in time.");
+        if (timedOut()) halt("La route n'est pas devenue validable à temps.");
     }
 
     private void requestCompletion() {
         engine.stop(); ownedToken=engine.routeGeneration(); ownedTotal=0;
         queue("complete",selectedId,null);
         requestDeadline=monotonic.getAsLong()+REQUEST_TIMEOUT_MS;
-        status="Requesting route completion…";phase=Phase.AWAIT_COMPLETE;
+        status="Demande de validation de la route…";phase=Phase.AWAIT_COMPLETE;
     }
 
     private void pumpAwaitComplete() {
@@ -335,14 +335,14 @@ final class GameRoutesController {
             completions++; visited.add(selectedId);
             RouteInfo rewardedRoute=routeById(selectedId);
             lastReward=rewardedRoute==null?"Route":label(rewardedRoute);
-            pendingReward="Route rewards received: " + lastReward;
+            pendingReward="Récompenses de Route reçues : " + lastReward;
             engine.stop(); ownedToken = 0; ownedTotal = 0;
-            status = "Completed " + completions + " route(s). Selecting the next…";
+            status = "Terminé " + completions + " route(s). Choix de la suivante…";
             phase = Phase.IDLE;
             selectNext();
             return;
         }
-        if (timedOut()) halt("The game did not confirm the reward in time.");
+        if (timedOut()) halt("Le jeu n'a pas confirmé la récompense à temps.");
     }
 
     // --- helpers ------------------------------------------------------------

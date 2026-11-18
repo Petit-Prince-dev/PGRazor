@@ -71,7 +71,7 @@ public final class ControlQuickSummaryTest {
         check(Control.quickSummaryAutoDismiss(),"Packaging mode survives summary configuration");
         check(Control.quickSummaryEnabled(),"Auto-dismiss configuration retains choice");
         Control.setQuickSummaryReady(true,"Ready"); Control.setQuickSummaryEnabled(false); Control.setQuickSummaryEnabled(true);
-        check(android.util.Log.lines.stream().anyMatch(line->line.contains("ON; summary and details auto-dismiss; new-species screens remain")),"Auto-dismiss enable log is accurate");
+        check(android.util.Log.lines.stream().anyMatch(line->line.contains("ON ; résumé et détails fermés auto ; les écrans de nouvelle espèce restent")),"Auto-dismiss enable log is accurate");
         Control.embedded("Restarting auto-dismiss adapter");
         check(Control.quickSummaryAutoDismiss() && Control.quickSummaryEnabled(),"Readiness resets preserve mode and choice");
         Control.configureQuickSummaryAutoDismiss(false);

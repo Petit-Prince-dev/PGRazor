@@ -73,8 +73,8 @@ public final class AutoWalkPlanner {
      * The route is never padded to {@code count}: it holds only POIs that were actually loaded.
      */
     public static Plan plan(double originLat, double originLon, double[][] points, int count) {
-        if (!valid(originLat, originLon)) throw new IllegalArgumentException("Avatar position is not a valid coordinate.");
-        if (count < 1 || count > MAX_STOPS) throw new IllegalArgumentException("Choose between 1 and " + MAX_STOPS + " stops.");
+        if (!valid(originLat, originLon)) throw new IllegalArgumentException("La position de l'avatar n'est pas une coordonnée valide.");
+        if (count < 1 || count > MAX_STOPS) throw new IllegalArgumentException("Choisis entre 1 et " + MAX_STOPS + " stops.");
         double[][] pool = filter(points);
         int target = Math.min(count, pool.length);
         double[][] route = new double[target][];

@@ -23,13 +23,13 @@ public final class SettingsBackupRules {
             if(key.equals("buddyEmotionBerries")){require(BuddyEmotionPreferences.validBerries(value),"Invalid buddy berry priority");continue;}
             if(key.equals("itemRules")||key.equals("itemLimits")){itemRules(value);continue;}
             if(key.equals("transferKeepSpecies")||key.equals("evolveTransferSpecies")){keepSpecies(value);continue;}
-            if(key.equals("shinyScanSpecies")){try{AutoRaidPreferences.normalizeBosses(value);}catch(IllegalArgumentException invalid){throw new JSONException("Invalid Shiny Scanner species");}continue;}
+            if(key.equals("shinyScanSpecies")){try{AutoRaidPreferences.normalizeBosses(value);}catch(IllegalArgumentException invalid){throw new JSONException("Espèces du Shiny Scanner invalides");}continue;}
             if(key.equals("autoRaidBosses")){try{AutoRaidPreferences.normalizeBosses(value);}catch(IllegalArgumentException invalid){throw new JSONException(invalid.getMessage());}continue;}
             if(key.equals("shundoGap")){require(value.equals("0")||value.equals("30")||value.equals("60")||value.equals("90"),"Invalid Shundo Sniper teleport gap");continue;}
             if(key.equals("shundoSpecies")){keepSpecies(value);require(value.isEmpty()||value.split(",").length<=500,"Too many Shundo Sniper species");continue;}
             if(key.equals("smartCatchCandySpecies")){keepSpecies(value);require(value.isEmpty()||value.split(",").length<=200,"Too many candy species");continue;}
             if(key.equals("smartCatchCatchSpecies")){keepSpecies(value);require(value.isEmpty()||value.split(",").length<=200,"Too many catch-only species");continue;}
-            if(key.equals("berryPriority")){try{BerryPriority.parse(value);}catch(IllegalArgumentException invalid){throw new JSONException("Invalid berry priorities");}continue;}
+            if(key.equals("berryPriority")){try{BerryPriority.parse(value);}catch(IllegalArgumentException invalid){throw new JSONException("Priorités de baies invalides");}continue;}
             int n;try{n=Integer.parseInt(value);}catch(NumberFormatException e){throw new JSONException("Invalid "+key);}
             if(key.equals("shinyScanSpeed")){require(n>=0&&n<=2,"Invalid Shiny Scanner speed");continue;}
             if(key.equals("shinyScanDailyLimit")){require(n==0||n==2000||n==5000||n==8000,"Invalid Shiny Scanner daily limit");continue;}
@@ -38,7 +38,7 @@ public final class SettingsBackupRules {
             if(key.equals("autoRaidMinPlayers")){require(n>=1&&n<=20,"Invalid raid players");continue;}
             if(key.equals("autoRaidWaitSeconds")){require(n>=15&&n<=120,"Invalid raid wait");continue;}
             if(key.equals("autoRaidMaxDistanceKm")){require(AutoRaidPreferences.validDistance(n),"Invalid raid distance limit");continue;}
-            if(key.equals("quickMenuHidden")){require(n>=0&&n<=8191,"Invalid quick menu visibility");continue;}
+            if(key.equals("quickMenuHidden")){require(n>=0&&n<=16383,"Invalid quick menu visibility");continue;}
             if(key.equals("uiScalePercent")){require(n==25||n==50||n==75||n==100,"Invalid UI scale");continue;}
             if(key.equals("buddyBerry")||key.equals("autoBerry")){require(n==0||n==701||n==703||n==705||n==706||n==707,"Invalid berry");continue;}
             if(key.equals("smartCatchBerry")){require(n==0||n==701||n==703||n==705||n==706||n==708,"Invalid smart catch berry");continue;}

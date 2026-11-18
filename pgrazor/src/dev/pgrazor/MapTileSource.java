@@ -99,7 +99,7 @@ final class MapTileSource {
             if (failedAt != null && now - failedAt < 60000) { blocked++; continue; }
             wanted.add(tile);
         }
-        status.setText(wanted.isEmpty() ? (blocked > 0 ? "Map unavailable in some areas. Check internet, then Retry." : "Zoom " + host.zoom() + " · Tap map to select") : "Loading map…");
+        status.setText(wanted.isEmpty() ? (blocked > 0 ? "Carte indisponible par endroits. Vérifie internet, puis Réessayer." : "Zoom " + host.zoom() + " · Touche la carte pour sélectionner") : "Chargement de la carte…");
         if (wanted.isEmpty()) return;
         // Middle of the screen first: tiles nearest the centre of the placed ones load before the edges.
         float cx = 0, cy = 0; for (Tile tile : visible) { cx += tile.left; cy += tile.top; }
@@ -142,9 +142,9 @@ final class MapTileSource {
                 if (closed || Thread.currentThread().isInterrupted()) return;
                 cache.trim();
                 final int finalErrors = errors.get() + blockedTiles;
-                main.post(() -> { if (!closed && revision == generation) status.setText(finalErrors == 0 ? "Zoom " + host.zoom() + " · Tap map to select" : "Map unavailable in some areas. Check internet, then Retry."); });
+                main.post(() -> { if (!closed && revision == generation) status.setText(finalErrors == 0 ? "Zoom " + host.zoom() + " · Touche la carte pour sélectionner" : "Carte indisponible par endroits. Vérifie internet, puis Réessayer."); });
             } catch (IOException | RuntimeException e) {
-                main.post(() -> { if (!closed && revision == generation) status.setText("Map cache unavailable. Close map and retry."); });
+                main.post(() -> { if (!closed && revision == generation) status.setText("Cache de la carte indisponible. Ferme la carte et réessaie."); });
             } finally { main.post(() -> { if (!closed) { pending = null; if (revision != generation) loadVisible(); } }); }
         });
     }
@@ -154,7 +154,7 @@ final class MapTileSource {
     private Bitmap readTile(Tile tile) throws IOException {
         Bitmap cached = cache.readDisk(tile.key);
         if (cached != null) return cached;
-        if (closed) throw new IOException("Map closed");
+        if (closed) throw new IOException("Carte fermée");
         HttpURLConnection request = (HttpURLConnection) new URL("https://tile.openstreetmap.org/" + tile.zoom + "/" + tile.x + "/" + tile.y + ".png").openConnection();
         // A tile read to the end returns its connection to the pool for the next tile (each new one costs a
         // TLS handshake, about 3x the tile itself); only a failed request is disconnected.
@@ -168,7 +168,7 @@ final class MapTileSource {
             byte[] bytes;
             try (InputStream stream = request.getInputStream()) { bytes = MapTileCache.readBounded(stream); }
             Bitmap bitmap = MapTileCache.decode(bytes);
-            if (closed) { bitmap.recycle(); throw new IOException("Map closed"); }
+            if (closed) { bitmap.recycle(); throw new IOException("Carte fermée"); }
             cache.writeDisk(tile.key, bytes);
             reusable = true;
             return bitmap;

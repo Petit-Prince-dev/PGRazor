@@ -32,7 +32,7 @@ final class AccountProfileData {
         if(!canonical.equals(target.getAbsoluteFile())||!canonical.toPath().startsWith(root.toPath())||canonical.equals(root))throw new IOException("Unsafe profile data path");
         if(!target.exists())return;
         if(target.isDirectory()){
-            File[] children=target.listFiles();if(children==null)throw new IOException("Could not read profile data");
+            File[] children=target.listFiles();if(children==null)throw new IOException("Impossible de lire les données du profil");
             for(File child:children)collect(root,child,out,depth+1);
         }
         out.add(target.toPath());

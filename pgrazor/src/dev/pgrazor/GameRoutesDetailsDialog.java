@@ -34,7 +34,7 @@ public final class GameRoutesDetailsDialog {
         int pad = MapTheme.dp(ctx, 18);
         layout.setPadding(pad, MapTheme.dp(ctx, 8), pad, 0);
 
-        TextView name = label(ctx, "Route run", 18);
+        TextView name = label(ctx, "Parcours de Route", 18);
         layout.addView(name);
         TextView meta = label(ctx, "", 13);
         meta.setPadding(0, MapTheme.dp(ctx, 6), 0, MapTheme.dp(ctx, 10));
@@ -49,10 +49,10 @@ public final class GameRoutesDetailsDialog {
         layout.addView(note);
 
         AlertDialog dialog = new AlertDialog.Builder(ctx)
-            .setTitle("Route run")
+            .setTitle("Parcours de Route")
             .setView(layout)
-            .setNegativeButton("Close", null)
-            .setNeutralButton("Stop", null)
+            .setNegativeButton("Fermer", null)
+            .setNeutralButton("Arrêter", null)
             .create();
 
         Controller controller = new Controller(activity, dialog, name, meta, path, note);
@@ -93,27 +93,27 @@ public final class GameRoutesDetailsDialog {
                 JSONObject o = new JSONObject(json == null ? "{}" : json);
                 running = o.optBoolean("running");
                 String routeName = o.optString("name", "");
-                name.setText(routeName.isEmpty() ? (running ? "Route run" : "No Route running") : routeName);
+                name.setText(routeName.isEmpty() ? (running ? "Parcours de Route" : "Aucune Route en cours") : routeName);
 
                 StringBuilder sb = new StringBuilder();
                 sb.append(phaseText(o.optString("phase", "IDLE")));
                 if (o.has("name")) {
-                    sb.append("  •  ").append(o.optBoolean("reversed") ? "Reverse" : "Forward");
+                    sb.append("  •  ").append(o.optBoolean("reversed") ? "Sens inverse" : "Sens normal");
                     double meters = o.optDouble("distanceMeters", 0);
                     if (meters > 0) sb.append(String.format(Locale.US, "  •  %.0f m", meters));
                 }
-                sb.append("\nCompleted ").append(o.optInt("completions"))
-                  .append(" of ").append(o.optInt("maxCompletions"));
+                sb.append("\nTerminées : ").append(o.optInt("completions"))
+                  .append(" sur ").append(o.optInt("maxCompletions"));
                 sb.append('\n').append(o.optString("status", ""));
                 String reward=o.optString("lastReward", "");
-                if(!reward.isEmpty())sb.append("\nLast rewards received: ").append(reward);
+                if(!reward.isEmpty())sb.append("\nDernières récompenses reçues : ").append(reward);
                 meta.setText(sb.toString());
 
                 path.setData(parsePolyline(o.optJSONArray("points")), parsePoint(o.optJSONArray("currentPosition")));
-                note.setText("Green: start / Red: finish / Ring: you");
+                note.setText("Vert : départ / Rouge : arrivée / Anneau : toi");
             } catch (JSONException bad) {
-                name.setText("Route run");
-                meta.setText("Route details are unavailable right now.");
+                name.setText("Parcours de Route");
+                meta.setText("Les détails de la Route sont indisponibles pour l'instant.");
                 path.setData(null, null);
             }
             Button stop = dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
@@ -123,7 +123,7 @@ public final class GameRoutesDetailsDialog {
         private void stop() {
             if (closed) return;
             Control.stopGameRoutes();
-            Toast.makeText(activity, "Route automation stopped.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(activity, "Automatisation des Routes arrêtée.", Toast.LENGTH_SHORT).show();
             poll();
         }
 
@@ -136,12 +136,12 @@ public final class GameRoutesDetailsDialog {
 
     private static String phaseText(String phase) {
         switch (phase) {
-            case "WALK_TO_START":  return "Walking to the start";
-            case "AWAIT_START":    return "Starting the Route";
-            case "TRAVERSE":       return "Walking the Route";
-            case "AWAIT_ELIGIBLE": return "Reaching the end";
-            case "AWAIT_COMPLETE": return "Completing the Route";
-            default:               return "Idle";
+            case "WALK_TO_START":  return "Marche vers le départ";
+            case "AWAIT_START":    return "Démarrage de la Route";
+            case "TRAVERSE":       return "Parcours de la Route";
+            case "AWAIT_ELIGIBLE": return "Arrivée à la fin";
+            case "AWAIT_COMPLETE": return "Validation de la Route";
+            default:               return "Inactif";
         }
     }
 

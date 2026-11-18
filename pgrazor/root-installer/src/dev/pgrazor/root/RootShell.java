@@ -59,7 +59,7 @@ final class RootShell {
             // An IOException here means su never launched: root access was denied/withdrawn by the
             // root manager, or su is not present. We cannot tell which, so we do not claim either.
             return new Result(false, false, -1,
-                "Could not start a root shell: root access was denied or unavailable (" + noStart.getMessage() + ").");
+                "Impossible de lancer un shell root : accès root refusé ou indisponible (" + noStart.getMessage() + ").");
         }
         return await(process, timeoutMs);
     }

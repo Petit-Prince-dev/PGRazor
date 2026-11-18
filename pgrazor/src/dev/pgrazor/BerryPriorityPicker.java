@@ -12,7 +12,7 @@ import java.io.InputStream;
 /** Shared persistent berry priority editor, available on the map or in an encounter. */
 final class BerryPriorityPicker {
     static final int[] IDS={0,701,703,705,706,707};
-    static final String[] NAMES={"Off","Razz Berry","Nanab Berry","Pinap Berry","Golden Razz Berry","Silver Pinap Berry"};
+    static final String[] NAMES={"Off","Baie Framby","Baie Nanab","Baie Nanana","Baie Framby dorée","Baie Nanana argentée"};
     private final Activity activity;
     private final Runnable changed;
     private final Bitmap[] icons=new Bitmap[IDS.length];
@@ -42,7 +42,7 @@ final class BerryPriorityPicker {
         density.densityDpi=Math.max(1,Math.round(activity.getResources().getDisplayMetrics().densityDpi*scale));
         ui.applyOverrideConfiguration(density);pickerContext=ui;
         LinearLayout body=new LinearLayout(ui);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(pickerDp(12),pickerDp(4),pickerDp(12),pickerDp(4));
-        TextView help=new TextView(ui);help.setText("Choose up to 3. The next choice starts a new list.");help.setTextSize(12);help.setTextColor(MapTheme.ink());help.setPadding(pickerDp(6),0,pickerDp(6),pickerDp(8));body.addView(help);
+        TextView help=new TextView(ui);help.setText("Choisis-en jusqu'à 3. Le choix suivant démarre une nouvelle liste.");help.setTextSize(12);help.setTextColor(MapTheme.ink());help.setPadding(pickerDp(6),0,pickerDp(6),pickerDp(8));body.addView(help);
         rows=new LinearLayout[IDS.length];labels=new TextView[IDS.length];ranks=new TextView[IDS.length];
         for(int i=0;i<IDS.length;i++){
             final int id=IDS[i];LinearLayout row=new LinearLayout(ui);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(pickerDp(8),pickerDp(3),pickerDp(8),pickerDp(3));rows[i]=row;
@@ -54,7 +54,7 @@ final class BerryPriorityPicker {
             row.setOnClickListener(v->{Control.selectBerryPriority(id);refresh();changed.run();});
         }
         ScrollView scroll=new ScrollView(ui);scroll.addView(body);
-        picker=new AlertDialog.Builder(ui).setTitle("Berry priority").setView(scroll).setPositiveButton("Done",null).create();
+        picker=new AlertDialog.Builder(ui).setTitle("Priorité des baies").setView(scroll).setPositiveButton("OK",null).create();
         picker.setOnDismissListener(d->{picker=null;rows=null;labels=null;ranks=null;pickerContext=null;});
         picker.show();
         int baseWidth=Math.min(dp(400),activity.getResources().getDisplayMetrics().widthPixels-dp(48));
@@ -71,7 +71,7 @@ final class BerryPriorityPicker {
             labels[i].setTextColor(MapTheme.ink());ranks[i].setText(rank==0?"":String.valueOf(rank));ranks[i].setTextColor(MapTheme.accent());
             GradientDrawable bg=new GradientDrawable();bg.setCornerRadius(pickerDp(10));bg.setColor(MapTheme.surface());if(selected)bg.setStroke(Math.max(1,pickerDp(1)),MapTheme.accent());rows[i].setBackground(bg);
             // No stock gating: priorities are retained and become usable when inventory replenishes.
-            rows[i].setContentDescription(NAMES[i]+(rank==0?"":", priority "+rank));
+            rows[i].setContentDescription(NAMES[i]+(rank==0?"":", priorité "+rank));
         }
     }
 }

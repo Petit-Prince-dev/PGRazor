@@ -100,33 +100,33 @@ public final class AutoRaidControllerTest {
     private static void testStartPreflight() {
         setup();
         Control.ready = false;
-        requireThrows(() -> AutoRaid.start(prefs()), "ready", "start refused when game/location not ready");
+        requireThrows(() -> AutoRaid.start(prefs()), "prêts", "start refused when game/location not ready");
         require(!AutoRaid.running(), "no session after not-ready refusal");
         Control.ready = true;
 
         Control.battle = 0;
-        requireThrows(() -> AutoRaid.start(prefs()), "quick attack", "start refused without battle bit 0");
+        requireThrows(() -> AutoRaid.start(prefs()), "attaque rapide", "start refused without battle bit 0");
         Control.battle = 1;
 
         OneShotAutomation.active = true;
-        requireThrows(() -> AutoRaid.start(prefs()), "current automation", "start refused with one-shot running");
+        requireThrows(() -> AutoRaid.start(prefs()), "automatisation en cours", "start refused with one-shot running");
         OneShotAutomation.active = false;
 
         GymAutomationSettings.active = true;
-        requireThrows(() -> AutoRaid.start(prefs()), "current automation", "start refused with gym automation running");
+        requireThrows(() -> AutoRaid.start(prefs()), "automatisation en cours", "start refused with gym automation running");
         GymAutomationSettings.active = false;
 
         Control.gameRoute = true;
-        requireThrows(() -> AutoRaid.start(prefs()), "walk or Route", "start refused during a game Route");
+        requireThrows(() -> AutoRaid.start(prefs()), "marche ou la Route", "start refused during a game Route");
         Control.gameRoute = false;
 
         Control.engine.walkRoute(new double[][]{{10.0, 10.0}});
         require(Control.engine.walking, "engine walking precondition");
-        requireThrows(() -> AutoRaid.start(prefs()), "walk or Route", "start refused while the engine walks");
+        requireThrows(() -> AutoRaid.start(prefs()), "marche ou la Route", "start refused while the engine walks");
         Control.engine = new MotionEngine();
 
         Control.planning = true;
-        requireThrows(() -> AutoRaid.start(prefs()), "walk or Route", "start refused while planning");
+        requireThrows(() -> AutoRaid.start(prefs()), "marche ou la Route", "start refused while planning");
         Control.planning = false;
 
         require(AutoRaid.config() == null, "no session survived the refusals");
@@ -175,7 +175,7 @@ public final class AutoRaidControllerTest {
         require(config()[4].equals("7"), "caller mutation cannot change a running session");
 
         // Reconfiguring mid-session is rejected outright.
-        requireThrows(() -> AutoRaid.configure(prefs()), "Stop Auto-Raid", "configure blocked while running");
+        requireThrows(() -> AutoRaid.configure(prefs()), "Arrête l'Auto-Raid", "configure blocked while running");
 
         require(AutoRaid.status().contains("0/7 raids"), "status reports completion over the frozen max");
     }
@@ -192,7 +192,7 @@ public final class AutoRaidControllerTest {
         require(Control.events == eventsBefore, "a stale-token event produces no diagnostic");
         require(Handler.queue.isEmpty(), "a stale-token travel posts nothing");
         require(AutoRaid.running(), "a stale-token event leaves the session running");
-        require(AutoRaid.status().startsWith("Checking raid support"), "a stale-token event leaves the status untouched");
+        require(AutoRaid.status().startsWith("Vérification du support des raids"), "a stale-token event leaves the status untouched");
     }
 
     /** Equal or older travel serials never re-issue a move; they still feed the watchdog. */
@@ -231,7 +231,7 @@ public final class AutoRaidControllerTest {
 
         require(Control.teleports == 0, "a travel queued before stop never moves");
         require(AutoRaid.running(), "stop() leaves the session in a stopping state until acknowledged");
-        require(AutoRaid.status().startsWith("Stopping"), "stop() status");
+        require(AutoRaid.status().startsWith("Arrêt"), "stop() status");
     }
 
     /** A move posted before reset() is a no-op: reset() rotates the token the runnable checks. */
@@ -283,7 +283,7 @@ public final class AutoRaidControllerTest {
         SystemClock.now = 100000 + 45001;
         AutoRaid.tick(false);
         require(!AutoRaid.running(), "the watchdog stops a session gone silent past its limit");
-        require(AutoRaid.status().contains("stopped responding"), "the watchdog explains why it stopped");
+        require(AutoRaid.status().contains("ne répond plus"), "the watchdog explains why it stopped");
     }
 
     /** Manual movement during a session hands control back to the user and begins stopping. */
@@ -294,7 +294,7 @@ public final class AutoRaidControllerTest {
         AutoRaid.tick(true);
 
         require(AutoRaid.running(), "manual movement enters the stopping state");
-        require(AutoRaid.status().startsWith("Stopping: movement changed"), "manual movement explains the stop");
+        require(AutoRaid.status().startsWith("Arrêt : déplacement modifié"), "manual movement explains the stop");
     }
 
     /** Walk-mode travel starts a real planned route and captures its ownership token. */
@@ -341,7 +341,7 @@ public final class AutoRaidControllerTest {
 
         AutoRaid.tick(false);
         require(AutoRaid.running(), "a replaced route enters the stopping state");
-        require(AutoRaid.status().startsWith("Stopping: movement changed"), "a replaced route explains the stop");
+        require(AutoRaid.status().startsWith("Arrêt : déplacement modifié"), "a replaced route explains the stop");
     }
 
     private static void testCooldownAndManualTeleport() {

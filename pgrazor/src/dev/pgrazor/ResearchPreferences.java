@@ -92,19 +92,19 @@ public final class ResearchPreferences {
     public synchronized boolean selected(String template) { return selected.contains(template); }
     public synchronized int selectedCount() { return selected.size(); }
     public synchronized void select(String template, boolean on) {
-        if (!validTemplate(template)) throw new IllegalArgumentException("Unknown research task.");
+        if (!validTemplate(template)) throw new IllegalArgumentException("Tâche d'étude inconnue.");
         if (!on) { selected.remove(template); return; }
         if (!selected.contains(template) && selected.size() >= MAX_TEMPLATES)
-            throw new IllegalArgumentException("Select at most " + MAX_TEMPLATES + " tasks.");
+            throw new IllegalArgumentException("Sélectionne au maximum " + MAX_TEMPLATES + " tasks.");
         selected.add(template);
     }
     /** Selects or clears every listed template, or none of them when the selection would overflow. */
     public synchronized void selectAll(List<String> templates, boolean on) {
-        for (String t : templates) if (!validTemplate(t)) throw new IllegalArgumentException("Unknown research task.");
+        for (String t : templates) if (!validTemplate(t)) throw new IllegalArgumentException("Tâche d'étude inconnue.");
         if (!on) { selected.removeAll(templates); return; }
         TreeSet<String> next = new TreeSet<>(selected);
         next.addAll(templates);
-        if (next.size() > MAX_TEMPLATES) throw new IllegalArgumentException("Select at most " + MAX_TEMPLATES + " tasks.");
+        if (next.size() > MAX_TEMPLATES) throw new IllegalArgumentException("Sélectionne au maximum " + MAX_TEMPLATES + " tasks.");
         selected.addAll(templates);
     }
     /** Adds or refreshes one observed task. Returns true when the stored catalog changed. */

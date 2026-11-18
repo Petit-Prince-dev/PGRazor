@@ -11,7 +11,7 @@ import android.view.View;
  */
 final class MenuIcon extends View {
     static final int MAP = 0, WALK = 1, AUTOWALK = 2, FEEDS = 3, FAVORITES = 4, TELEPORT = 5, ACCOUNTS = 6, SETTINGS = 7,
-        EVENTS = 8, AUTOMATION = 9, HIDE = 10, ROUTES = 11, CATCH = 12, BOX = 13, BAG = 14, BATTLE = 15, HEART = 16, RESEARCH = 17;
+        EVENTS = 8, AUTOMATION = 9, HIDE = 10, ROUTES = 11, CATCH = 12, BOX = 13, BAG = 14, BATTLE = 15, HEART = 16, RESEARCH = 17, POWER = 18;
 
     private final int kind;
     /** Draws in the muted colour instead of ink. */
@@ -185,6 +185,13 @@ final class MenuIcon extends View {
                 heart.cubicTo(3, 14, 2.5f, 8, 7, 5.5f); heart.cubicTo(9.5f, 4.3f, 12, 6, 12, 8.5f);
                 heart.cubicTo(12, 6, 14.5f, 4.3f, 17, 5.5f); heart.cubicTo(21.5f, 8, 21, 14, 12, 20.5f); heart.close();
                 canvas.drawPath(heart, paint);
+                break;
+            }
+            case POWER: {
+                // A power symbol: an open ring with a bar through the gap.
+                paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(2f);
+                canvas.drawArc(4.5f, 5, 19.5f, 20, -55, 290, false, paint);
+                canvas.drawLine(12, 3, 12, 11.5f, paint);
                 break;
             }
             case RESEARCH: {

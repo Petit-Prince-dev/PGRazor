@@ -34,7 +34,7 @@ public final class AutoRaidPreferencesTest {
         p.goldenRazzBerry = false; eq(AutoRaidPreferences.BERRY_NONE, p.berryMode());
 
         // Tier summary: no bits is "any"; bits render in display order.
-        eq("Any tier", AutoRaidPreferences.tierSummary(AutoRaidPreferences.TIER_ANY));
+        eq("Tous les niveaux", AutoRaidPreferences.tierSummary(AutoRaidPreferences.TIER_ANY));
         eq(AutoRaidPreferences.TIER_LABELS[0] + ", " + AutoRaidPreferences.TIER_LABELS[3],
             AutoRaidPreferences.tierSummary(AutoRaidPreferences.TIER_ONE_STAR | AutoRaidPreferences.TIER_MEGA));
         eq(AutoRaidPreferences.TIER_LABELS[6], AutoRaidPreferences.tierSummary(AutoRaidPreferences.TIER_ULTRA_BEAST));
@@ -62,7 +62,7 @@ public final class AutoRaidPreferencesTest {
         bad.maxDistanceKm = 3; reject(bad::validate); bad.maxDistanceKm = -1; reject(bad::validate);
         for (int km : AutoRaidPreferences.DISTANCE_CHOICES_KM) { bad.maxDistanceKm = km; bad.validate(); }
         bad.maxDistanceKm = 0;
-        eq("No limit", AutoRaidPreferences.distanceSummary(0)); eq("5 km", AutoRaidPreferences.distanceSummary(5));
+        eq("Sans limite", AutoRaidPreferences.distanceSummary(0)); eq("5 km", AutoRaidPreferences.distanceSummary(5));
         bad.bosses = "5,3"; reject(bad::validate);   // valid IDs but not canonical
         bad.bosses = "abc"; reject(bad::validate);   // not parseable
         bad.bosses = null; reject(bad::validate);    // never null in a launchable config

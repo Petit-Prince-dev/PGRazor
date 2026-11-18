@@ -12,7 +12,7 @@ public final class ShinyScanPreferences {
     public static final int[] LIMIT_CHOICES = {2000, 5000, 8000, 0};
     public static final int LIMIT_DEFAULT = 8000;
     public static final int SPEED_CAREFUL = 0, SPEED_NORMAL = 1, SPEED_FAST = 2;
-    public static final String[] SPEED_LABELS = {"Careful", "Normal", "Fast"};
+    public static final String[] SPEED_LABELS = {"Prudent", "Normal", "Rapide"};
     /** Least time between two checks, and how many may wait for an answer at once, per speed. */
     private static final int[] GAP_MS = {2000, 700, 300}, IN_FLIGHT = {1, 2, 3};
     private static final int NO_LIMIT_BUDGET = 1000000;
@@ -33,7 +33,7 @@ public final class ShinyScanPreferences {
         for (int choice : LIMIT_CHOICES) if (choice == limit) return true;
         return false;
     }
-    public static String limitSummary(int limit) { return limit <= 0 ? "No limit" : limit + " in 24 hours"; }
+    public static String limitSummary(int limit) { return limit <= 0 ? "Sans limite" : limit + " en 24 heures"; }
     public static String speedSummary(int speed) {
         return SPEED_LABELS[speed];
     }
@@ -54,10 +54,10 @@ public final class ShinyScanPreferences {
     }
 
     public synchronized void validate() {
-        if (speed < SPEED_CAREFUL || speed > SPEED_FAST) throw new IllegalArgumentException("Choose a scan speed.");
-        if (!validLimit(dailyLimit)) throw new IllegalArgumentException("Choose a daily limit.");
+        if (speed < SPEED_CAREFUL || speed > SPEED_FAST) throw new IllegalArgumentException("Choisis une vitesse de scan.");
+        if (!validLimit(dailyLimit)) throw new IllegalArgumentException("Choisis une limite quotidienne.");
         if (species == null || !AutoRaidPreferences.normalizeBosses(species).equals(species))
-            throw new IllegalArgumentException("Species must be comma-separated Dex IDs (1-2000), sorted and unique.");
+            throw new IllegalArgumentException("Les espèces doivent être des n° de Pokédex (1-2000) séparés par des virgules, triés et uniques.");
     }
 
     private static int number(Properties p, String key, int fallback, int min, int max) {

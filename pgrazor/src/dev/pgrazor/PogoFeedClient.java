@@ -107,12 +107,12 @@ public final class PogoFeedClient {
      * block it by name) while the API host is not. The token is saved and also returned.
      */
     public String exchangeDiscordCode(String code) throws Exception {
-        if (code == null || code.isEmpty() || code.length() > 512) throw new FeedException("Invalid sign-in code.");
+        if (code == null || code.isEmpty() || code.length() > 512) throw new FeedException("Code de connexion invalide.");
         long requestEpoch; synchronized(requestLock) { requestEpoch = epoch; }
         JSONObject body = new JSONObject().put("code", code);
         Object raw = send("POST", API + "/auth/discord/callback", body, null, requestEpoch);
         String token = findToken(raw, 0);
-        if (token == null) throw new FeedException("Sign-in finished but no session came back. Try again.");
+        if (token == null) throw new FeedException("Connexion terminée mais aucune session renvoyée. Réessaie.");
         saveSession(token);
         return token;
     }
@@ -141,7 +141,7 @@ public final class PogoFeedClient {
     /** Stores the site JWT (value of {@code localStorage["jwt"]} after Discord sign-in). */
     public void saveSession(String token) throws Exception {
         if (token == null || token.trim().isEmpty())
-            throw new FeedException("Invalid session token.");
+            throw new FeedException("Jeton de session invalide.");
         synchronized(requestLock) { session.save(token.trim()); }
     }
 
@@ -226,7 +226,7 @@ public final class PogoFeedClient {
     public JSONObject postJson(String path, JSONObject body) throws Exception {
         long requestEpoch; synchronized(requestLock) { requestEpoch = epoch; }
         Object raw = send("POST", API + path, body, session.token(), requestEpoch);
-        if (!(raw instanceof JSONObject)) throw new FeedException("The search service returned an unexpected response.");
+        if (!(raw instanceof JSONObject)) throw new FeedException("Le service de recherche a renvoyé une réponse inattendue.");
         return (JSONObject) raw;
     }
 
@@ -234,7 +234,7 @@ public final class PogoFeedClient {
     public JSONObject getJson(String path) throws Exception {
         long requestEpoch; synchronized(requestLock) { requestEpoch = epoch; }
         Object raw = send("GET", API + path, null, session.token(), requestEpoch);
-        if (!(raw instanceof JSONObject)) throw new FeedException("The service returned an unexpected response.");
+        if (!(raw instanceof JSONObject)) throw new FeedException("Le service a renvoyé une réponse inattendue.");
         return (JSONObject) raw;
     }
 
@@ -243,13 +243,13 @@ public final class PogoFeedClient {
         String tier = resp.optString("tier", "");
         int cap = resp.optInt("cap", 0);
         if (!tier.isEmpty()) {
-            note.append("Tier: ").append("vip".equals(tier) ? "VIP" : "logged_in".equals(tier) ? "Logged in" : "Guest");
-            if (cap > 0) note.append(" · cap ").append(cap).append(" per search");
+            note.append("Niveau : ").append("vip".equals(tier) ? "VIP" : "logged_in".equals(tier) ? "Connecté" : "Invité");
+            if (cap > 0) note.append(" · limite ").append(cap).append(" par recherche");
         }
         long wait = revealWaitMs();
         if (wait > 0) {
             if (note.length() > 0) note.append('\n');
-            note.append("Coordinate lookup limit reached · available again in ~").append((wait + 59999) / 60000).append(" min");
+            note.append("Limite de recherche de coordonnées atteinte · de nouveau dispo dans ~").append((wait + 59999) / 60000).append(" min");
         }
         return note.toString();
     }
@@ -262,7 +262,7 @@ public final class PogoFeedClient {
         long now = System.currentTimeMillis();
 
         Object raw = send("POST", API + "/search", body, token, requestEpoch);
-        if (!(raw instanceof JSONObject)) throw new FeedException("The search service returned an unexpected response.");
+        if (!(raw instanceof JSONObject)) throw new FeedException("Le service de recherche a renvoyé une réponse inattendue.");
         JSONObject resp = (JSONObject) raw;
         JSONArray results = resp.optJSONArray("results");
         if (results == null) results = new JSONArray();
@@ -287,13 +287,13 @@ public final class PogoFeedClient {
         String tier = resp.optString("tier", "");
         int cap = resp.optInt("cap", 0);
         if (!tier.isEmpty()) {
-            note.append("Tier: ").append("vip".equals(tier) ? "VIP" : "logged_in".equals(tier) ? "Logged in" : "Guest");
-            if (cap > 0) note.append(" · cap ").append(cap).append(" per search");
+            note.append("Niveau : ").append("vip".equals(tier) ? "VIP" : "logged_in".equals(tier) ? "Connecté" : "Invité");
+            if (cap > 0) note.append(" · limite ").append(cap).append(" par recherche");
         }
         long wait = revealWaitMs();
         if (wait > 0) {
             if (note.length() > 0) note.append('\n');
-            note.append("Coordinate lookup limit reached · available again in ~").append((wait + 59999) / 60000).append(" min");
+            note.append("Limite de recherche de coordonnées atteinte · de nouveau dispo dans ~").append((wait + 59999) / 60000).append(" min");
         }
         return new PogoFeedData.Snapshot(parsed.entries, now, PogoFeedData.DEFAULT_REFRESH_SECONDS, note.toString());
     }
@@ -309,15 +309,15 @@ public final class PogoFeedClient {
      * Throws {@link FeedException} 429 with {@code retryAfterMs} while the lookup quota is used up.
      */
     public double[] revealOne(String encounterId, String code) throws Exception {
-        if (code == null || code.isEmpty()) throw new FeedException("This result has no lookup code.");
+        if (code == null || code.isEmpty()) throw new FeedException("Ce résultat n'a pas de code de recherche.");
         double[] cached;
         synchronized(requestLock) { cached = encounterId == null ? null : revealCache.get(encounterId); }
         if (cached != null) return cached;
         long wait = revealWaitMs();
-        if (wait > 0) throw new FeedException("Lookup limit reached. Try again in ~" + ((wait + 59999) / 60000) + " min.", 429, wait);
+        if (wait > 0) throw new FeedException("Limite de recherche atteinte. Réessaie dans ~" + ((wait + 59999) / 60000) + " min.", 429, wait);
         long requestEpoch; synchronized(requestLock) { requestEpoch = epoch; }
         double[] ll = reveal(encounterId, code, session.token(), requestEpoch);
-        if (ll == null) throw new FeedException("The service returned no coordinates for this result.");
+        if (ll == null) throw new FeedException("Le service n'a renvoyé aucune coordonnée pour ce résultat.");
         return ll;
     }
 
@@ -447,8 +447,8 @@ public final class PogoFeedClient {
         String fast = r.isNull("fast_move") ? "" : r.optString("fast_move", "");
         String charge = r.isNull("charge_move") ? "" : r.optString("charge_move", "");
         if (!fast.isEmpty() || !charge.isEmpty()) extra.add(fast + " / " + charge);
-        if (r.optBoolean("weather_boosted", false)) extra.add("Boosted");
-        if (r.optBoolean("background", false)) extra.add("Background");
+        if (r.optBoolean("weather_boosted", false)) extra.add("Boosté");
+        if (r.optBoolean("background", false)) extra.add("Fond spécial");
         JSONObject pvp = r.optJSONObject("pvp");
         if (pvp != null) {
             String lg = pvp.optString("league", "");
@@ -459,8 +459,8 @@ public final class PogoFeedClient {
                 StringBuilder pv = new StringBuilder(LEAGUE_ULTRA.equals(lg) ? "UL" : "GL").append(" #").append(rank);
                 if (pvp.has("percent")) pv.append(String.format(Locale.US, " (%.1f%%)", pvp.optDouble("percent")));
                 String evo = pvp.optString("pokemon_name", "");
-                if (!evo.isEmpty() && !evo.equals(r.optString("pokemon_name", ""))) pv.append(" as ").append(evo);
-                if (pvp.has("cp")) pv.append(" CP ").append(pvp.optInt("cp"));
+                if (!evo.isEmpty() && !evo.equals(r.optString("pokemon_name", ""))) pv.append(" en ").append(evo);
+                if (pvp.has("cp")) pv.append(" PC ").append(pvp.optInt("cp"));
                 extra.add(0, pv.toString());
             }
         }
@@ -499,7 +499,7 @@ public final class PogoFeedClient {
 
     private static void requireLocation(double lat, double lon) throws FeedException {
         if (!Double.isFinite(lat) || !Double.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180)
-            throw new FeedException("That location is outside the valid range.");
+            throw new FeedException("Cette position est hors de la plage valide.");
     }
 
     // ------------------------------------------------------------------ transport
@@ -517,7 +517,7 @@ public final class PogoFeedClient {
 
     private Object request(String method, String target, JSONObject body, String bearer, long requestEpoch) throws Exception {
         URL url = new URL(target);
-        if (!"https".equalsIgnoreCase(url.getProtocol())) throw new FeedException("A secure connection is required.");
+        if (!"https".equalsIgnoreCase(url.getProtocol())) throw new FeedException("Une connexion sécurisée est nécessaire.");
         HttpURLConnection http = (HttpURLConnection) url.openConnection();
         synchronized(requestLock) { checkActive(requestEpoch); connection = http; }
         try {
@@ -539,15 +539,15 @@ public final class PogoFeedClient {
 
             int code = http.getResponseCode();
             if (code >= 300 && code < 400)
-                throw new FeedException("The service redirected the request; refusing to continue.", code, 0);
+                throw new FeedException("Le service a redirigé la requête ; abandon.", code, 0);
             if (code == 401)
-                throw new FeedException("Your session has expired. Please sign in again.", 401, 0);
+                throw new FeedException("Ta session a expiré. Reconnecte-toi.", 401, 0);
             if (code == 403)
-                throw new FeedException("Your account doesn't have access to this feature.", 403, 0);
+                throw new FeedException("Ton compte n'a pas accès à cette fonction.", 403, 0);
             if (code == 429)
-                throw new FeedException("Too many requests. Please wait before refreshing.", 429, retryAfterMs(http, readError(http)));
+                throw new FeedException("Trop de requêtes. Patiente avant d'actualiser.", 429, retryAfterMs(http, readError(http)));
             if (code < 200 || code >= 300)
-                throw new FeedException("The search service is unavailable (HTTP " + code + ").", code, 0);
+                throw new FeedException("Le service de recherche est indisponible (HTTP " + code + ").", code, 0);
 
             byte[] bytes;
             try (InputStream in = http.getInputStream()) { bytes = readBounded(in); }
@@ -556,15 +556,15 @@ public final class PogoFeedClient {
             try {
                 json = responseStr.startsWith("[") ? new JSONArray(responseStr) : new JSONObject(responseStr);
             } catch (JSONException e) {
-                throw new FeedException("The search service returned an unexpected response.", code, 0);
+                throw new FeedException("Le service de recherche a renvoyé une réponse inattendue.", code, 0);
             }
             synchronized(requestLock) { checkActive(requestEpoch); }
             return json;
         } catch (SocketTimeoutException e) {
-            throw new FeedException("The search service timed out. Please retry.");
+            throw new FeedException("Le service de recherche n'a pas répondu à temps. Réessaie.");
         } catch (IOException e) {
             synchronized(requestLock) { checkActive(requestEpoch); }
-            throw new FeedException("Could not reach the search service.");
+            throw new FeedException("Impossible de joindre le service de recherche.");
         } finally {
             try { http.disconnect(); } catch (Exception ignored) { }
             if (connection == http) connection = null;
@@ -572,7 +572,7 @@ public final class PogoFeedClient {
     }
 
     private void checkActive(long requestEpoch) throws FeedException {
-        if (epoch != requestEpoch || Thread.currentThread().isInterrupted()) throw new FeedException("Request cancelled.");
+        if (epoch != requestEpoch || Thread.currentThread().isInterrupted()) throw new FeedException("Requête annulée.");
     }
 
     /** Retry-After header, else {@code detail.retry_after} (seconds) from the JSON error body. */

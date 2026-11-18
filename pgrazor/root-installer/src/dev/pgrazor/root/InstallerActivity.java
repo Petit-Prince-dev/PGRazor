@@ -50,14 +50,14 @@ public final class InstallerActivity extends Activity {
         screen.setBackgroundColor(Color.rgb(9, 17, 29));
 
         TextView heading = new TextView(this);
-        heading.setText("PGRazor Root installer");
+        heading.setText("Installateur PGRazor Root");
         heading.setTextSize(24);
         heading.setTextColor(Color.WHITE);
         screen.addView(heading);
 
         TextView subtitle = new TextView(this);
-        subtitle.setText("Installs PGRazor into the official Pokémon GO " + InstallerConfig.GAME_VERSION_NAME
-            + " as a Zygisk module. The game stays unmodified; changes require your confirmation.");
+        subtitle.setText("Installe PGRazor dans le Pokémon GO officiel " + InstallerConfig.GAME_VERSION_NAME
+            + " en module Zygisk. Le jeu n'est pas modifié ; chaque changement demande ta confirmation.");
         subtitle.setTextSize(14);
         subtitle.setTextColor(Color.LTGRAY);
         subtitle.setPadding(0, 8, 0, 16);
@@ -66,20 +66,20 @@ public final class InstallerActivity extends Activity {
         statusView = new TextView(this);
         statusView.setTextSize(15);
         statusView.setTextColor(Color.WHITE);
-        statusView.setText("Checking device…");
+        statusView.setText("Vérification de l'appareil…");
         screen.addView(statusView);
 
         LinearLayout buttons = new LinearLayout(this);
         buttons.setOrientation(LinearLayout.HORIZONTAL);
         buttons.setPadding(0, 16, 0, 8);
-        checkButton = addButton(buttons, "Re-check", v -> refresh());
-        installButton = addButton(buttons, "Install module", v -> confirmInstall());
+        checkButton = addButton(buttons, "Revérifier", v -> refresh());
+        installButton = addButton(buttons, "Installer le module", v -> confirmInstall());
         installButton.setEnabled(false);
         screen.addView(buttons);
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
-        toggleButton = addButton(actions, "PGRazor: On / Off", v -> confirmToggle());
-        rebootButton = addButton(actions, "Reboot", v -> confirmReboot());
+        toggleButton = addButton(actions, "PGRazor : On / Off", v -> confirmToggle());
+        rebootButton = addButton(actions, "Redémarrer", v -> confirmReboot());
         toggleButton.setEnabled(false);
         rebootButton.setEnabled(false);
         screen.addView(actions);
@@ -115,33 +115,33 @@ public final class InstallerActivity extends Activity {
     private void refresh() {
         if (busy) return;
         setBusy(true);
-        statusView.setText("Checking device…");
-        log("Checking root, Zygisk, module and game status…");
+        statusView.setText("Vérification de l'appareil…");
+        log("Vérification du root, de Zygisk, du module et du jeu…");
         new Thread(() -> {
             RootStatus detected = RootStatus.detect(this);
             handler.post(() -> {
                 status = detected;
                 statusView.setText(detected.describe());
-                if (!detected.rawProbe.isEmpty()) log("Probe:\n" + detected.rawProbe);
-                toggleButton.setText(detected.toggleSupported ? (detected.injectionOff ? "PGRazor: Off" : "PGRazor: On") : "PGRazor: On / Off");
-                rebootButton.setText(detected.rebootNeeded ? "Reboot to activate" : "Reboot");
-                if (detected.rebootNeeded && !pendingLogged) log("A module change is pending. Reboot to activate it.");
+                if (!detected.rawProbe.isEmpty()) log("Analyse :\n" + detected.rawProbe);
+                toggleButton.setText(detected.toggleSupported ? (detected.injectionOff ? "PGRazor : Off" : "PGRazor : On") : "PGRazor : On / Off");
+                rebootButton.setText(detected.rebootNeeded ? "Redémarrer pour activer" : "Redémarrer");
+                if (detected.rebootNeeded && !pendingLogged) log("Un changement de module est en attente. Redémarre pour l'activer.");
                 pendingLogged = detected.rebootNeeded;
                 if (!detected.rooted) {
-                    log("No root access. Grant root to this app in your root manager, then Re-check.");
+                    log("Pas d'accès root. Autorise cette appli dans ton gestionnaire root, puis Revérifier.");
                 } else if (!detected.managerSupported) {
-                    log("No supported root manager (needs Magisk 27+, KernelSU or APatch).");
+                    log("Aucun gestionnaire root compatible (Magisk 27+, KernelSU ou APatch requis).");
                 } else {
                     if (!"Enabled".equals(detected.zygiskLabel) && !detected.zygiskLabel.startsWith("Enabled (") && !detected.zygiskLabel.startsWith("Configured (")) {
-                        log("Zygisk is required. PGRazor will not load until Zygisk is active: " + detected.zygiskLabel);
+                        log("Zygisk est requis. PGRazor ne se chargera pas tant que Zygisk n'est pas actif : " + detected.zygiskLabel);
                     }
                     if (detected.gameInstalled && !detected.gameCertTrusted) {
-                        log("The installed Pokémon GO is not Niantic-signed. Use the official app; PGRazor stays off otherwise.");
+                        log("Le Pokémon GO installé n'est pas signé par Niantic. Utilise l'appli officielle ; sinon PGRazor reste désactivé.");
                     } else if (detected.gameInstalled && !detected.gameVersionMatch) {
-                        log("Installed game is not " + InstallerConfig.GAME_VERSION_NAME
-                            + ". The module installs, but PGRazor stays off until the versions match.");
+                        log("Le jeu installé n'est pas en " + InstallerConfig.GAME_VERSION_NAME
+                            + ". Le module s'installe, mais PGRazor reste désactivé tant que les versions ne correspondent pas.");
                     } else if (!detected.gameInstalled) {
-                        log("Pokémon GO is not installed. The module installs, but there is nothing for it to load into yet.");
+                        log("Pokémon GO n'est pas installé. Le module s'installe, mais il n'a encore rien dans quoi se charger.");
                     }
                 }
                 setBusy(false);
@@ -152,18 +152,18 @@ public final class InstallerActivity extends Activity {
     private void confirmInstall() {
         if (busy || status == null || !status.canInstall()) return;
         new AlertDialog.Builder(this)
-            .setTitle("Install PGRazor Root module?")
-            .setMessage("This installs the Zygisk module with " + status.managerLabel
-                + ". The module only loads into the official Pokémon GO and takes effect after a reboot.")
-            .setPositiveButton("Install", (dialog, which) -> install())
-            .setNegativeButton("Cancel", null)
+            .setTitle("Installer le module PGRazor Root ?")
+            .setMessage("Ceci installe le module Zygisk avec " + status.managerLabel
+                + ". Le module se charge uniquement dans le Pokémon GO officiel et prend effet après un redémarrage.")
+            .setPositiveButton("Installer", (dialog, which) -> install())
+            .setNegativeButton("Annuler", null)
             .show();
     }
 
     private void install() {
         if (busy || status == null || !status.canInstall()) return;
         setBusy(true);
-        log("Installing module with " + status.managerLabel + "…");
+        log("Installation du module avec " + status.managerLabel + "…");
         final RootStatus target = status;
         new Thread(() -> {
             RootShell.Result result;
@@ -172,7 +172,7 @@ public final class InstallerActivity extends Activity {
                 zip = extractModule();
             } catch (IOException copyFailed) {
                 handler.post(() -> {
-                    log("Could not stage the module: " + copyFailed.getMessage());
+                    log("Impossible de préparer le module : " + copyFailed.getMessage());
                     setBusy(false);
                 });
                 return;
@@ -182,13 +182,13 @@ public final class InstallerActivity extends Activity {
             handler.post(() -> {
                 if (!outcome.output.isEmpty()) log(outcome.output);
                 if (outcome.ok()) {
-                    log("Module installed. Tap Reboot to activate it.");
+                    log("Module installé. Touche Redémarrer pour l'activer.");
                 } else if (outcome.timedOut) {
-                    log("Install result is unknown. The root manager may still be working; check it before attempting another install.");
+                    log("Résultat de l'installation inconnu. Le gestionnaire root travaille peut-être encore ; vérifie-le avant de retenter.");
                 } else if (!outcome.started) {
-                    log("Install could not run: " + outcome.output);
+                    log("Impossible de lancer l'installation : " + outcome.output);
                 } else {
-                    log("Install failed (exit " + outcome.code + "). See the output above.");
+                    log("Échec de l'installation (code " + outcome.code + "). Vois la sortie ci-dessus.");
                 }
                 setBusy(false);
                 refresh();
@@ -200,11 +200,11 @@ public final class InstallerActivity extends Activity {
         if (busy || status == null || !status.canToggle()) return;
         final boolean on = status.injectionOff;
         new AlertDialog.Builder(this)
-            .setTitle(on ? "Turn PGRazor on?" : "Turn PGRazor off?")
+            .setTitle(on ? "Activer PGRazor ?" : "Désactiver PGRazor ?")
             .setMessage("Pok\u00e9mon GO will be closed. PGRazor will be " + (on ? "on" : "off")
-                + " the next time you open it. No reboot needed.")
-            .setPositiveButton(on ? "Turn on" : "Turn off", (dialog, which) -> setInjection(on))
-            .setNegativeButton("Cancel", null).show();
+                + " à la prochaine ouverture. Pas besoin de redémarrer.")
+            .setPositiveButton(on ? "Activer" : "Désactiver", (dialog, which) -> setInjection(on))
+            .setNegativeButton("Annuler", null).show();
     }
 
     private void setInjection(boolean on) {
@@ -215,10 +215,10 @@ public final class InstallerActivity extends Activity {
             RootShell.Result result = target.setInjection(on);
             handler.post(() -> {
                 if (!result.output.isEmpty()) log(result.output);
-                if (result.ok()) log("PGRazor is " + (on ? "on" : "off (module stays installed)")
-                    + ". Open Pok\u00e9mon GO when ready.");
-                else log(result.timedOut ? "Switch result is unknown; re-checking the module state."
-                    : "Could not confirm the change. See the output above.");
+                if (result.ok()) log("PGRazor est " + (on ? "on" : "désactivé (le module reste installé)")
+                    + ". Ouvre Pok\u00e9mon GO quand tu veux.");
+                else log(result.timedOut ? "Résultat du changement inconnu ; nouvelle vérification de l'état du module."
+                    : "Impossible de confirmer le changement. Vois la sortie ci-dessus.");
                 setBusy(false);
                 refresh();
             });
@@ -228,12 +228,12 @@ public final class InstallerActivity extends Activity {
     private void confirmReboot() {
         if (busy || status == null || !status.rooted) return;
         new AlertDialog.Builder(this)
-            .setTitle("Reboot now?")
-            .setMessage(status.rebootNeeded ? "Zygisk reads its module list only at boot. Reboot to activate the pending PGRazor Root change." : "Reboot this device now? Pok\u00e9mon GO and other apps will close.")
-            .setPositiveButton("Reboot", (dialog, which) -> {
+            .setTitle("Redémarrer maintenant ?")
+            .setMessage(status.rebootNeeded ? "Zygisk ne lit sa liste de modules qu'au démarrage. Redémarre pour activer le changement PGRazor Root en attente." : "Redémarrer l'appareil maintenant ? Pok\u00e9mon GO et les autres applis vont se fermer.")
+            .setPositiveButton("Redémarrer", (dialog, which) -> {
                 if (busy || status == null || !status.rooted) return;
                 setBusy(true);
-                log("Rebooting…");
+                log("Redémarrage…");
                 new Thread(() -> {
                     RootShell.Result result = RootStatus.reboot();
                     handler.post(() -> {
@@ -242,7 +242,7 @@ public final class InstallerActivity extends Activity {
                     });
                 }, "pgrazor-root-reboot").start();
             })
-            .setNegativeButton("Later", null)
+            .setNegativeButton("Plus tard", null)
             .show();
     }
 
@@ -257,8 +257,8 @@ public final class InstallerActivity extends Activity {
             while ((n = in.read(buffer)) != -1) os.write(buffer, 0, n);
             os.getFD().sync();
         }
-        if (out.exists() && !out.delete()) throw new IOException("Cannot replace " + out);
-        if (!temp.renameTo(out)) throw new IOException("Cannot stage " + out);
+        if (out.exists() && !out.delete()) throw new IOException("Impossible de remplacer " + out);
+        if (!temp.renameTo(out)) throw new IOException("Impossible de préparer " + out);
         return out;
     }
 

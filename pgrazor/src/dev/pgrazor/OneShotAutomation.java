@@ -11,7 +11,7 @@ public final class OneShotAutomation {
     private static boolean incense,remote,hold;
     private static int nanab,razz,pinapReserve;
     private static boolean pinap;
-    private static String incenseMessage="Activate Daily Adventure Incense in game, then start a session.",remoteMessage="Ready";
+    private static String incenseMessage="Active l'Encens Aventure du Jour en jeu, puis lance une session.",remoteMessage="Prêt";
     public static synchronized boolean incenseRunning(){return incense;}
     public static synchronized boolean remoteFeedRunning(){return remote;}
     public static synchronized boolean idleBlocked(){return incense||hold;}
@@ -21,24 +21,24 @@ public final class OneShotAutomation {
         if(incense){
             long seconds=Math.max(0,(deadline-SystemClock.elapsedRealtime())/1000);
             long meters=Math.round(Math.max(0,2625-Control.engine.routeProgress().remainingMeters));
-            return "Incense "+(seconds/60)+":"+String.format(java.util.Locale.US,"%02d",seconds%60)+" · "+meters+" m";
+            return "Encens "+(seconds/60)+":"+String.format(java.util.Locale.US,"%02d",seconds%60)+" · "+meters+" m";
         }
         return remote?remoteMessage:incenseMessage;
     }
     public static synchronized String incenseStatus(){
         if(!incense)return incenseMessage;
         long seconds=Math.max(0,(deadline-SystemClock.elapsedRealtime())/1000);
-        return incenseMessage+" · "+(seconds/60)+":"+String.format(java.util.Locale.US,"%02d",seconds%60)+" remaining";
+        return incenseMessage+" · "+(seconds/60)+":"+String.format(java.util.Locale.US,"%02d",seconds%60)+" restant";
     }
     public static synchronized String remoteFeedStatus(){return remoteMessage;}
     private static void ready(){
-        if(!Control.automationReady())throw new IllegalStateException("Wait for the game and location to be ready.");
-        if(AutoRaid.running()||incense||remote||BatchEvolutionSettings.enabled()||GiftBatchSettings.running())throw new IllegalStateException("Finish or stop the current automation first.");
+        if(!Control.automationReady())throw new IllegalStateException("Attends que le jeu et la position soient prêts.");
+        if(AutoRaid.running()||incense||remote||BatchEvolutionSettings.enabled()||GiftBatchSettings.running())throw new IllegalStateException("Termine ou arrête d'abord l'automatisation en cours.");
     }
     public static synchronized void startIncense(double heading){
-        if(!Double.isFinite(heading)||heading<0||heading>=360)throw new IllegalArgumentException("Heading must be 0–359 degrees.");
+        if(!Double.isFinite(heading)||heading<0||heading>=360)throw new IllegalArgumentException("La direction doit être entre 0 et 359 degrés.");
         ready();
-        if(Control.engine.walking||Control.gameRoutesRunning()||Control.automationPlanning())throw new IllegalStateException("Stop your current walk or Route first.");
+        if(Control.engine.walking||Control.gameRoutesRunning()||Control.automationPlanning())throw new IllegalStateException("Arrête d'abord ta marche ou ta Route en cours.");
         double lat=Math.toRadians(Control.currentLatitude()),lon=Math.toRadians(Control.currentLongitude());
         double b=Math.toRadians(heading),d=2625.0/6371008.8;
         double target=Math.asin(Math.sin(lat)*Math.cos(d)+Math.cos(lat)*Math.sin(d)*Math.cos(b));
@@ -47,7 +47,7 @@ public final class OneShotAutomation {
         Control.walkRoute(new double[][]{{Math.toDegrees(target),(Math.toDegrees(dest)+540)%360-180}});
         Control.engine.speed(10.5);route=Control.engine.activeRouteToken();
         token++;hold=false;incense=true;deadline=SystemClock.elapsedRealtime()+900000;
-        incenseMessage="Walking; starting bird observer";
+        incenseMessage="Marche ; lancement de l'observateur d'oiseaux";
     }
     private static void finishIncense(String message,boolean birdHold){
         if(incense&&Control.engine.routeGeneration()==route){
@@ -56,29 +56,29 @@ public final class OneShotAutomation {
         }
         incense=false;hold=birdHold;incenseMessage=message;Control.saveState();
     }
-    public static synchronized void stopIncense(){finishIncense("Session stopped",false);}
+    public static synchronized void stopIncense(){finishIncense("Session arrêtée",false);}
     public static synchronized void startRemoteFeed(int n,int r,boolean p,int pr){
-        if(n<0||r<0||pr<0||n>1000||r>1000||pr>1000)throw new IllegalArgumentException("Reserves must be 0–1000.");
+        if(n<0||r<0||pr<0||n>1000||r>1000||pr>1000)throw new IllegalArgumentException("Les réserves doivent être entre 0 et 1000.");
         ready();
-        if(GymAutomationSettings.running()||SmartCatchSettings.gymSpinActive())throw new IllegalStateException("Stop Gym automation and VGP+ gym spinning before starting this batch.");
+        if(GymAutomationSettings.running()||SmartCatchSettings.gymSpinActive())throw new IllegalStateException("Arrête l'automatisation d'arène et le spin d'arène VGP+ avant de lancer ce lot.");
         token++;nanab=n;razz=r;pinap=p;pinapReserve=pr;remote=true;remoteDeadline=SystemClock.elapsedRealtime()+1800000;
-        remoteMessage="Finding your deployed defenders";
+        remoteMessage="Recherche de tes défenseurs placés";
     }
-    public static synchronized void stopRemoteFeed(){remote=false;remoteMessage="Stopping; any submitted feed will finish once.";}
+    public static synchronized void stopRemoteFeed(){remote=false;remoteMessage="Arrêt ; un nourrissage déjà envoyé se terminera une fois.";}
     public static synchronized String config(){
         tick(false);
         return "1|"+token+"|"+(remote?1:0)+"|"+nanab+"|"+razz+"|"+(pinap?1:0)+"|"+pinapReserve+"|"+(incense?1:0);
     }
     public static synchronized void tick(boolean manual){
         if(incense){
-            if(!Control.automationReady())finishIncense("Session stopped: game or location unavailable",true);
-            else if(manual||Control.engine.routeGeneration()!=route)finishIncense("Session stopped: movement changed",false);
-            else if(SystemClock.elapsedRealtime()>=deadline||!Control.engine.walking)finishIncense("Session complete",true);
-            else if(Control.engine.speedKmh!=10.5)finishIncense("Session stopped: speed changed",false);
+            if(!Control.automationReady())finishIncense("Session arrêtée : jeu ou position indisponible",true);
+            else if(manual||Control.engine.routeGeneration()!=route)finishIncense("Session arrêtée : le déplacement a changé",false);
+            else if(SystemClock.elapsedRealtime()>=deadline||!Control.engine.walking)finishIncense("Session terminée",true);
+            else if(Control.engine.speedKmh!=10.5)finishIncense("Session arrêtée : la vitesse a changé",false);
         }else if(manual)hold=false;
         if(remote&&(!Control.automationReady()||SystemClock.elapsedRealtime()>=remoteDeadline))stopRemoteFeed();
     }
-    public static synchronized void reset(){if(incense)finishIncense("Session stopped",false);remote=false;hold=false;token++;remoteMessage="Ready";}
+    public static synchronized void reset(){if(incense)finishIncense("Session arrêtée",false);remote=false;hold=false;token++;remoteMessage="Prêt";}
     public static synchronized void publish(String kind,String detail){
         try{
             JSONObject data=new JSONObject(detail);
@@ -91,11 +91,11 @@ public final class OneShotAutomation {
                 incenseMessage=data.optString("message","Encounter opening requested");
             }else if(incense&&"incense-bird".equals(kind)){
                 Control.setVgpEnabled(false);
-                finishIncense("Galarian bird found! Walking and VGP stopped. Handle the encounter manually.",true);
+                finishIncense("Oiseau de Galar trouvé ! Marche et VGP arrêtés. Gère la rencontre à la main.",true);
                 notifyBird();
             }else if(incense&&"incense-session".equals(kind)){
                 if("error".equals(data.optString("phase"))){Control.setVgpEnabled(false);finishIncense(data.optString("message","Observer unavailable"),true);}
-                else incenseMessage="Walking; watching for Galarian birds";
+                else incenseMessage="Marche ; à l'affût des oiseaux de Galar";
             }
         }catch(Exception ignored){}
     }
@@ -103,7 +103,7 @@ public final class OneShotAutomation {
         new android.os.Handler(android.os.Looper.getMainLooper()).post(()->{
             android.app.Activity activity=Control.accountActivity();
             if(activity==null||activity.isFinishing())return;
-            if(!Control.overlaysHidden())android.widget.Toast.makeText(activity,"Galarian bird found — walking and VGP stopped",android.widget.Toast.LENGTH_LONG).show();
+            if(!Control.overlaysHidden())android.widget.Toast.makeText(activity,"Oiseau de Galar trouvé — marche et VGP arrêtés",android.widget.Toast.LENGTH_LONG).show();
             try{
                 final android.media.ToneGenerator tone=new android.media.ToneGenerator(android.media.AudioManager.STREAM_NOTIFICATION,90);
                 tone.startTone(android.media.ToneGenerator.TONE_PROP_BEEP2,1000);

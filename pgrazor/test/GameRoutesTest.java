@@ -104,9 +104,9 @@ public final class GameRoutesTest {
         check(c.acceptSnapshot(snap(REWARD)), "Reward snapshot accepted");
         c.tick(true);
         check(!c.running(), "Stopped after the bounded completion");
-        check(c.status().contains("Done"), "Done status after completion");
+        check(c.status().contains("Terminé"), "Done status after completion");
 
-        check(c.takeRewardNotice().startsWith("Route rewards received:"), "Confirmed reward has a notice");
+        check(c.takeRewardNotice().startsWith("Récompenses de Route reçues :"), "Confirmed reward has a notice");
         check(c.takeRewardNotice().isEmpty(), "Reward notice consumed once");
         check(!c.lastReward().isEmpty(), "Last reward retained for details");
         // A repeated reward snapshot must not re-trigger or double count.
@@ -135,7 +135,7 @@ public final class GameRoutesTest {
         c.acceptSnapshot("{" + cooling + ",\"current\":null}");
         c.start(3);
         check(!c.running(), "No eligible route while on cooldown");
-        check(c.status().contains("No eligible"), "Reports no eligible routes");
+        check(c.status().contains("Aucune route éligible"), "Reports no eligible routes");
     }
 
     /** Manual joystick input replaces the engine route; automation must cancel, not forge progress. */
@@ -150,7 +150,7 @@ public final class GameRoutesTest {
         engine.input(1, 0);                        // user grabs the joystick
         c.tick(true);
         check(!c.running(), "Automation cancelled on manual takeover");
-        check(c.status().toLowerCase().contains("stopped") || c.status().toLowerCase().contains("took over"),
+        check(c.status().toLowerCase().contains("arrêté") || c.status().toLowerCase().contains("repris"),
             "Takeover reported in status");
     }
 
@@ -162,7 +162,7 @@ public final class GameRoutesTest {
         c.start(1);
         c.tick(false);
         check(!c.running(), "Automation stops when the host lease is lost");
-        check(c.status().toLowerCase().contains("host"), "Host-unavailable status");
+        check(c.status().toLowerCase().contains("hôte"), "Host-unavailable status");
     }
 
     private static void refusesOverActiveRoute() {
@@ -172,7 +172,7 @@ public final class GameRoutesTest {
         c.acceptSnapshot(snap(STARTED)); // a game Route is already active
         c.start(2);
         check(!c.running(), "Does not start over an active game Route");
-        check(c.status().toLowerCase().contains("finish") || c.status().toLowerCase().contains("cancel"),
+        check(c.status().toLowerCase().contains("termine") || c.status().toLowerCase().contains("annule"),
             "Asks the user to finish or cancel first");
     }
 

@@ -12,7 +12,7 @@ final class AccountsDialog {
         LinearLayout body=new LinearLayout(ui);body.setOrientation(1);int pad=MapTheme.dp(activity,16);body.setPadding(pad,pad,pad,pad);
         TextView status=new TextView(ui);status.setText(AccountProfiles.status());status.setTextSize(16);body.addView(status);
         TextView explanation=new TextView(ui);
-        explanation.setText("Each account keeps its settings, location and saved sign-in. Switching restarts the game. Sign in once per account; expired sessions may require sign-in again.");
+        explanation.setText("Chaque compte garde ses réglages, sa position et sa connexion enregistrée. Changer de compte relance le jeu. Connecte-toi une fois par compte ; une session expirée peut demander de se reconnecter.");
         explanation.setPadding(0,pad,0,pad);body.addView(explanation);
         ScrollView scroll=new ScrollView(ui);LinearLayout rows=new LinearLayout(ui);rows.setOrientation(1);scroll.addView(rows);body.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         AccountProfileStore store=AccountProfiles.store();
@@ -26,24 +26,24 @@ final class AccountsDialog {
                 TextView coords=new TextView(ui);coords.setText(String.format(Locale.US,"%.5f, %.5f",location.latitude,location.longitude));row.addView(coords);
             }catch(Exception ignored){}
             LinearLayout actions=new LinearLayout(ui);actions.setGravity(Gravity.END);row.addView(actions);
-            Button rename=new Button(ui);rename.setText("Rename");actions.addView(rename);
-            rename.setOnClickListener(v->{EditText name=new EditText(ui);name.setSingleLine(true);name.setText(profile.label);new AlertDialog.Builder(ui).setTitle("Account name").setView(name).setNegativeButton("Cancel",null).setPositiveButton("Save",(d,w)->{String value=name.getText().toString();AccountProfiles.rename(profile.id,value,()->label.setText(value));}).show();});
-            Button change=new Button(ui);change.setText("Switch");change.setEnabled(AccountProfiles.canSwitch()&&!profile.id.equals(AccountProfiles.currentId()));actions.addView(change);
+            Button rename=new Button(ui);rename.setText("Renommer");actions.addView(rename);
+            rename.setOnClickListener(v->{EditText name=new EditText(ui);name.setSingleLine(true);name.setText(profile.label);new AlertDialog.Builder(ui).setTitle("Nom du compte").setView(name).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer",(d,w)->{String value=name.getText().toString();AccountProfiles.rename(profile.id,value,()->label.setText(value));}).show();});
+            Button change=new Button(ui);change.setText("Changer");change.setEnabled(AccountProfiles.canSwitch()&&!profile.id.equals(AccountProfiles.currentId()));actions.addView(change);
             if(!profile.id.equals(AccountProfiles.currentId()))switches.add(change);
             change.setOnClickListener(v->confirm(activity,profile));rows.addView(row);
-            Button delete=new Button(ui);delete.setText("Delete");delete.setEnabled(AccountProfiles.canDelete(profile.id));actions.addView(delete);deletions.put(delete,profile.id);
-            delete.setContentDescription(profile.id.equals(AccountProfiles.currentId())?"Switch accounts before deleting the current account":"Delete saved account");
-            delete.setOnClickListener(v->new AlertDialog.Builder(ui).setTitle("Delete "+profile.label+"?")
-                .setMessage("Remove this saved sign-in, settings, location, favorites and routes from this device? Your Pokémon GO account will not be deleted.")
-                .setNegativeButton("Cancel",null).setPositiveButton("Delete",(d,w)->AccountProfiles.delete(activity,profile.id,()->{switches.remove(change);deletions.remove(delete);rows.removeView(row);})).show());
+            Button delete=new Button(ui);delete.setText("Supprimer");delete.setEnabled(AccountProfiles.canDelete(profile.id));actions.addView(delete);deletions.put(delete,profile.id);
+            delete.setContentDescription(profile.id.equals(AccountProfiles.currentId())?"Switch accounts before deleting the current account":"Supprimer le compte enregistré");
+            delete.setOnClickListener(v->new AlertDialog.Builder(ui).setTitle("Supprimer "+profile.label+"?")
+                .setMessage("Retirer de cet appareil cette connexion enregistrée, les réglages, la position, les favoris et les routes ? Ton compte Pokémon GO ne sera pas supprimé.")
+                .setNegativeButton("Annuler",null).setPositiveButton("Supprimer",(d,w)->AccountProfiles.delete(activity,profile.id,()->{switches.remove(change);deletions.remove(delete);rows.removeView(row);})).show());
         }
-        Button add=new Button(ui);add.setText("Add account");add.setEnabled(AccountProfiles.canSwitch());body.addView(add);
-        Button reset=new Button(ui);reset.setText("Reset sign-in choices");body.addView(reset);
-        reset.setOnClickListener(v->new AlertDialog.Builder(ui).setTitle("Reset sign-in choices?")
-            .setMessage("The game will restart and ask for your date of birth again. Enter your own date of birth to see the sign-in methods available to you.")
-            .setNegativeButton("Cancel",null).setPositiveButton("Reset",(d,w)->AccountProfiles.resetSignIn()).show());
-        add.setOnClickListener(v->{EditText label=new EditText(ui);label.setSingleLine(true);label.setHint("Account name");new AlertDialog.Builder(ui).setTitle("Add account").setMessage("Create a separate profile, then sign in with Google or PTC.").setView(label).setNegativeButton("Cancel",null).setPositiveButton("Continue",(d,w)->{try{String name=label.getText().toString().trim();AccountProfiles.add(activity,name.isEmpty()?"New account":name);}catch(Exception error){Toast.makeText(activity,"Could not add account",Toast.LENGTH_SHORT).show();}}).show();});
-        AlertDialog dialog=new AlertDialog.Builder(ui).setTitle("Accounts").setView(body).setPositiveButton("Close",null).create();
+        Button add=new Button(ui);add.setText("Ajouter un compte");add.setEnabled(AccountProfiles.canSwitch());body.addView(add);
+        Button reset=new Button(ui);reset.setText("Réinitialiser les choix de connexion");body.addView(reset);
+        reset.setOnClickListener(v->new AlertDialog.Builder(ui).setTitle("Réinitialiser les choix de connexion ?")
+            .setMessage("Le jeu va redémarrer et redemander ta date de naissance. Saisis ta vraie date de naissance pour voir les méthodes de connexion disponibles.")
+            .setNegativeButton("Annuler",null).setPositiveButton("Réinitialiser",(d,w)->AccountProfiles.resetSignIn()).show());
+        add.setOnClickListener(v->{EditText label=new EditText(ui);label.setSingleLine(true);label.setHint("Nom du compte");new AlertDialog.Builder(ui).setTitle("Ajouter un compte").setMessage("Crée un profil séparé, puis connecte-toi avec Google ou PTC.").setView(label).setNegativeButton("Annuler",null).setPositiveButton("Continuer",(d,w)->{try{String name=label.getText().toString().trim();AccountProfiles.add(activity,name.isEmpty()?"New account":name);}catch(Exception error){Toast.makeText(activity,"Impossible d'ajouter le compte",Toast.LENGTH_SHORT).show();}}).show();});
+        AlertDialog dialog=new AlertDialog.Builder(ui).setTitle("Comptes").setView(body).setPositiveButton("Fermer",null).create();
         android.os.Handler handler=new android.os.Handler(android.os.Looper.getMainLooper());
         Runnable refresh=new Runnable(){public void run(){
             if(!dialog.isShowing())return;
@@ -58,8 +58,8 @@ final class AccountsDialog {
         DialogLifecycle.bind(activity,dialog,()->handler.removeCallbacksAndMessages(null));dialog.show();
     }
     private static void confirm(Activity activity,AccountProfileStore.Profile profile){
-        new AlertDialog.Builder(MapTheme.wrap(activity)).setTitle("Switch to "+profile.label+"?")
-            .setMessage("Movement and automation will stop. The game will restart with this account's saved sign-in and location. Sign in if this account hasn't been saved yet.")
-            .setNegativeButton("Cancel",null).setPositiveButton("Switch",(d,w)->AccountProfiles.switchTo(activity,profile.id)).show();
+        new AlertDialog.Builder(MapTheme.wrap(activity)).setTitle("Passer à "+profile.label+"?")
+            .setMessage("Les déplacements et automatisations vont s'arrêter. Le jeu va redémarrer avec la connexion et la position enregistrées de ce compte. Connecte-toi si ce compte n'a pas encore été enregistré.")
+            .setNegativeButton("Annuler",null).setPositiveButton("Changer",(d,w)->AccountProfiles.switchTo(activity,profile.id)).show();
     }
 }

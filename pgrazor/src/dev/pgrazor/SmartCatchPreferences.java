@@ -19,15 +19,15 @@ public final class SmartCatchPreferences {
     }
     private static boolean validBerry(int id){for(int n:BERRIES)if(n==id)return true;return false;}
     public static String normalizeSpecies(String value){
-        if(value==null||value.length()>10000)throw new IllegalArgumentException("Enter at most 200 species IDs.");
+        if(value==null||value.length()>10000)throw new IllegalArgumentException("Entre au plus 200 n° d'espèces.");
         if(value.trim().isEmpty())return "";
         String[] parts=value.split(",",-1);
-        if(parts.length>200)throw new IllegalArgumentException("Enter at most 200 species IDs.");
+        if(parts.length>200)throw new IllegalArgumentException("Entre au plus 200 n° d'espèces.");
         TreeSet<Integer> ids=new TreeSet<>();
         for(String part:parts){
             int id;
-            try{id=Integer.parseInt(part.trim());}catch(NumberFormatException e){throw new IllegalArgumentException("Use comma-separated National Dex IDs (1–2000).");}
-            if(id<1||id>2000)throw new IllegalArgumentException("Species IDs must be 1–2000.");
+            try{id=Integer.parseInt(part.trim());}catch(NumberFormatException e){throw new IllegalArgumentException("Utilise des n° de Pokédex national séparés par des virgules (1–2000).");}
+            if(id<1||id>2000)throw new IllegalArgumentException("Les n° d'espèces doivent être entre 1 et 2000.");
             ids.add(id);
         }
         StringBuilder out=new StringBuilder();
@@ -94,7 +94,7 @@ public final class SmartCatchPreferences {
         Properties normalized=new Properties();candidate.write(normalized);
         boolean species="CandySpecies".equals(suffix)||"CatchSpecies".equals(suffix);
         if(!value.equals(normalized.getProperty("smartCatch"+suffix)) && !species)
-            throw new IllegalArgumentException("Invalid smart catch "+suffix);
+            throw new IllegalArgumentException("Capture intelligente invalide : "+suffix);
         if(species)p.setProperty("smartCatch"+suffix,normalizeSpecies(value));
         read(p);
     }

@@ -16,33 +16,33 @@ public final class GymAutomationSettings {
     private GymAutomationSettings() {}
     private static final GymAutomationPreferences preferences=new GymAutomationPreferences();
     private static final Object lock=new Object();
-    private static volatile String status="Gym automation off",guardReason="",backendStatus="";
+    private static volatile String status="Automatisation d'arène désactivée",guardReason="",backendStatus="";
     public static void publish(String detail){try{backendStatus=new org.json.JSONObject(detail).optString("message","Waiting");status=backendStatus;}catch(Exception ignored){}}
     public static String status(){return guardReason.isEmpty()?status:guardReason;}
     /** Short, stable label for Pad's status pill beneath the icon. */
     public static String overlayStatus(){
         stopForCooldown();
-        if(!guardReason.isEmpty())return guardReason.contains("cooldown")?"Cooldown":"Choose an action";
+        if(!guardReason.isEmpty())return guardReason.contains("cooldown")?"Cooldown":"Choisis une action";
         if(!preferences.running())return "Off";
         String raw=status.toLowerCase(java.util.Locale.US);
-        if(raw.contains("paused")||raw.contains("failure"))return "Paused";
-        if(raw.contains("bag full")||raw.contains("item bag full"))return "Bag full";
-        if(raw.contains("deploying"))return "Deploying defender";
-        if(raw.contains("deployed"))return "Defender deployed";
-        if(raw.contains("feeding"))return "Feeding berries";
-        if(raw.contains("berry accepted"))return "Berry accepted";
-        if(raw.contains("berry declined"))return "Berry declined";
-        if(raw.contains("selecting"))return "Selecting defender";
-        if(raw.contains("reserve"))return "Berry reserves reached";
-        if(raw.contains("map readiness"))return "Waiting for map";
-        if(raw.contains("inventory update"))return "Waiting for inventory";
+        if(raw.contains("paused")||raw.contains("failure"))return "En pause";
+        if(raw.contains("bag full")||raw.contains("item bag full"))return "Sac plein";
+        if(raw.contains("deploying"))return "Placement du défenseur";
+        if(raw.contains("deployed"))return "Défenseur placé";
+        if(raw.contains("feeding"))return "Don de baies";
+        if(raw.contains("berry accepted"))return "Baie acceptée";
+        if(raw.contains("berry declined"))return "Baie refusée";
+        if(raw.contains("selecting"))return "Choix du défenseur";
+        if(raw.contains("reserve"))return "Réserves de baies atteintes";
+        if(raw.contains("map readiness"))return "En attente de la carte";
+        if(raw.contains("inventory update"))return "En attente de l'inventaire";
         if(raw.contains("waiting")||raw.contains("nearby")||raw.contains("nearest")
-            ||raw.contains("eligible"))return "Waiting for gym";
-        if(raw.contains("rejected")||raw.contains("declined"))return "Action declined";
-        return "Starting";
+            ||raw.contains("eligible"))return "En attente de l'arène";
+        if(raw.contains("rejected")||raw.contains("declined"))return "Action refusée";
+        return "Démarrage";
     }
     public static void init(Context context) {}
-    public static void read(Properties p){synchronized(lock){preferences.read(p);guardReason="";backendStatus="";status="Gym automation off";}}
+    public static void read(Properties p){synchronized(lock){preferences.read(p);guardReason="";backendStatus="";status="Automatisation d'arène désactivée";}}
     public static void write(Properties p){preferences.write(p);}
     public static String config(){stopForCooldown();return preferences.config(SmartCatchSettings.gymSpinActive());}
     public static boolean enabled(){stopForCooldown();return (preferences.running()&&(preferences.deploy()||preferences.feed()))||SmartCatchSettings.gymSpinActive();}
@@ -56,7 +56,7 @@ public final class GymAutomationSettings {
         boolean changed=false;
         synchronized(lock){
             if(preferences.stopForCooldown(true)){
-                guardReason="Gym automation stopped: cooldown active. Tap to restart after it ends.";
+                guardReason="Automatisation d'arène arrêtée : cooldown actif. Touche pour relancer après la fin.";
                 changed=true;
             }
         }
@@ -65,26 +65,26 @@ public final class GymAutomationSettings {
     /** Tap control for both selected actions; no automatic resume after cooldown. */
     public static boolean toggleRunning(){return setRunning(!running());}
     private static boolean setRunning(boolean on){
-        if(on&&AutoRaid.running()){guardReason="Stop Auto-Raid before starting Gym automation.";return false;}
+        if(on&&AutoRaid.running()){guardReason="Arrête l'Auto-Raid avant de lancer l'automatisation d'arène.";return false;}
         stopForCooldown();
         boolean cooldownActive=Cooldown.remaining()>0;
         synchronized(lock){
-            if(!on){preferences.stop();status="Gym automation stopped";return false;}
+            if(!on){preferences.stop();status="Automatisation d'arène arrêtée";return false;}
             if(cooldownActive){
-                guardReason="Gym automation is off: cooldown active. Try again after it ends.";
+                guardReason="Automatisation d'arène désactivée : cooldown actif. Réessaie après la fin.";
                 return false;
             }
             if(!preferences.start()){
-                guardReason="Select Deploy or Feed in Gym settings before starting.";
+                guardReason="Choisis « Placer » ou « Nourrir » dans les réglages d'arène avant de démarrer.";
                 return false;
             }
-            guardReason="";status=backendStatus.startsWith("Paused:")?backendStatus:"Waiting for gym";return true;
+            guardReason="";status=backendStatus.startsWith("Paused:")?backendStatus:"En attente de l'arène";return true;
         }
     }
     private static void set(String key,Object value){
         synchronized(lock){
             boolean wasRunning=preferences.running();preferences.set(key,String.valueOf(value));
-            if(wasRunning&&!preferences.running())status="Gym automation stopped: select Deploy or Feed to run.";
+            if(wasRunning&&!preferences.running())status="Automatisation d'arène arrêtée : choisis « Placer » ou « Nourrir ».";
             if(("Deploy".equals(key)||"Feed".equals(key))
                 &&(preferences.deploy()||preferences.feed())
                 &&guardReason.startsWith("Select Deploy"))guardReason="";
@@ -99,18 +99,18 @@ public final class GymAutomationSettings {
         int pad=MapTheme.dp(ui,16);body.setPadding(pad,pad,pad,pad);
         TextView description=new TextView(ui);
         TextView progress=new TextView(ui);progress.setText(status());body.addView(progress);
-        description.setText("Acts only within 80 m of a Gym while the game is on the map screen. It slots eligible #Gym-tagged Pokémon first; the lowest-CP fallback is used only when enabled and no eligible #Gym defender is available, and it never picks favorite, buddy, or protected Pokémon. Feeding uses Nanab before Razz and only above the reserves you set. It obeys the game's own server limits, so some actions may be declined. No dust or coin payout is promised.");body.addView(description);
-        CheckBox master=new CheckBox(ui);master.setText("Run Gym Slotter & Berry Feeder");body.addView(master);
-        CheckBox deploy=new CheckBox(ui);deploy.setText("Auto-deploy to open Gym slots");deploy.setChecked(preferences.deploy());body.addView(deploy);
+        description.setText("Agit seulement à moins de 80 m d'une Arène quand le jeu est sur la carte. Place d'abord les Pokémon éligibles étiquetés #Gym ; le secours « PC le plus bas » n'est utilisé que s'il est activé et qu'aucun défenseur #Gym n'est disponible, et ne prend jamais de favori, de copain ni de Pokémon protégé. Le nourrissage utilise les Nanab avant les Framby et seulement au-dessus des réserves choisies. Respecte les limites du serveur du jeu, certaines actions peuvent être refusées. Aucune Poussière ni Pièce n'est garantie.");body.addView(description);
+        CheckBox master=new CheckBox(ui);master.setText("Lancer le placement en arène & nourrissage");body.addView(master);
+        CheckBox deploy=new CheckBox(ui);deploy.setText("Placer automatiquement dans les places libres en Arène");deploy.setChecked(preferences.deploy());body.addView(deploy);
 
-        CheckBox feed=new CheckBox(ui);feed.setText("Auto-feed berries to your Gym defenders");feed.setChecked(preferences.feed());body.addView(feed);
-        CheckBox overlay=new CheckBox(ui);overlay.setText("Show gym automation overlay");overlay.setChecked(preferences.overlay());body.addView(overlay);
+        CheckBox feed=new CheckBox(ui);feed.setText("Nourrir automatiquement tes défenseurs d'Arène");feed.setChecked(preferences.feed());body.addView(feed);
+        CheckBox overlay=new CheckBox(ui);overlay.setText("Afficher l'overlay d'automatisation d'arène");overlay.setChecked(preferences.overlay());body.addView(overlay);
 
-        CheckBox fallback=new CheckBox(ui);fallback.setText("Allow lowest-CP fallback when no eligible #Gym defenders");fallback.setChecked(preferences.fallback());body.addView(fallback);
+        CheckBox fallback=new CheckBox(ui);fallback.setText("Autoriser le secours « PC le plus bas » sans défenseur #Gym éligible");fallback.setChecked(preferences.fallback());body.addView(fallback);
         fallback.setOnCheckedChangeListener((v,on)->{set("Fallback",on);});
         LinearLayout reserves=new LinearLayout(ui);reserves.setOrientation(LinearLayout.VERTICAL);body.addView(reserves);
-        input(activity,reserves,"Nanab Berry reserve (0–1000)",String.valueOf(preferences.nanabReserve()),value->{int n=bounded(value,1000);set("NanabReserve",n);});
-        input(activity,reserves,"Razz Berry reserve (0–1000)",String.valueOf(preferences.razzReserve()),value->{int n=bounded(value,1000);set("RazzReserve",n);});
+        input(activity,reserves,"Réserve de Baies Nanab (0–1000)",String.valueOf(preferences.nanabReserve()),value->{int n=bounded(value,1000);set("NanabReserve",n);});
+        input(activity,reserves,"Réserve de Baies Framby (0–1000)",String.valueOf(preferences.razzReserve()),value->{int n=bounded(value,1000);set("RazzReserve",n);});
         final boolean[] refreshing={false};
         Runnable update=()->{
             refreshing[0]=true;master.setChecked(running());deploy.setChecked(preferences.deploy());
@@ -126,7 +126,7 @@ public final class GymAutomationSettings {
         body.removeView(overlay);body.addView(overlay,body.indexOfChild(feed)+1);
         update.run();
         ScrollView scroll=new ScrollView(ui);scroll.addView(body);
-        AlertDialog dialog=new AlertDialog.Builder(ui).setTitle("Gym Slotter & Berry Feeder").setView(scroll).setPositiveButton("Done",null).create();
+        AlertDialog dialog=new AlertDialog.Builder(ui).setTitle("Placement en arène & nourrissage").setView(scroll).setPositiveButton("OK",null).create();
         android.os.Handler handler=new android.os.Handler(android.os.Looper.getMainLooper());
         Runnable refresh=new Runnable(){public void run(){if(dialog.isShowing()){update.run();handler.postDelayed(this,1000);}}};
         DialogLifecycle.bind(activity,dialog,()->handler.removeCallbacks(refresh));
@@ -135,7 +135,7 @@ public final class GymAutomationSettings {
     private interface Value {void set(String value);}
     private static int bounded(String value,int max){
         try{int n=Integer.parseInt(value.trim());if(n>=0&&n<=max)return n;}catch(NumberFormatException ignored){}
-        throw new IllegalArgumentException("Enter a whole number from 0 to "+max+".");
+        throw new IllegalArgumentException("Entre un nombre entier de 0 à "+max+".");
     }
     private static TextView button(LinearLayout body,String text){
         android.widget.Button b=new android.widget.Button(body.getContext());b.setText(text);b.setAllCaps(false);body.addView(b);return b;
@@ -145,7 +145,7 @@ public final class GymAutomationSettings {
         button.setOnClickListener(v->{
             Context ui=MapTheme.wrap(a);EditText edit=new EditText(ui);edit.setSingleLine(true);edit.setText(current[0]);
             edit.setInputType(InputType.TYPE_CLASS_NUMBER);
-            AlertDialog d=new AlertDialog.Builder(ui).setTitle(title).setView(edit).setPositiveButton("Save",null).setNegativeButton("Cancel",null).create();
+            AlertDialog d=new AlertDialog.Builder(ui).setTitle(title).setView(edit).setPositiveButton("Enregistrer",null).setNegativeButton("Annuler",null).create();
             DialogLifecycle.bind(a,d,null);d.setOnShowListener(x->{MapTheme.style(edit);MapTheme.styleButtons(d);d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(w->{
                 try{String value=edit.getText().toString();save.set(value);current[0]=value.trim();button.setText(title+": "+current[0]);d.dismiss();}
                 catch(IllegalArgumentException e){edit.setError(e.getMessage());}

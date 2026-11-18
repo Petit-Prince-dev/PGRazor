@@ -67,7 +67,7 @@ public final class LiveFeedFilterDialog {
         private LinearLayout content;   // repopulated on Reset / preset apply
         private TextView status;
         private final List<NumField> numbers = new ArrayList<>();
-        private Button speciesButton;   // "Choose species (N)"; label refreshed on change
+        private Button speciesButton;   // "Choisir les espèces (N)"; label refreshed on change
         private Button[] speciesModeButtons;
 
         Editor(Activity activity, Context ui, JSONObject working,
@@ -87,11 +87,11 @@ public final class LiveFeedFilterDialog {
             populate();
 
             dialog = new AlertDialog.Builder(ui)
-                .setTitle("Filters")
+                .setTitle("Filtres")
                 .setView(scroll)
-                .setPositiveButton("Apply", null)   // overridden so invalid input does not dismiss
-                .setNeutralButton("Reset", null)     // overridden so Reset does not dismiss
-                .setNegativeButton("Cancel", null)   // default dismiss: no change applied
+                .setPositiveButton("Appliquer", null)   // overridden so invalid input does not dismiss
+                .setNeutralButton("Réinitialiser", null)     // overridden so Reset does not dismiss
+                .setNegativeButton("Annuler", null)   // default dismiss: no change applied
                 .create();
             if (sink != null) sink.track(dialog);
             dialog.setOnShowListener(d -> {
@@ -127,56 +127,56 @@ public final class LiveFeedFilterDialog {
         }
 
         private void generalSection() {
-            header("General");
-            content.addView(checkbox("Show everything (overrides the filters below)", "show_all"));
+            header("Général");
+            content.addView(checkbox("Tout afficher (ignore les filtres ci-dessous)", "show_all"));
         }
 
         private void ivLevelSection() {
-            header("IV & level");
-            content.addView(numberRow("Min IV", "min_iv", 0, 100));
-            content.addView(numberRow("Max IV", "max_iv", 0, 100));
-            content.addView(numberRow("Min level", "min_level", 0, 50));
-            content.addView(numberRow("Max level", "max_level", 0, 50));
+            header("IV & niveau");
+            content.addView(numberRow("IV min", "min_iv", 0, 100));
+            content.addView(numberRow("IV max", "max_iv", 0, 100));
+            content.addView(numberRow("Niveau min", "min_level", 0, 50));
+            content.addView(numberRow("Niveau max", "max_level", 0, 50));
         }
 
         private void alwaysShowSection() {
-            header("Always show (exceptions to the filters)");
-            content.addView(checkbox("Perfect (100% IV)", "always_show_perfect"));
-            content.addView(checkbox("Zero (0% IV)", "always_show_zero"));
-            content.addView(checkbox("Rare species", "always_show_rare"));
-            content.addView(checkbox("Notable size", "always_show_size"));
+            header("Toujours afficher (exceptions aux filtres)");
+            content.addView(checkbox("Parfait (100 % IV)", "always_show_perfect"));
+            content.addView(checkbox("Zéro (0 % IV)", "always_show_zero"));
+            content.addView(checkbox("Espèces rares", "always_show_rare"));
+            content.addView(checkbox("Taille notable", "always_show_size"));
         }
 
         private void sizeSection() {
-            header("Size");
-            content.addView(checkbox("XXS filter", "filter_xxs"));
-            content.addView(checkbox("XXL filter", "filter_xxl"));
+            header("Taille");
+            content.addView(checkbox("Filtre XXS", "filter_xxs"));
+            content.addView(checkbox("Filtre XXL", "filter_xxl"));
         }
 
         private void pvpSection() {
             header("PvP");
-            content.addView(checkbox("Great League", "show_pvp_great"));
-            content.addView(checkbox("Ultra League", "show_pvp_ultra"));
+            content.addView(checkbox("Super Ligue", "show_pvp_great"));
+            content.addView(checkbox("Hyper Ligue", "show_pvp_ultra"));
             content.addView(checkbox("Little Cup", "show_pvp_little"));
-            content.addView(numberRow("Max PvP rank", "pvp_max_rank", 1, LiveFeedFilters.MAX_PVP_RANK));
-            content.addView(checkbox("PvP only (ignore IV, level and size)", "pvp_only"));
-            content.addView(caption("Lists only Pokémon ranked within the max rank in a ticked league."));
+            content.addView(numberRow("Rang PvP max", "pvp_max_rank", 1, LiveFeedFilters.MAX_PVP_RANK));
+            content.addView(checkbox("PvP uniquement (ignore IV, niveau et taille)", "pvp_only"));
+            content.addView(caption("Liste seulement les Pokémon classés sous le rang max dans une ligue cochée."));
         }
 
         private void shiniesSection() {
-            header("Shinies & backgrounds");
-            content.addView(checkbox("Shiny only", "shiny_only"));
-            content.addView(checkbox("Show my backgrounds", "show_my_backgrounds"));
-            content.addView(checkbox("Background only", "background_only"));
+            header("Shiny & fonds spéciaux");
+            content.addView(checkbox("Shiny uniquement", "shiny_only"));
+            content.addView(checkbox("Afficher mes fonds", "show_my_backgrounds"));
+            content.addView(checkbox("Fond spécial uniquement", "background_only"));
         }
 
         private void speciesSection() {
-            header("Species");
+            header("Espèces");
             LinearLayout modeRow = new LinearLayout(ui);
             modeRow.setOrientation(LinearLayout.HORIZONTAL);
             speciesModeButtons = new Button[2];
             final String[] modes = {"off", "allowlist"};
-            final String[] labels = {"All species", "Allowlist"};
+            final String[] labels = {"Toutes les espèces", "Liste autorisée"};
             for (int i = 0; i < 2; i++) {
                 final String mode = modes[i];
                 Button b = segButton(labels[i]);
@@ -185,15 +185,15 @@ public final class LiveFeedFilterDialog {
                 speciesModeButtons[i] = b;
             }
             content.addView(modeRow);
-            speciesButton = button("Choose species");
+            speciesButton = button("Choisir les espèces");
             speciesButton.setOnClickListener(v -> openSpeciesPicker());
             content.addView(speciesButton, new LinearLayout.LayoutParams(-1, dp(44)));
             refreshSpeciesButton();
         }
 
         private void presetsSection() {
-            header("Presets");
-            Button presets = button("Saved presets…");
+            header("Préréglages");
+            Button presets = button("Préréglages enregistrés…");
             presets.setOnClickListener(v -> openPresets());
             content.addView(presets, new LinearLayout.LayoutParams(-1, dp(44)));
         }
@@ -216,7 +216,7 @@ public final class LiveFeedFilterDialog {
             if (speciesButton == null) return;
             JSONArray list = working.optJSONArray("species_filter_list");
             int n = list == null ? 0 : list.length();
-            speciesButton.setText(n == 0 ? "Choose species" : "Choose species (" + n + ")");
+            speciesButton.setText(n == 0 ? "Choisir les espèces" : "Choisir les espèces (" + n + ")");
         }
 
         // ------------------------------------------------------------------ apply / reset
@@ -224,17 +224,17 @@ public final class LiveFeedFilterDialog {
         private void onApplyClicked() {
             collectNumbers();
             if (onApply != null && onApply.apply(working)) { dialog.dismiss(); return; }
-            status.setText("Some values look off (e.g. min above max). Please review and try again.");
+            status.setText("Certaines valeurs semblent incorrectes (ex. min au-dessus du max). Vérifie et réessaie.");
         }
 
         private void onResetClicked() {
             JSONObject defaults;
             try {
                 defaults = new LiveFeedFilters().toStoredJson();
-            } catch (JSONException e) { toast("Couldn't reset the filters."); return; }
+            } catch (JSONException e) { toast("Impossible de réinitialiser les filtres."); return; }
             copyAll(defaults, working); // same 21-key set; overwrite in place
             populate();
-            status.setText("Filters reset to defaults. Apply to use them.");
+            status.setText("Filtres réinitialisés. Applique pour les utiliser.");
         }
 
         /** Reads every numeric field into the working copy, clamped to its allowed range. */
@@ -256,9 +256,9 @@ public final class LiveFeedFilterDialog {
 
         /** Opens the shared species allowlist picker, wiring it to the working filter JSON. */
         private void openSpeciesPicker() {
-            PokemonSpeciesDialog.show(activity, "Species allowlist", "species", MAX_SPECIES_ID,
+            PokemonSpeciesDialog.show(activity, "Espèces autorisées", "species", MAX_SPECIES_ID,
                 this::loadSpeciesCsv, this::saveSpeciesCsv, this::refreshSpeciesMode,
-                "No species selected", sink == null ? null : sink::track);
+                "Aucune espèce sélectionnée", sink == null ? null : sink::track);
         }
 
         /** Canonical sorted comma-separated IDs from the working allowlist, restricted to the selectable range. */
@@ -305,10 +305,10 @@ public final class LiveFeedFilterDialog {
             body.setPadding(pad, dp(8), pad, 0);
 
             final EditText name = new EditText(ui);
-            name.setHint("Name this preset");
+            name.setHint("Nomme ce préréglage");
             name.setSingleLine(true);
             body.addView(name, new LinearLayout.LayoutParams(-1, dp(48)));
-            Button save = button("Save current filters");
+            Button save = button("Enregistrer les filtres actuels");
             body.addView(save, new LinearLayout.LayoutParams(-1, dp(44)));
 
             final LinearLayout listCol = new LinearLayout(ui);
@@ -319,23 +319,23 @@ public final class LiveFeedFilterDialog {
             body.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1));
 
             AlertDialog manager = new AlertDialog.Builder(ui)
-                .setTitle("Filter presets")
+                .setTitle("Préréglages de filtres")
                 .setView(body)
-                .setNegativeButton("Close", null)
+                .setNegativeButton("Fermer", null)
                 .create();
             if (sink != null) sink.track(manager);
 
             final Runnable[] rebuild = new Runnable[1];
             rebuild[0] = () -> {
                 listCol.removeAllViews();
-                if (names.isEmpty()) { listCol.addView(caption("No saved presets yet.")); }
+                if (names.isEmpty()) { listCol.addView(caption("Aucun préréglage enregistré.")); }
                 for (String n : new ArrayList<>(names)) {
                     LinearLayout row = new LinearLayout(ui);
                     row.setOrientation(LinearLayout.HORIZONTAL);
                     row.setGravity(Gravity.CENTER_VERTICAL);
                     TextView nameView = label(n, 14);
                     row.addView(nameView, new LinearLayout.LayoutParams(0, -2, 1));
-                    Button apply = button("Apply"), del = button("Delete");
+                    Button apply = button("Appliquer"), del = button("Supprimer");
                     row.addView(apply, new LinearLayout.LayoutParams(-2, dp(40)));
                     row.addView(del, new LinearLayout.LayoutParams(-2, dp(40)));
                     listCol.addView(row, new LinearLayout.LayoutParams(-1, -2));
@@ -344,7 +344,7 @@ public final class LiveFeedFilterDialog {
                         if (p != null) {
                             try { working.put("pvp_only", false); } catch (JSONException ignored) { } // older presets
                             copyAll(p, working); populate();
-                            status.setText("Preset \"" + n + "\" loaded. Apply to use it.");
+                            status.setText("Préréglage «" + n + " » chargé. Applique pour l'utiliser.");
                         }
                         manager.dismiss();
                     });
@@ -357,21 +357,21 @@ public final class LiveFeedFilterDialog {
             };
             save.setOnClickListener(v -> {
                 String n = name.getText().toString().trim();
-                if (n.isEmpty() || n.length() > 40) { toast("Use a preset name of 1 to 40 characters."); return; }
-                if (!presets.has(n) && presets.length() >= 25) { toast("You can save up to 25 presets."); return; }
+                if (n.isEmpty() || n.length() > 40) { toast("Utilise un nom de préréglage de 1 à 40 caractères."); return; }
+                if (!presets.has(n) && presets.length() >= 25) { toast("Tu peux enregistrer jusqu'à 25 préréglages."); return; }
                 collectNumbers();
                 try {
                     JSONObject validated = LiveFeedFilters.fromJson(working).toStoredJson();
                     JSONObject next = new JSONObject(presets.toString()); next.put(n, validated);
-                    if (next.toString().length() > 150000) { toast("Saved presets are too large."); return; }
+                    if (next.toString().length() > 150000) { toast("Les préréglages enregistrés sont trop gros."); return; }
                     presets.put(n, validated);
                     writePresets(presets);
                     if (!names.contains(n)) names.add(n);
                     java.util.Collections.sort(names);
                     name.setText("");
                     rebuild[0].run();
-                    toast("Preset saved.");
-                } catch (JSONException e) { toast("Couldn't save that preset."); }
+                    toast("Préréglage enregistré.");
+                } catch (JSONException e) { toast("Impossible d'enregistrer ce préréglage."); }
             });
 
             manager.setOnShowListener(d -> { MapTheme.style(body); MapTheme.styleButtons(manager); rebuild[0].run(); });

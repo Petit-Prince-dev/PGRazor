@@ -18,7 +18,7 @@ final class RouteStart {
 
     /** Index of the route point closest to the position; the earliest wins a tie. */
     static int closest(double[][] points, double latitude, double longitude) {
-        if (points == null || points.length == 0) throw new IllegalArgumentException("The route has no stops.");
+        if (points == null || points.length == 0) throw new IllegalArgumentException("La route n'a aucun arrêt.");
         int best = 0; double bestMeters = Double.MAX_VALUE;
         for (int i = 0; i < points.length; i++) {
             double d = meters(latitude, longitude, points[i][0], points[i][1]);
@@ -32,7 +32,7 @@ final class RouteStart {
      * beginning at {@code start} for a looping route.
      */
     static double[][] from(double[][] points, int start, boolean loop) {
-        if (points == null || start < 0 || start >= points.length) throw new IllegalArgumentException("Choose a stop on the route.");
+        if (points == null || start < 0 || start >= points.length) throw new IllegalArgumentException("Choisis un arrêt sur la route.");
         int count = loop ? points.length : points.length - start;
         double[][] out = new double[count][];
         for (int i = 0; i < count; i++) out[i] = points[(start + i) % points.length].clone();

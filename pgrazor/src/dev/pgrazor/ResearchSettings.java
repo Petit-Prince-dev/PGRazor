@@ -65,8 +65,8 @@ public final class ResearchSettings {
 
     static String status() {
         synchronized (LOCK) {
-            String counts = "This session: claimed " + claimed + ", removed " + removed + ", caught " + caught;
-            return message.isEmpty() ? counts : counts + "\nLast: " + message;
+            String counts = "Cette session : réclamées " + claimed + ", supprimées " + removed + ", capturés " + caught;
+            return message.isEmpty() ? counts : counts + "\nDernier : " + message;
         }
     }
 
@@ -76,28 +76,28 @@ public final class ResearchSettings {
         LinearLayout body = new LinearLayout(ui); body.setOrientation(LinearLayout.VERTICAL);
         int pad = MapTheme.dp(ui, 16); body.setPadding(pad, pad, pad, pad);
 
-        CheckBox claim = new CheckBox(ui); claim.setText("Auto-claim completed field research");
+        CheckBox claim = new CheckBox(ui); claim.setText("Réclamer auto les Études de terrain terminées");
         claim.setChecked(preferences.claim()); body.addView(claim);
         TextView claimHelp = new TextView(ui);
-        claimHelp.setText("Claims field research once its goal is met. Pokémon encounter rewards wait in the game's research view for you to catch. Special, timed and story research stay manual.");
+        claimHelp.setText("Réclame les Études de terrain une fois l'objectif atteint. Les rencontres Pokémon en récompense t'attendent dans l'écran Études du jeu. Les Études spéciales, temporaires et de l'histoire restent manuelles.");
         body.addView(claimHelp);
 
-        CheckBox remove = new CheckBox(ui); remove.setText("Auto-delete selected tasks");
+        CheckBox remove = new CheckBox(ui); remove.setText("Supprimer auto les tâches choisies");
         remove.setChecked(preferences.remove()); body.addView(remove);
         TextView removeHelp = new TextView(ui);
-        removeHelp.setText("Deletes unfinished field research whose task is ticked below. Gym bonus tasks are never deleted.");
+        removeHelp.setText("Supprime les Études de terrain non terminées dont la tâche est cochée ci-dessous. Les tâches bonus d'arène ne sont jamais supprimées.");
         body.addView(removeHelp);
 
-        CheckBox catchEncounters = new CheckBox(ui); catchEncounters.setText("Auto-catch research encounters");
+        CheckBox catchEncounters = new CheckBox(ui); catchEncounters.setText("Capturer auto les rencontres d'Études");
         catchEncounters.setChecked(preferences.catchEncounters()); body.addView(catchEncounters);
         TextView catchHelp = new TextView(ui);
-        catchHelp.setText("Catches waiting field research encounters without the encounter screen, using your VGP+ ball and throw settings. Each throw uses a ball. Caught Pokémon follow your transfer rules, including Keep All. Works alongside VGP.");
+        catchHelp.setText("Capture les rencontres d'Études de terrain en attente sans l'écran de rencontre, avec tes réglages de Ball et de lancer VGP+. Chaque lancer utilise une Ball. Les Pokémon capturés suivent tes règles de transfert, Tout garder inclus. Fonctionne avec le VGP.");
         body.addView(catchHelp);
 
-        EditText search = new EditText(ui); search.setHint("Search tasks or rewards"); search.setSingleLine(true);
+        EditText search = new EditText(ui); search.setHint("Chercher des tâches ou récompenses"); search.setSingleLine(true);
         body.addView(search);
         TextView empty = new TextView(ui);
-        empty.setText("No field research seen yet. Tasks appear here as the game gives them to you while PGRazor runs.");
+        empty.setText("Aucune Étude de terrain vue. Les tâches apparaissent ici quand le jeu te les donne pendant que PGRazor tourne.");
         body.addView(empty);
         LinearLayout list = new LinearLayout(ui); list.setOrientation(LinearLayout.VERTICAL); body.addView(list);
         TextView status = new TextView(ui); status.setText(status()); body.addView(status);
@@ -139,8 +139,8 @@ public final class ResearchSettings {
         fill[0].run();
 
         ScrollView scroll = new ScrollView(ui); scroll.addView(body);
-        AlertDialog dialog = new AlertDialog.Builder(ui).setTitle("Research").setView(scroll)
-            .setPositiveButton("Done", null).create();
+        AlertDialog dialog = new AlertDialog.Builder(ui).setTitle("Étude").setView(scroll)
+            .setPositiveButton("OK", null).create();
         Handler handler = new Handler(Looper.getMainLooper());
         Runnable refresh = new Runnable() {
             public void run() { if (dialog.isShowing()) { status.setText(status()); handler.postDelayed(this, 1000); } }
@@ -155,8 +155,8 @@ public final class ResearchSettings {
     }
 
     private static String categoryName(String category) {
-        if (ResearchPreferences.ENCOUNTER.equals(category)) return "Encounter";
-        if (ResearchPreferences.EVENT.equals(category)) return "Event";
+        if (ResearchPreferences.ENCOUNTER.equals(category)) return "Rencontre";
+        if (ResearchPreferences.EVENT.equals(category)) return "Événement";
         return "Item";
     }
 
@@ -172,7 +172,7 @@ public final class ResearchSettings {
         row.setPadding(0, MapTheme.dp(ui, 12), 0, MapTheme.dp(ui, 4));
         TextView title = new TextView(ui);
         String text = (collapsible ? (open ? "▾ " : "▸ ") : "") + categoryName(category) + " (" + templates.size() + ")";
-        if (picked > 0) text += " · " + picked + " ticked";
+        if (picked > 0) text += " · " + picked + " cochées";
         title.setText(text);
         title.setTypeface(title.getTypeface(), android.graphics.Typeface.BOLD);
         title.setPadding(0, MapTheme.dp(ui, 8), 0, MapTheme.dp(ui, 8));
@@ -182,7 +182,7 @@ public final class ResearchSettings {
         });
         row.addView(title, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         CheckBox all = new CheckBox(ui);
-        all.setText("All");
+        all.setText("Tous");
         all.setChecked(picked == templates.size());
         all.setOnCheckedChangeListener((v, on) -> {
             try { preferences.selectAll(templates, on); Control.saveSettings(); }
@@ -209,6 +209,6 @@ public final class ResearchSettings {
     }
 
     private static void toast(Activity activity, String text) {
-        Toast.makeText(activity, text == null || text.isEmpty() ? "Not saved." : text, Toast.LENGTH_SHORT).show();
+        Toast.makeText(activity, text == null || text.isEmpty() ? "Non enregistré." : text, Toast.LENGTH_SHORT).show();
     }
 }

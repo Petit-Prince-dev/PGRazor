@@ -19,7 +19,7 @@ public final class GiftBatchSettings {
 
     private static final Object LOCK = new Object();
     private static final long RUN_LIMIT_MS = 30L * 60L * 1000L;
-    private static final String DEFAULT_MESSAGE = "Sends your available gifts, then opens received gifts.";
+    private static final String DEFAULT_MESSAGE = "Envoie tes cadeaux disponibles, puis ouvre les cadeaux reçus.";
 
     private static long nextToken = System.currentTimeMillis() > 0 ? System.currentTimeMillis() : 1;
     private static long token;            // 0 when no command has ever run; identifies the current pass
@@ -52,7 +52,7 @@ public final class GiftBatchSettings {
             tick();
             String label = phase.isEmpty() ? "" : phase.substring(0, 1).toUpperCase(Locale.US) + phase.substring(1);
             return label + ": " + message
-                + "\nSent " + sent + "   Opened " + opened + "   Skipped " + skipped;
+                + "\nEnvoyés " + sent + "   Ouverts " + opened + "   Ignorés " + skipped;
         }
     }
 
@@ -78,14 +78,14 @@ public final class GiftBatchSettings {
     public static void start(boolean fullBagValue) {
         // Do not hold our lock while consulting another automation's synchronized state.
         if (!Control.giftsAllowed())
-            throw new IllegalStateException("Wait until the game is ready and gifts are available.");
+            throw new IllegalStateException("Attends que le jeu soit prêt et que des cadeaux soient disponibles.");
         if (AutoRaid.running() || OneShotAutomation.enabled() || BatchEvolutionSettings.enabled())
-            throw new IllegalStateException("Finish or stop the current Automation task first.");
+            throw new IllegalStateException("Termine ou arrête d'abord la tâche d'automatisation en cours.");
         synchronized (LOCK) {
             if (running || stopping) return;
             token = freshToken();
             running = true; stopping = false; fullBag = fullBagValue;
-            phase = "running"; message = "Starting; sending and opening gifts.";
+            phase = "running"; message = "Démarrage ; envoi et ouverture des cadeaux.";
             sent = opened = skipped = 0;
             deadline = SystemClock.elapsedRealtime() + RUN_LIMIT_MS;
         }
@@ -100,7 +100,7 @@ public final class GiftBatchSettings {
             if (!running && !stopping) return;
             if (token == 0) return;
             running = false; stopping = true; phase = "stopping";
-            message = "Stopping. A send or open already in progress may finish.";
+            message = "Arrêt. Un envoi ou une ouverture en cours peut se terminer.";
         }
     }
 
@@ -148,8 +148,8 @@ public final class GiftBatchSettings {
     /** Ends a running pass when gifts become unavailable or the 30-minute limit is reached. */
     private static void tick() {
         if (!running) return;
-        if (!Control.giftsAllowed()) requestStop("Stopping: gifts are no longer available.");
-        else if (SystemClock.elapsedRealtime() >= deadline) requestStop("Stopping: time limit reached.");
+        if (!Control.giftsAllowed()) requestStop("Arrêt : plus de cadeaux disponibles.");
+        else if (SystemClock.elapsedRealtime() >= deadline) requestStop("Arrêt : limite de temps atteinte.");
     }
 
     private static void requestStop(String why) {

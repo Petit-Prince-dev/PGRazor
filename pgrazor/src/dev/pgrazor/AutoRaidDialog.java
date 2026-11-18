@@ -38,9 +38,9 @@ public final class AutoRaidDialog {
         final org.json.JSONObject[] names = {null};
 
         TextView description = new TextView(ui);
-        description.setText("Finds the nearest matching raid the game has loaded, travels there, waits for enough players, "
-            + "then battles using your raid auto-attack settings and catches the boss. Stops at the raid limit, after a shiny "
-            + "is caught if selected, or after two consecutive losses. Stop ends the session after its current raid.");
+        description.setText("Trouve le raid correspondant le plus proche chargé par le jeu, s'y rend, attend assez de joueurs, "
+            + "puis combat avec tes réglages d'attaque auto en raid et capture le boss. S'arrête à la limite de raids, après un shiny "
+            + "capturé si choisi, ou après deux défaites de suite. « Stop » termine la session après le raid en cours.");
         body.addView(description);
 
         TextView status = new TextView(ui); body.addView(status);
@@ -54,26 +54,26 @@ public final class AutoRaidDialog {
         final TextView distance = button(body, "");
 
         final CheckBox stopShiny = new CheckBox(ui);
-        stopShiny.setText("Stop after catching a shiny (it still counts toward the maximum)"); body.addView(stopShiny);
+        stopShiny.setText("Arrêter après un shiny capturé (il compte quand même dans le maximum)"); body.addView(stopShiny);
         final CheckBox freePass = new CheckBox(ui);
-        freePass.setText("Use the free daily raid pass"); body.addView(freePass);
+        freePass.setText("Utiliser le Passe de Raid gratuit du jour"); body.addView(freePass);
         final CheckBox premiumPass = new CheckBox(ui);
-        premiumPass.setText("Use Premium Battle passes"); body.addView(premiumPass);
+        premiumPass.setText("Utiliser des Passes de Combat Premium"); body.addView(premiumPass);
         TextView passNote = new TextView(ui);
-        passNote.setText("Uses an allowed free pass before a Premium Battle Pass. Remote Raid Passes are never used.");
+        passNote.setText("Utilise un passe gratuit autorisé avant un Passe de Combat Premium. Les Passes de Raid à distance ne sont jamais utilisés.");
         body.addView(passNote);
 
         final CheckBox razzBerry = new CheckBox(ui);
-        razzBerry.setText("Use a Razz Berry on bonus catches"); body.addView(razzBerry);
+        razzBerry.setText("Utiliser une Baie Framby sur les captures bonus"); body.addView(razzBerry);
         final CheckBox goldenRazzBerry = new CheckBox(ui);
-        goldenRazzBerry.setText("Use a Golden Razz Berry on bonus catches"); body.addView(goldenRazzBerry);
+        goldenRazzBerry.setText("Utiliser une Baie Framby dorée sur les captures bonus"); body.addView(goldenRazzBerry);
         TextView berryNote = new TextView(ui);
-        berryNote.setText("Golden Razz takes priority and falls back to Razz when unavailable. Leave both unchecked to use no berries. "
-            + "Auto-Raid uses Excellent curveballs with Always Hit (never miss). Pokémon can still break out.");
+        berryNote.setText("La Framby dorée est prioritaire, sinon la Framby normale. Décoche les deux pour n'utiliser aucune baie. "
+            + "L'Auto-Raid fait des balles courbes Excellent avec « Toujours toucher ». Le Pokémon peut quand même s'échapper.");
         body.addView(berryNote);
 
-        final Button start = new Button(ui); start.setAllCaps(false); start.setText("Start"); body.addView(start);
-        final Button stop = new Button(ui); stop.setAllCaps(false); stop.setText("Stop"); body.addView(stop);
+        final Button start = new Button(ui); start.setAllCaps(false); start.setText("Démarrer"); body.addView(start);
+        final Button stop = new Button(ui); stop.setAllCaps(false); stop.setText("Arrêter"); body.addView(stop);
 
         final boolean[] refreshing = {false};
         final View[] config = {tiers, bosses, maxRaids, minPlayers, waitSeconds, travel, distance, stopShiny, freePass, premiumPass, razzBerry, goldenRazzBerry};
@@ -81,13 +81,13 @@ public final class AutoRaidDialog {
             refreshing[0] = true;
             boolean running = AutoRaid.running();
             status.setText(AutoRaid.status());
-            tiers.setText("Raid tiers: " + AutoRaidPreferences.tierSummary(draft.tierMask));
-            bosses.setText("Raid bosses: " + bossSummary(draft.bosses, names[0]));
-            maxRaids.setText("Maximum raids: " + draft.maxRaids);
-            minPlayers.setText("Minimum players in lobby: " + draft.minPlayers);
-            waitSeconds.setText("Lobby wait: " + draft.waitSeconds + " s");
-            travel.setText("Travel to raids: " + (draft.walk ? "Walk" : "Teleport"));
-            distance.setText("Stay within: " + AutoRaidPreferences.distanceSummary(draft.maxDistanceKm));
+            tiers.setText("Niveaux de raid : " + AutoRaidPreferences.tierSummary(draft.tierMask));
+            bosses.setText("Boss de raid : " + bossSummary(draft.bosses, names[0]));
+            maxRaids.setText("Raids max : " + draft.maxRaids);
+            minPlayers.setText("Joueurs min dans le lobby : " + draft.minPlayers);
+            waitSeconds.setText("Attente au lobby : " + draft.waitSeconds + " s");
+            travel.setText("Trajet vers les raids : " + (draft.walk ? "Marcher" : "Téléporter"));
+            distance.setText("Rester dans un rayon de : " + AutoRaidPreferences.distanceSummary(draft.maxDistanceKm));
             stopShiny.setChecked(draft.stopOnShiny);
             freePass.setChecked(draft.freePass);
             premiumPass.setChecked(draft.premiumPass);
@@ -101,13 +101,13 @@ public final class AutoRaidDialog {
 
         tiers.setOnClickListener(v -> tierPicker(activity, draft, update));
         bosses.setOnClickListener(v -> bossInput(activity, draft, update));
-        maxRaids.setOnClickListener(v -> intInput(activity, draft, update, "Maximum completed raids ("
+        maxRaids.setOnClickListener(v -> intInput(activity, draft, update, "Raids terminés max ("
             + AutoRaidPreferences.MAX_RAIDS_MIN + "-" + AutoRaidPreferences.MAX_RAIDS_MAX + ")",
             AutoRaidPreferences.MAX_RAIDS_MIN, AutoRaidPreferences.MAX_RAIDS_MAX, draft.maxRaids, n -> draft.maxRaids = n));
-        minPlayers.setOnClickListener(v -> intInput(activity, draft, update, "Minimum players in lobby ("
+        minPlayers.setOnClickListener(v -> intInput(activity, draft, update, "Joueurs min dans le lobby ("
             + AutoRaidPreferences.MIN_PLAYERS_MIN + "-" + AutoRaidPreferences.MIN_PLAYERS_MAX + ")",
             AutoRaidPreferences.MIN_PLAYERS_MIN, AutoRaidPreferences.MIN_PLAYERS_MAX, draft.minPlayers, n -> draft.minPlayers = n));
-        waitSeconds.setOnClickListener(v -> intInput(activity, draft, update, "Lobby wait in seconds ("
+        waitSeconds.setOnClickListener(v -> intInput(activity, draft, update, "Attente au lobby en secondes ("
             + AutoRaidPreferences.WAIT_MIN + "-" + AutoRaidPreferences.WAIT_MAX + ")",
             AutoRaidPreferences.WAIT_MIN, AutoRaidPreferences.WAIT_MAX, draft.waitSeconds, n -> draft.waitSeconds = n));
         travel.setOnClickListener(v -> travelPicker(activity, draft, update));
@@ -128,7 +128,7 @@ public final class AutoRaidDialog {
         update.run();
         ScrollView scroll = new ScrollView(ui); scroll.addView(body);
         AlertDialog dialog = new AlertDialog.Builder(ui).setTitle("Auto-Raid").setView(scroll)
-            .setPositiveButton("Done", null).create();
+            .setPositiveButton("OK", null).create();
         Handler handler = new Handler(Looper.getMainLooper());
         Runnable refresh = new Runnable() {
             public void run() { if (dialog.isShowing()) { update.run(); handler.postDelayed(this, 1000); } }
@@ -169,7 +169,7 @@ public final class AutoRaidDialog {
         EditText edit = new EditText(ui); edit.setSingleLine(true); edit.setText(String.valueOf(current));
         edit.setInputType(InputType.TYPE_CLASS_NUMBER);
         AlertDialog d = new AlertDialog.Builder(ui).setTitle(title).setView(edit)
-            .setPositiveButton("Save", null).setNegativeButton("Cancel", null).create();
+            .setPositiveButton("Enregistrer", null).setNegativeButton("Annuler", null).create();
         DialogLifecycle.bind(a, d, null);
         d.setOnShowListener(x -> { MapTheme.style(edit); MapTheme.styleButtons(d);
             d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(w -> {
@@ -177,7 +177,7 @@ public final class AutoRaidDialog {
                     int n = Integer.parseInt(edit.getText().toString().trim());
                     if (n < min || n > max) throw new NumberFormatException();
                     save.set(n); apply(a, draft, update); d.dismiss();
-                } catch (NumberFormatException e) { edit.setError("Enter a whole number from " + min + " to " + max + "."); }
+                } catch (NumberFormatException e) { edit.setError("Entre un nombre entier de " + min + " à " + max + "."); }
             });
         });
         d.show();
@@ -185,15 +185,15 @@ public final class AutoRaidDialog {
 
     private static void bossInput(Activity a, AutoRaidPreferences draft, Runnable update) {
         // Auto-Raid's picker: category browsing + bulk select, saving only the canonical boss Dex IDs.
-        PokemonSpeciesDialog.showRaid(a, "Raid bosses", "bosses", AutoRaidPreferences.MAX_BOSSES,
+        PokemonSpeciesDialog.showRaid(a, "Boss de raid", "bosses", AutoRaidPreferences.MAX_BOSSES,
             () -> draft.bosses, value -> {
                 draft.bosses = AutoRaidPreferences.normalizeBosses(value);
                 apply(a, draft, update);
-            }, null, "Any boss (no selection)");
+            }, null, "N'importe quel boss (aucune sélection)");
     }
 
     private static String bossSummary(String bosses, org.json.JSONObject names) {
-        if (bosses == null || bosses.isEmpty()) return "Any";
+        if (bosses == null || bosses.isEmpty()) return "Tous";
         String[] ids = bosses.split(",");
         StringBuilder out = new StringBuilder();
         for (int i = 0; i < Math.min(3, ids.length); i++) {
@@ -201,7 +201,7 @@ public final class AutoRaidDialog {
             String name = names == null ? "" : names.optString(ids[i], "");
             out.append(name.isEmpty() ? "#" + ids[i] : name);
         }
-        if (ids.length > 3) out.append(" +").append(ids.length - 3).append(" more");
+        if (ids.length > 3) out.append(" +").append(ids.length - 3).append(" de plus");
         return out.toString();
     }
 
@@ -209,7 +209,7 @@ public final class AutoRaidDialog {
         Context ui = MapTheme.wrap(a);
         LinearLayout body = new LinearLayout(ui); body.setOrientation(LinearLayout.VERTICAL);
         TextView help = new TextView(ui);
-        help.setText("Select the raid tiers to join. Select none to join any tier."); body.addView(help);
+        help.setText("Choisis les niveaux de raid à rejoindre. N'en choisis aucun pour tous les niveaux."); body.addView(help);
         final int[] mask = {draft.tierMask};
         for (int i = 0; i < AutoRaidPreferences.TIER_LABELS.length; i++) {
             final int bit = 1 << i;
@@ -219,8 +219,8 @@ public final class AutoRaidDialog {
             body.addView(row);
         }
         ScrollView scroll = new ScrollView(ui); scroll.addView(body);
-        AlertDialog d = new AlertDialog.Builder(ui).setTitle("Raid tiers").setView(scroll)
-            .setPositiveButton("Save", null).setNegativeButton("Cancel", null).create();
+        AlertDialog d = new AlertDialog.Builder(ui).setTitle("Niveaux de raid").setView(scroll)
+            .setPositiveButton("Enregistrer", null).setNegativeButton("Annuler", null).create();
         DialogLifecycle.bind(a, d, null);
         d.setOnShowListener(x -> { MapTheme.style(body); MapTheme.styleButtons(d);
             d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
@@ -232,11 +232,11 @@ public final class AutoRaidDialog {
 
     private static void travelPicker(Activity a, AutoRaidPreferences draft, Runnable update) {
         Context ui = MapTheme.wrap(a);
-        AlertDialog d = new AlertDialog.Builder(ui).setTitle("Travel to raids")
-            .setNegativeButton("Cancel", null).create();
+        AlertDialog d = new AlertDialog.Builder(ui).setTitle("Trajet vers les raids")
+            .setNegativeButton("Annuler", null).create();
         ChoiceList.attach(d, new String[]{
-            "Teleport\nJump straight to the raid",
-            "Walk\nMove there at walking speed"
+            "Téléporter\nAller directement au raid",
+            "Marcher\nY aller à vitesse de marche"
         }, index -> { draft.walk = index == 1; apply(a, draft, update); });
         DialogLifecycle.bind(a, d, null);
         d.setOnShowListener(x -> { MapTheme.styleButtons(d);
@@ -247,13 +247,13 @@ public final class AutoRaidDialog {
 
     private static void distancePicker(Activity a, AutoRaidPreferences draft, Runnable update) {
         Context ui = MapTheme.wrap(a);
-        AlertDialog d = new AlertDialog.Builder(ui).setTitle("Stay within")
-            .setNegativeButton("Cancel", null).create();
+        AlertDialog d = new AlertDialog.Builder(ui).setTitle("Rester dans un rayon de")
+            .setNegativeButton("Annuler", null).create();
         final int[] choices = AutoRaidPreferences.DISTANCE_CHOICES_KM;
         String[] labels = new String[choices.length];
         for (int i = 0; i < choices.length; i++)
-            labels[i] = choices[i] == 0 ? "No limit\nJoin the nearest raid wherever it is"
-                : choices[i] + " km\nOnly raids within " + choices[i] + " km of where you press Start";
+            labels[i] = choices[i] == 0 ? "Sans limite\nRejoindre le raid le plus proche où qu'il soit"
+                : choices[i] + " km\nSeulement les raids à moins de " + choices[i] + " km de l'endroit où tu appuies sur Démarrer";
         ChoiceList.attach(d, labels, index -> { draft.maxDistanceKm = choices[index]; apply(a, draft, update); });
         DialogLifecycle.bind(a, d, null);
         d.setOnShowListener(x -> { MapTheme.styleButtons(d);
@@ -267,7 +267,7 @@ public final class AutoRaidDialog {
     }
 
     private static void toast(Activity activity, String message) {
-        Toast.makeText(activity, message == null || message.isEmpty() ? "Could not update Auto-Raid." : message,
+        Toast.makeText(activity, message == null || message.isEmpty() ? "Impossible de mettre à jour l'Auto-Raid." : message,
             Toast.LENGTH_SHORT).show();
     }
 }

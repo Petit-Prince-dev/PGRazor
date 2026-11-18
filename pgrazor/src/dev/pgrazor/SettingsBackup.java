@@ -27,16 +27,16 @@ final class SettingsBackup {
     void show(){
         LinearLayout root=new LinearLayout(activity);root.setOrientation(LinearLayout.VERTICAL);
         int p=MapTheme.dp(activity,20);root.setPadding(p,p*3,p,p*2);
-        TextView title=new TextView(activity);title.setText("Settings backup");title.setTextSize(22);root.addView(title);
-        TextView detail=new TextView(activity);detail.setText("Save a backup outside the app to keep settings through reinstalls. Includes favorites and their coordinates. Login tokens, current location, cooldown history and active routes are excluded.\n\nImport replaces the included settings and favorites. VGP stays off.");detail.setPadding(0,p,0,p);root.addView(detail);
-        export=new Button(activity);export.setText("Export settings");root.addView(export);
-        restore=new Button(activity);restore.setText("Import settings");root.addView(restore);
+        TextView title=new TextView(activity);title.setText("Sauvegarde des réglages");title.setTextSize(22);root.addView(title);
+        TextView detail=new TextView(activity);detail.setText("Enregistre une sauvegarde hors de l'appli pour garder tes réglages après une réinstallation. Inclut les favoris et leurs coordonnées. Les jetons de connexion, la position actuelle, l'historique de cooldown et les routes actives sont exclus.\n\nL'import remplace les réglages et favoris inclus. Le VGP reste désactivé.");detail.setPadding(0,p,0,p);root.addView(detail);
+        export=new Button(activity);export.setText("Exporter les réglages");root.addView(export);
+        restore=new Button(activity);restore.setText("Importer les réglages");root.addView(restore);
         status=new TextView(activity);status.setPadding(0,p,0,p);root.addView(status);
-        back=new Button(activity);back.setText("Back to game");back.setOnClickListener(v->{if(dialog!=null)dialog.dismiss();else activity.finish();});root.addView(back);
+        back=new Button(activity);back.setText("Retour au jeu");back.setOnClickListener(v->{if(dialog!=null)dialog.dismiss();else activity.finish();});root.addView(back);
         export.setOnClickListener(v->pick(EXPORT));restore.setOnClickListener(v->pick(IMPORT));
         ScrollView scroll=new ScrollView(activity);scroll.addView(root);MapTheme.style(scroll);
         if(PgAssets.rooted()){
-            detail.append("\n\nRoot uses a fixed file in the game's external files folder. Copy it elsewhere before uninstalling the game; to import, place your backup at this path:\n"+rootedFile());
+            detail.append("\n\nEn root, un fichier fixe est utilisé dans le dossier de fichiers externes du jeu. Copie-le ailleurs avant de désinstaller le jeu ; pour importer, place ta sauvegarde à cet emplacement :\n"+rootedFile());
             dialog=new android.app.AlertDialog.Builder(MapTheme.wrap(activity)).setView(scroll).create();
             dialog.setCancelable(false);dialog.show();
         }else activity.setContentView(scroll);
@@ -45,39 +45,39 @@ final class SettingsBackup {
     private void pick(int code){
         if(PgAssets.rooted()){
             File file=rootedFile();
-            if(file==null){status.setText("External storage is unavailable.");return;}
+            if(file==null){status.setText("Le stockage externe est indisponible.");return;}
             new android.app.AlertDialog.Builder(MapTheme.wrap(activity))
-                .setMessage(code==EXPORT?"Replace the settings backup at "+file+"?":"Replace settings with the backup at "+file+"? VGP will stay off.")
-                .setNegativeButton("Cancel",null).setPositiveButton("Continue",(d,w)->result(code,Activity.RESULT_OK,new Intent().setData(Uri.fromFile(file)))).show();
+                .setMessage(code==EXPORT?"Remplacer la sauvegarde des réglages dans "+file+"?":"Remplacer les réglages par la sauvegarde de "+file+" ? Le VGP restera désactivé.")
+                .setNegativeButton("Annuler",null).setPositiveButton("Continuer",(d,w)->result(code,Activity.RESULT_OK,new Intent().setData(Uri.fromFile(file)))).show();
             return;
         }
         Intent i=new Intent(code==EXPORT?Intent.ACTION_CREATE_DOCUMENT:Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/json");
         if(code==EXPORT)i.putExtra(Intent.EXTRA_TITLE,"PGRazor-settings.json");
-        try{activity.startActivityForResult(i,code);}catch(android.content.ActivityNotFoundException e){status.setText("No file picker is available.");}
+        try{activity.startActivityForResult(i,code);}catch(android.content.ActivityNotFoundException e){status.setText("Aucun sélecteur de fichiers disponible.");}
     }
     void result(int request,int result,Intent data){
         if((request!=EXPORT&&request!=IMPORT)||result!=Activity.RESULT_OK||data==null||data.getData()==null)return;
         if(busy)return;busy=true;
-        Uri uri=data.getData();export.setEnabled(false);restore.setEnabled(false);back.setEnabled(false);status.setText(request==EXPORT?"Saving backup...":"Restoring backup...");
+        Uri uri=data.getData();export.setEnabled(false);restore.setEnabled(false);back.setEnabled(false);status.setText(request==EXPORT?"Saving backup...":"Restauration de la sauvegarde...");
         new Thread(()->{
             String message;
             try{
                 if(request==EXPORT){
                     byte[] bytes=snapshot(activity).toString(2).getBytes(StandardCharsets.UTF_8);
-                    if(bytes.length>LIMIT)throw new IOException("Backup is too large");
-                    try(OutputStream out=activity.getContentResolver().openOutputStream(uri,"wt")){if(out==null)throw new IOException("Cannot open destination");out.write(bytes);}
-                    message="Settings exported.";
+                    if(bytes.length>LIMIT)throw new IOException("La sauvegarde est trop grosse");
+                    try(OutputStream out=activity.getContentResolver().openOutputStream(uri,"wt")){if(out==null)throw new IOException("Impossible d'ouvrir la destination");out.write(bytes);}
+                    message="Réglages exportés.";
                 }else{
                     JSONObject document;
                     try(InputStream in=activity.getContentResolver().openInputStream(uri)){
-                        if(in==null)throw new IOException("Cannot open backup");
+                        if(in==null)throw new IOException("Impossible d'ouvrir la sauvegarde");
                         ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] buf=new byte[8192];int n;
-                        while((n=in.read(buf))!=-1){if(out.size()+n>LIMIT)throw new IOException("Backup is too large");out.write(buf,0,n);}
+                        while((n=in.read(buf))!=-1){if(out.size()+n>LIMIT)throw new IOException("La sauvegarde est trop grosse");out.write(buf,0,n);}
                         document=new JSONObject(new String(out.toByteArray(),StandardCharsets.UTF_8));
                     }
-                    restore(activity,document);message="Settings restored. Return to the game to use them. VGP is off.";
+                    restore(activity,document);message="Réglages restaurés. Retourne au jeu pour les utiliser. Le VGP est désactivé.";
                 }
-            }catch(Exception e){message="Backup failed: "+(e.getMessage()==null?"Invalid file or storage unavailable":e.getMessage());}
+            }catch(Exception e){message="Échec de la sauvegarde : "+(e.getMessage()==null?"Invalid file or storage unavailable":e.getMessage());}
             final String text=message;activity.runOnUiThread(()->{busy=false;if(activity.isFinishing()||activity.isDestroyed())return;status.setText(text);export.setEnabled(true);restore.setEnabled(true);back.setEnabled(true);});
         },"pgrazor-settings-backup").start();
     }
@@ -98,7 +98,7 @@ final class SettingsBackup {
             if(value instanceof Boolean)edit.putBoolean(key,(Boolean)value);
             else if(value instanceof Number){if(scope.equals("pgrazor-overlays"))edit.putFloat(key,((Number)value).floatValue());else edit.putInt(key,((Number)value).intValue());}
             else edit.putString(key,(String)value);
-        }if(!edit.commit())throw new IOException("Could not save settings");
+        }if(!edit.commit())throw new IOException("Impossible d'enregistrer les réglages");
     }
     private static synchronized void restore(Context context,JSONObject document)throws Exception{
         SettingsBackupRules.validate(document);JSONObject previous=snapshot(context),prefs=document.getJSONObject("preferences");

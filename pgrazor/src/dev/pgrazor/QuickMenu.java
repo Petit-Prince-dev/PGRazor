@@ -33,13 +33,15 @@ public final class QuickMenu {
         void onSettings();
         /** Asks to hide every PGRazor overlay (three fingers on screen show them again). */
         void onHideOverlays();
+        /** "Éteindre l'écran": black veil (and the panel itself on PGRazor Root) while the game keeps running. */
+        void onScreenOff();
     }
 
     static final int MAP = MenuIcon.MAP, WALK = MenuIcon.WALK, AUTOWALK = MenuIcon.AUTOWALK, FEEDS = MenuIcon.FEEDS, FAVORITES = MenuIcon.FAVORITES, TELEPORT = MenuIcon.TELEPORT,
-        ACCOUNTS = MenuIcon.ACCOUNTS, SETTINGS = MenuIcon.SETTINGS, EVENTS = MenuIcon.EVENTS, AUTOMATION = MenuIcon.AUTOMATION, HIDE = MenuIcon.HIDE, ROUTES = MenuIcon.ROUTES, RESEARCH = MenuIcon.RESEARCH;
+        ACCOUNTS = MenuIcon.ACCOUNTS, SETTINGS = MenuIcon.SETTINGS, EVENTS = MenuIcon.EVENTS, AUTOMATION = MenuIcon.AUTOMATION, HIDE = MenuIcon.HIDE, ROUTES = MenuIcon.ROUTES, RESEARCH = MenuIcon.RESEARCH, POWER = MenuIcon.POWER;
 
     // Append-only order: persisted visibility bits must not follow icon IDs (some are shared).
-    static final String[] CUSTOMIZABLE = {"Map", "Walking speed", "Autowalk", "In-game Routes", "Feeds", "Favorites", "Hotspots", "Teleport", "Switch account", "Events", "Automation", "Research", "Hide overlay"};
+    static final String[] CUSTOMIZABLE = {"Carte", "Vitesse de marche", "Autowalk", "Routes du jeu", "Flux", "Favoris", "Hotspots", "Téléportation", "Changer de compte", "Événements", "Automatisation", "Études", "Masquer l'overlay", "Éteindre l'écran"};
     private final List<View> rows = new ArrayList<>();
     private final List<Integer> visibilityBits = new ArrayList<>();
     private int appliedHidden = -1;
@@ -63,21 +65,22 @@ public final class QuickMenu {
 
         card = new LinearLayout(activity); card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(0, dp(6), 0, dp(6)); card.setElevation(dp(12));
-        card.addView(row(MAP, "Map", true, listener::onMap, 1));
-        LinearLayout walkRow = (LinearLayout) row(WALK, "Walk", true, this::onWalk, 2); walkLabel = (TextView) walkRow.getChildAt(1);
+        card.addView(row(MAP, "Carte", true, listener::onMap, 1));
+        LinearLayout walkRow = (LinearLayout) row(WALK, "Marche", true, this::onWalk, 2); walkLabel = (TextView) walkRow.getChildAt(1);
         card.addView(walkRow);
         card.addView(row(AUTOWALK, "Autowalk", true, listener::onAutoWalk, 4));
-        card.addView(row(ROUTES, "In-game Routes", true, listener::onGameRoutes, 8));
-        card.addView(row(FEEDS, "Feeds", true, listener::onFeeds, 16));
-        card.addView(row(FAVORITES, "Favorites", true, listener::onFavorites, 32));
+        card.addView(row(ROUTES, "Routes du jeu", true, listener::onGameRoutes, 8));
+        card.addView(row(FEEDS, "Flux", true, listener::onFeeds, 16));
+        card.addView(row(FAVORITES, "Favoris", true, listener::onFavorites, 32));
         card.addView(row(MAP, "Hotspots", true, listener::onHotspots, 64));
-        card.addView(row(TELEPORT, "Teleport", true, listener::onTeleport, 128));
-        card.addView(row(ACCOUNTS, "Switch account", true, listener::onAccounts, 256));
-        card.addView(row(EVENTS, "Events", true, () -> dev.pgrazor.events.EventPanel.showSelector(activity, Control.darkTheme()), 512));
-        card.addView(row(AUTOMATION, "Automation", true, () -> AutomationPanel.show(activity), 1024));
-        card.addView(row(RESEARCH, "Research", true, () -> ResearchSettings.show(activity), 2048));
-        card.addView(row(HIDE, "Hide overlay", true, listener::onHideOverlays, 4096));
-        card.addView(row(SETTINGS, "Settings", true, listener::onSettings, 0));
+        card.addView(row(TELEPORT, "Téléportation", true, listener::onTeleport, 128));
+        card.addView(row(ACCOUNTS, "Changer de compte", true, listener::onAccounts, 256));
+        card.addView(row(EVENTS, "Événements", true, () -> dev.pgrazor.events.EventPanel.showSelector(activity, Control.darkTheme()), 512));
+        card.addView(row(AUTOMATION, "Automatisation", true, () -> AutomationPanel.show(activity), 1024));
+        card.addView(row(RESEARCH, "Études", true, () -> ResearchSettings.show(activity), 2048));
+        card.addView(row(HIDE, "Masquer l'overlay", true, listener::onHideOverlays, 4096));
+        card.addView(row(POWER, "Éteindre l'écran", true, listener::onScreenOff, 8192));
+        card.addView(row(SETTINGS, "Paramètres", true, listener::onSettings, 0));
         viewport=new ScrollView(activity);viewport.setFillViewport(false);
         viewport.addView(card,new ScrollView.LayoutParams(-1,-2));
         root.addView(viewport,new FrameLayout.LayoutParams(dp(196),-2));

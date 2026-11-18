@@ -95,7 +95,7 @@ public final class MotionEngine {
     }
     private static void validatePosition(double lat, double lon) {
         if (!Double.isFinite(lat) || !Double.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180)
-            throw new IllegalArgumentException("Latitude must be -90 to 90; longitude -180 to 180.");
+            throw new IllegalArgumentException("La latitude doit être entre -90 et 90 ; la longitude entre -180 et 180.");
     }
     public synchronized void position(double lat, double lon) {
         validatePosition(lat, lon);
@@ -104,7 +104,7 @@ public final class MotionEngine {
     public synchronized void speed(double value) {
         // Exactly 0 pauses travel in place; otherwise the usual 0.5..30 km/h range applies.
         if (!Double.isFinite(value) || (value != 0 && (value < 0.5 || value > 30)))
-            throw new IllegalArgumentException("Speed must be 0 (paused) or between 0.5 and 30 km/h.");
+            throw new IllegalArgumentException("La vitesse doit être 0 (pause) ou entre 0,5 et 30 km/h.");
         speedKmh = value;if(value==0)resetIdle();
     }
     /** Explicitly start a shortest-path walk; callers must check adapter readiness. */
@@ -116,11 +116,11 @@ public final class MotionEngine {
     /** As {@link #walkRoute(double[][])}, but a looping route repeats from its first stop after the last. */
     public synchronized void walkRoute(double[][] waypoints, boolean loop) {
         if (waypoints==null || waypoints.length==0 || waypoints.length>MAX_ROUTE_STOPS)
-            throw new IllegalArgumentException("Choose between 1 and " + MAX_ROUTE_STOPS + " route stops.");
+            throw new IllegalArgumentException("Choisis entre 1 et " + MAX_ROUTE_STOPS + " arrêts de route.");
         double[][] copy=new double[waypoints.length][2];
         for (int i=0; i<waypoints.length; i++) {
             if (waypoints[i]==null || waypoints[i].length!=2)
-                throw new IllegalArgumentException("Each route stop needs latitude and longitude.");
+                throw new IllegalArgumentException("Chaque arrêt de route doit avoir une latitude et une longitude.");
             double lat=waypoints[i][0], lon=waypoints[i][1];
             validatePosition(lat,lon); copy[i][0]=lat; copy[i][1]=lon;
         }

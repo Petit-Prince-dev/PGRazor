@@ -62,7 +62,7 @@ public final class PogoFeedDialog {
     private static final int[] REFRESH_INTERVALS_SEC = {30, 60, 300, 900, 1800, 0};
     private static final String[] REFRESH_LABELS = {"30s", "1m", "5m", "15m", "30m", "Off"};
     /** PGRazorX: the same choices, spelled out for the Auto refresh picker. */
-    private static final String[] REFRESH_NAMES = {"30 seconds", "1 minute", "5 minutes", "15 minutes", "30 minutes", "Off (manual)"};
+    private static final String[] REFRESH_NAMES = {"30 secondes", "1 minute", "5 minutes", "15 minutes", "30 minutes", "Désactivé (manuel)"};
     private static final int DEFAULT_REFRESH_SECONDS = 300;
     /** A 429 always backs off at least this long regardless of a shorter server Retry-After. */
     private static final long MIN_BACKOFF_MS = 30_000L;
@@ -84,7 +84,7 @@ public final class PogoFeedDialog {
         AlertDialog dialog = new AlertDialog.Builder(ui)
             .setTitle("PoGoCoordinates")
             .setView(root)
-            .setNegativeButton("Close", null)
+            .setNegativeButton("Fermer", null)
             .create();
         Controller controller = new Controller(activity, ui, dialog, root);
         bindLifecycle(activity, dialog, controller);
@@ -237,9 +237,9 @@ public final class PogoFeedDialog {
             topBar.setOrientation(LinearLayout.HORIZONTAL);
             topBar.setPadding(dp(12), dp(8), dp(12), dp(8));
             topBar.setGravity(Gravity.CENTER_VERTICAL);
-            TextView prompt = label("Sign in with Discord on PoGoCoordinates:", 13);
+            TextView prompt = label("Connecte-toi avec Discord sur PoGoCoordinates :", 13);
             loginPrompt = prompt;
-            Button doneBtn = button("Continue to Feed");
+            Button doneBtn = button("Continuer vers le flux");
             topBar.addView(prompt, new LinearLayout.LayoutParams(0, -2, 1f));
             // "Continue to Feed" sits centred in the space beside the prompt.
             FrameLayout doneSlot = new FrameLayout(ui);
@@ -281,7 +281,7 @@ public final class PogoFeedDialog {
                         // intent://) can't complete the sign-in here, so ignore them instead of
                         // showing ERR_UNKNOWN_URL_SCHEME; the web login on the page still works.
                         if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) return false;
-                        showLoginNote("Use the email/password login on the page (opening the Discord app is not supported here).");
+                        showLoginNote("Utilise la connexion e-mail/mot de passe de la page (l'ouverture de l'appli Discord n'est pas prise en charge ici).");
                         return true;
                     }
 
@@ -289,7 +289,7 @@ public final class PogoFeedDialog {
                     public void onReceivedError(android.webkit.WebView view, android.webkit.WebResourceRequest request, android.webkit.WebResourceError error) {
                         super.onReceivedError(view, request, error);
                         if (request.isForMainFrame()) {
-                            showLoginNote("Couldn't load " + request.getUrl().getHost() + " (" + error.getDescription() + "). Check the connection, then long-press 'Continue to Feed' to reload.");
+                            showLoginNote("Impossible de charger " + request.getUrl().getHost() + " (" + error.getDescription() + "). Vérifie la connexion, puis appui long sur « Continuer vers le flux » pour recharger.");
                             Control.event("feed-login-error", request.getUrl().getHost() + ": " + error.getDescription());
                         }
                     }
@@ -340,12 +340,12 @@ public final class PogoFeedDialog {
             // Continue with the JWT if present; otherwise as a guest (the API allows anonymous search
             // with a lower result cap).
             doneBtn.setOnClickListener(v -> captureJwt(found -> {
-                if (!found) toast("Not signed in — continuing as guest (fewer results).");
+                if (!found) toast("Non connecté — on continue en invité (moins de résultats).");
                 enterFeed();
             }));
             // Long-press "Continue" reloads the sign-in page (e.g. after a network error).
             doneBtn.setOnLongClickListener(v -> {
-                if (feedWebView != null) { showLoginNote(null); feedWebView.loadUrl(client.getDiscordLoginUrl()); toast("Reloading sign-in page…"); }
+                if (feedWebView != null) { showLoginNote(null); feedWebView.loadUrl(client.getDiscordLoginUrl()); toast("Rechargement de la page de connexion…"); }
                 return true;
             });
         }
@@ -382,7 +382,7 @@ public final class PogoFeedDialog {
             if (now - lastAuthorizeResume < 4000) return false; // never loop
             lastAuthorizeResume = now;
             String target = lastAuthorizeUrl != null ? lastAuthorizeUrl : DISCORD_AUTHORIZE;
-            showLoginNote("Signed in to Discord — now tap Authorize to finish.");
+            showLoginNote("Connecté à Discord — touche maintenant Autoriser pour terminer.");
             Control.event("feed-login", "Discord landed on " + path + "; returning to authorize");
             view.stopLoading();
             view.loadUrl(target);
@@ -404,7 +404,7 @@ public final class PogoFeedDialog {
         /** Shows a sign-in hint/error above the WebView (null restores the default prompt). */
         private void showLoginNote(String note) {
             if (loginPrompt == null || closed) return;
-            loginPrompt.setText(note == null ? "Sign in with Discord on PoGoCoordinates:" : note);
+            loginPrompt.setText(note == null ? "Connecte-toi avec Discord sur PoGoCoordinates :" : note);
         }
 
         /** Checks for the site's JWT a few times after /callback (the token is saved asynchronously). */
@@ -427,10 +427,10 @@ public final class PogoFeedDialog {
             box.setOrientation(LinearLayout.VERTICAL);
             int pad = dp(18);
             box.setPadding(pad, dp(8), pad, 0);
-            TextView help = label("1. In Chrome (PC or phone) sign in at pogocoordinates.com with Discord.\n"
-                + "2. PC: press F12 → Console and run:  copy(localStorage.jwt)\n"
-                + "   Phone: in the address bar type  javascript:prompt('token',localStorage.jwt)  and copy the text.\n"
-                + "3. Paste it below.", 12);
+            TextView help = label("1. Dans Chrome (PC ou téléphone), connecte-toi sur pogocoordinates.com avec Discord.\n"
+                + "2. PC : appuie sur F12 → Console et lance :  copy(localStorage.jwt)\n"
+                + "   Téléphone : dans la barre d'adresse tape  javascript:prompt('token',localStorage.jwt)  et copie le texte.\n"
+                + "3. Colle-le ci-dessous.", 12);
             box.addView(help);
             EditText input = new EditText(ui);
             input.setHint("eyJ…");
@@ -439,26 +439,26 @@ public final class PogoFeedDialog {
             noAutofill(input);
             box.addView(input);
             AlertDialog ask = new AlertDialog.Builder(ui)
-                .setTitle("Sign in with a token")
+                .setTitle("Se connecter avec un jeton")
                 .setView(box)
-                .setPositiveButton("Use token", null)
-                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Utiliser le jeton", null)
+                .setNegativeButton("Annuler", null)
                 .create();
             trackOwn(ask);
             ask.setOnShowListener(d -> {
                 FeedTheme.style(box); FeedTheme.styleGameButtons(box); FeedTheme.styleButtons(ask);
                 ask.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
                     String token = input.getText().toString().trim().replaceAll("^\"|\"$", "");
-                    if (!token.startsWith("eyJ") || token.split("\\.").length != 3) { input.setError("That doesn't look like a token (it starts with eyJ…)."); return; }
+                    if (!token.startsWith("eyJ") || token.split("\\.").length != 3) { input.setError("Ça ne ressemble pas à un jeton (il commence par eyJ…)."); return; }
                     net.execute(() -> {
                         boolean ok;
                         try { client.saveSession(token); ok = true; } catch (Exception e) { ok = false; }
                         final boolean saved = ok;
                         main.post(() -> {
                             if (closed) return;
-                            if (!saved) { toast("Couldn't save the token."); return; }
+                            if (!saved) { toast("Impossible d'enregistrer le jeton."); return; }
                             ask.dismiss(); suppressAutoLogin = false;
-                            toast("Signed in with token.");
+                            toast("Connecté avec le jeton.");
                             enterFeed();
                         });
                     });
@@ -493,13 +493,13 @@ public final class PogoFeedDialog {
             view.stopLoading();
             if (exchangingCode || closed) return true;
             exchangingCode = true;
-            showLoginNote("Finishing sign-in…");
+            showLoginNote("Finalisation de la connexion…");
             final int g = generation;
             net.execute(() -> {
                 String error = null;
                 try { client.exchangeDiscordCode(code); }
-                catch (PogoFeedClient.FeedException fe) { error = safeMessage(fe, "Sign-in failed. Try again."); }
-                catch (Exception e) { error = "Couldn't reach PoGoCoordinates to finish signing in."; }
+                catch (PogoFeedClient.FeedException fe) { error = safeMessage(fe, "Échec de la connexion. Réessaie."); }
+                catch (Exception e) { error = "Impossible de joindre PoGoCoordinates pour finir la connexion."; }
                 final String failure = error;
                 main.post(() -> {
                     exchangingCode = false;
@@ -507,11 +507,11 @@ public final class PogoFeedDialog {
                     if (g != generation) { net.execute(client::logout); return; }
                     Control.event("feed-login", failure == null ? "PoGoCoordinates signed in" : "PoGoCoordinates sign-in failed");
                     if (failure != null) {
-                        showLoginNote(failure + " Long-press 'Continue to Feed' to start again.");
+                        showLoginNote(failure + " Appui long sur « Continuer vers le flux » pour recommencer.");
                         return;
                     }
                     suppressAutoLogin = false;
-                    toast("Signed in to PoGoCoordinates.");
+                    toast("Connecté à PoGoCoordinates.");
                     if (showingLogin) enterFeed();
                 });
             });
@@ -572,19 +572,19 @@ public final class PogoFeedDialog {
             LinearLayout top = new LinearLayout(ui);
             top.setOrientation(LinearLayout.VERTICAL);
             // SEARCH: radius, filters, auto refresh and the account, as game list rows in a white card.
-            top.addView(header("Search", null, null));
+            top.addView(header("Recherche", null, null));
             LinearLayout search = card(top);
-            radiusRow = FeedUi.button(ui, "Radius");
+            radiusRow = FeedUi.button(ui, "Rayon");
             radiusRow.setOnClickListener(v -> editRadius());
-            filtersRow = FeedUi.button(ui, "Filters");
+            filtersRow = FeedUi.button(ui, "Filtres");
             filtersRow.setOnClickListener(v -> openFilters());
-            intervalRow = FeedUi.button(ui, "Auto refresh");
+            intervalRow = FeedUi.button(ui, "Actualisation auto");
             intervalRow.setOnClickListener(v -> {
                 // PGRazorX: pick the interval from a list; the current one carries a tick.
                 String[] names = new String[REFRESH_LABELS.length];
                 for (int i = 0; i < names.length; i++)
                     names[i] = REFRESH_NAMES[i] + (i == refreshIntervalIndex ? "   \u2713" : "");
-                AlertDialog dlg = FeedTheme.showListDialog(ui, "Auto refresh", names, (d, which) -> {
+                AlertDialog dlg = FeedTheme.showListDialog(ui, "Actualisation auto", names, (d, which) -> {
                     if (which == refreshIntervalIndex) return;
                     boolean wasManual = manualMode;
                     refreshIntervalIndex = which;
@@ -594,8 +594,8 @@ public final class PogoFeedDialog {
                     if (wasManual && !manualMode) lastFetchStartedElapsed = SystemClock.elapsedRealtime();
                     prefs.edit().putInt("refreshIntervalIndex", refreshIntervalIndex).apply();
                     updateRows();
-                    toast(manualMode ? "Auto refresh off. Use Refresh to search."
-                                     : "Auto refresh every " + REFRESH_LABELS[refreshIntervalIndex]);
+                    toast(manualMode ? "Actualisation auto désactivée. Utilise Actualiser pour chercher."
+                                     : "Actualisation auto toutes les " + REFRESH_LABELS[refreshIntervalIndex]);
                     updateStatus();
                 });
                 trackOwn(dlg);
@@ -605,8 +605,8 @@ public final class PogoFeedDialog {
                 });
                 dlg.show();
             });
-            Button account = FeedUi.button(ui, "Account");
-            ((FeedUi.RowButton) account).setValue("Log out");
+            Button account = FeedUi.button(ui, "Compte");
+            ((FeedUi.RowButton) account).setValue("Se déconnecter");
             account.setOnClickListener(v -> logout());
             for (Button row : new Button[]{radiusRow, filtersRow, intervalRow, account})
                 search.addView(row, new LinearLayout.LayoutParams(-1, -2));
@@ -616,7 +616,7 @@ public final class PogoFeedDialog {
             updateRows();
 
             // RESULTS: its own header (with Refresh); the rows below form one white card.
-            top.addView(header("Results", "↻ Refresh", this::requestFetch));
+            top.addView(header("Résultats", "↻ Actualiser", this::requestFetch));
             ListView list = new ListView(ui);
             list.setDivider(null); // rows draw their own inset hairline inside the card
             list.setVerticalScrollBarEnabled(false);
@@ -629,7 +629,7 @@ public final class PogoFeedDialog {
             // Empty state: a small card in place of the rows (an empty view would hide the SEARCH header too).
             FrameLayout emptyHolder = new FrameLayout(ui);
             emptyCard = new TextView(ui);
-            emptyCard.setText("No live results in range.");
+            emptyCard.setText("Aucun résultat en direct dans le rayon.");
             emptyCard.setGravity(Gravity.CENTER);
             emptyCard.setPadding(dp(16), dp(22), dp(16), dp(22));
             emptyHolder.setClipChildren(false); emptyHolder.setClipToPadding(false);
@@ -732,7 +732,7 @@ public final class PogoFeedDialog {
         /** Current values on the SEARCH rows. */
         private void updateRows() {
             if (radiusRow instanceof FeedUi.RowButton)
-                ((FeedUi.RowButton) radiusRow).setValue(radiusKm > 0 ? formatKm(radiusKm) + " km" : "Global");
+                ((FeedUi.RowButton) radiusRow).setValue(radiusKm > 0 ? formatKm(radiusKm) + " km" : "Mondial");
             if (intervalRow instanceof FeedUi.RowButton)
                 ((FeedUi.RowButton) intervalRow).setValue(REFRESH_LABELS[refreshIntervalIndex]);
             if (filtersRow instanceof FeedUi.RowButton) {
@@ -746,8 +746,8 @@ public final class PogoFeedDialog {
             if (f.getMinIv() > 0 || f.getMaxIv() < 100) p.add(f.getMinIv() + (f.getMaxIv() < 100 ? "–" + f.getMaxIv() : "+") + "% IV");
             if (f.isShowPvpGreat() || f.isShowPvpUltra()) p.add((f.isShowPvpGreat() ? "GL" : "") + (f.isShowPvpGreat() && f.isShowPvpUltra() ? "+" : "") + (f.isShowPvpUltra() ? "UL" : ""));
             if (f.isShinyOnly()) p.add("Shiny");
-            if (PogoFeedFilters.MODE_ALLOWLIST.equals(f.getSpeciesMode())) p.add(f.getSpeciesList().size() + " species");
-            return p.isEmpty() ? "Any" : PogoFeedModes.join(p, " · ");
+            if (PogoFeedFilters.MODE_ALLOWLIST.equals(f.getSpeciesMode())) p.add(f.getSpeciesList().size() + " espèces");
+            return p.isEmpty() ? "Tous" : PogoFeedModes.join(p, " · ");
         }
 
         /** Radius editor: type km (Set) or search worldwide (Global). */
@@ -765,15 +765,15 @@ public final class PogoFeedDialog {
             noAutofill(radiusInput);
             if (radiusKm > 0) radiusInput.setText(formatKm(radiusKm));
             body.addView(radiusInput, new LinearLayout.LayoutParams(-1, dp(46)));
-            TextView hint = label("Up to " + formatKm(MAX_RADIUS_KM) + " km around your current location. Global searches worldwide.", 12);
+            TextView hint = label("Jusqu'à " + formatKm(MAX_RADIUS_KM) + " km autour de ta position actuelle. Mondial cherche partout.", 12);
             hint.setPadding(0, dp(8), 0, 0);
             body.addView(hint);
             AlertDialog d = new AlertDialog.Builder(ui)
-                .setTitle("Search radius")
+                .setTitle("Rayon de recherche")
                 .setView(body)
-                .setPositiveButton("Set", (x, w) -> applyRadiusInput())
-                .setNeutralButton("Global", (x, w) -> { radiusInput.setText(""); setRadius(0); })
-                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Valider", (x, w) -> applyRadiusInput())
+                .setNeutralButton("Mondial", (x, w) -> { radiusInput.setText(""); setRadius(0); })
+                .setNegativeButton("Annuler", null)
                 .create();
             trackOwn(d);
             radiusInput.setOnEditorActionListener((v, actionId, ev) -> { applyRadiusInput(); d.dismiss(); return true; });
@@ -788,10 +788,10 @@ public final class PogoFeedDialog {
             double km;
             if (raw.isEmpty()) km = 0;
             else {
-                try { km = Double.parseDouble(raw); } catch (NumberFormatException e) { toast("Type a radius in km, e.g. 2.5"); return; }
-                if (!Double.isFinite(km) || km < 0) { toast("Type a radius in km, e.g. 2.5"); return; }
+                try { km = Double.parseDouble(raw); } catch (NumberFormatException e) { toast("Tape un rayon en km, ex. 2.5"); return; }
+                if (!Double.isFinite(km) || km < 0) { toast("Tape un rayon en km, ex. 2.5"); return; }
             }
-            if (km > MAX_RADIUS_KM) toast("The site allows up to " + formatKm(MAX_RADIUS_KM) + " km — searching Global.");
+            if (km > MAX_RADIUS_KM) toast("Le site autorise jusqu'à " + formatKm(MAX_RADIUS_KM) + " km — recherche mondiale.");
             android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager)
                     activity.getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) imm.hideSoftInputFromWindow(radiusInput.getWindowToken(), 0);
@@ -804,7 +804,7 @@ public final class PogoFeedDialog {
             if (km == radiusKm) { highlightAll(); return; }
             radiusKm = km; prefs.edit().putFloat("radiusKm", (float) km).apply();
             generation++; highlightAll(); updateRows();
-            toast(km > 0 ? "Radius: " + formatKm(km) + " km" : "Radius: Global");
+            toast(km > 0 ? "Rayon : " + formatKm(km) + " km" : "Rayon : Mondial");
             // The radius only changes what the next searches look for; the list is kept.
             rebuildVisible(); adapter.notifyDataSetChanged();
             requestFetch();
@@ -816,7 +816,7 @@ public final class PogoFeedDialog {
             org.json.JSONObject working;
             try {
                 working = filters.toViewportJson(); // a fresh, mutable copy the modal edits in place
-            } catch (org.json.JSONException e) { toast("Couldn't open the filters."); return; }
+            } catch (org.json.JSONException e) { toast("Impossible d'ouvrir les filtres."); return; }
             PogoFeedFilterDialog.show(activity, ui, false, working, speciesNames, prefs,
                 this::trackOwn, this::applyFilters);
         }
@@ -841,7 +841,7 @@ public final class PogoFeedDialog {
         private void openModeFilters(PogoFeedModes.Mode m) {
             final String catalog = PogoFeedModeFilterDialog.catalogPath(m);
             if (catalog != null && PogoFeedModeFilterDialog.cached(catalog) == null) {
-                toast("Loading " + m.label + " options…");
+                toast("Chargement " + m.label + " options…");
                 net.execute(() -> {
                     org.json.JSONObject data = null;
                     try { data = client.getJson(catalog); } catch (Exception ignored) { }
@@ -922,7 +922,7 @@ public final class PogoFeedDialog {
                 feedWebView.destroy(); feedWebView = null;
             }
             render();
-            toast("Logged out.");
+            toast("Déconnecté.");
         }
 
         // ------------------------------------------------------------------ fetching
@@ -944,7 +944,7 @@ public final class PogoFeedDialog {
             final double radiusKm = this.radiusKm > 0 ? this.radiusKm : Double.POSITIVE_INFINITY; // ∞ → Global
             if (radiusKm <= PogoFeedClient.MAX_SEARCH_RADIUS_KM && !(Double.isFinite(lat) && Double.isFinite(lon))) {
                 fetchInFlight = false;
-                note = "Current location not known yet. Move in the game or choose Global.";
+                note = "Position actuelle encore inconnue. Bouge dans le jeu ou choisis Mondial.";
                 updateStatus();
                 return;
             }
@@ -969,10 +969,10 @@ public final class PogoFeedDialog {
                     } catch (InterruptedException ie) {
                         return; // dialog closed
                     } catch (PogoFeedClient.FeedException fe) {
-                        main.post(() -> onFetchError(g, fe.status, fe.retryAfterMs, safeMessage(fe, "Search failed.")));
+                        main.post(() -> onFetchError(g, fe.status, fe.retryAfterMs, safeMessage(fe, "Échec de la recherche.")));
                         return;
                     } catch (Exception e) {
-                        main.post(() -> onFetchError(g, 0, 0, "Could not read the search results."));
+                        main.post(() -> onFetchError(g, 0, 0, "Impossible de lire les résultats de recherche."));
                         return;
                     }
                 }
@@ -994,9 +994,9 @@ public final class PogoFeedDialog {
                     PogoFeedData.Snapshot snap = client.fetchMode(m, spec, lat, lon, radiusKm);
                     main.post(() -> onModeSnapshot(g, m, spec, snap));
                 } catch (PogoFeedClient.FeedException fe) {
-                    main.post(() -> onFetchError(g, fe.status, fe.retryAfterMs, safeMessage(fe, "Search failed.")));
+                    main.post(() -> onFetchError(g, fe.status, fe.retryAfterMs, safeMessage(fe, "Échec de la recherche.")));
                 } catch (Exception e) {
-                    main.post(() -> onFetchError(g, 0, 0, "Could not read the search results."));
+                    main.post(() -> onFetchError(g, 0, 0, "Impossible de lire les résultats de recherche."));
                 }
             });
         }
@@ -1056,9 +1056,9 @@ public final class PogoFeedDialog {
             MODE_UPDATED.put(PogoFeedModes.Mode.POKEMON, snap != null && snap.fetchedAt > 0 ? snap.fetchedAt : now);
             if (mode != PogoFeedModes.Mode.POKEMON) return;
             note = snap != null && snap.note != null ? snap.note : "";
-            if (league != null) note = ("iv".equals(league) ? "IV search"
-                    : PogoFeedClient.LEAGUE_ULTRA.equals(league) ? "Ultra League" : "Great League")
-                    + ": +" + added + " new" + (last ? "" : " · next search in 10s")
+            if (league != null) note = ("iv".equals(league) ? "Recherche IV"
+                    : PogoFeedClient.LEAGUE_ULTRA.equals(league) ? "Hyper Ligue" : "Super Ligue")
+                    + ": +" + added + " nouveaux" + (last ? "" : " · prochaine recherche dans 10 s")
                     + (note.isEmpty() ? "" : "\n" + note);
             lastUpdated = snap != null && snap.fetchedAt > 0 ? snap.fetchedAt : now;
             lastError = null;
@@ -1110,7 +1110,7 @@ public final class PogoFeedDialog {
                 showingLogin = true;
                 lastError = null;
                 render();
-                toast("Session expired. Please sign in again.");
+                toast("Session expirée. Reconnecte-toi.");
                 return;
             }
             lastError = message;
@@ -1141,23 +1141,23 @@ public final class PogoFeedDialog {
             long nowE = SystemClock.elapsedRealtime();
             if (nowE < backoffUntilElapsed) {
                 long s = (backoffUntilElapsed - nowE + 999) / 1000;
-                feedStatus.setText("Rate limited by PoGoCoordinates. Retrying in " + s + "s.");
+                feedStatus.setText("Limité par PoGoCoordinates. Nouvel essai dans " + s + "s.");
                 return;
             }
             StringBuilder sb = new StringBuilder();
             if (lastError != null) sb.append(lastError).append('\n');
             if (lastUpdated == 0) {
-                sb.append(fetchInFlight ? "Loading live results…"
-                        : manualMode ? "Auto refresh off: tap Refresh to search." : "No results loaded yet.");
+                sb.append(fetchInFlight ? "Chargement des résultats en direct…"
+                        : manualMode ? "Actualisation auto désactivée : touche Actualiser pour chercher." : "Aucun résultat chargé pour l'instant.");
             } else {
                 long age = Math.max(0, (System.currentTimeMillis() - lastUpdated) / 1000);
-                sb.append(visible.size()).append(visible.size() == 1 ? " result" : " results")
-                  .append(" · updated ").append(age).append("s ago");
-                if (fetchInFlight) sb.append(" · refreshing…");
-                else if (manualMode) sb.append(" · auto refresh off");
+                sb.append(visible.size()).append(visible.size() == 1 ? " résultat" : " résultats")
+                  .append(" · mis à jour il y a ").append(age).append(" s");
+                if (fetchInFlight) sb.append(" · actualisation…");
+                else if (manualMode) sb.append(" · actualisation auto désactivée");
                 else {
                     long next = Math.max(0, refreshSeconds - (SystemClock.elapsedRealtime() - lastFetchStartedElapsed) / 1000);
-                    sb.append(" · next in ").append(next / 60).append(':').append(String.format(Locale.US, "%02d", next % 60));
+                    sb.append(" · prochaine dans ").append(next / 60).append(':').append(String.format(Locale.US, "%02d", next % 60));
                 }
             }
             if (note != null && !note.isEmpty()) sb.append('\n').append(note);
@@ -1260,7 +1260,7 @@ public final class PogoFeedDialog {
                 StringBuilder line = new StringBuilder();
                 if (sub != null && !sub.isEmpty()) line.append(sub);
                 if (d != null && Double.isFinite(d)) { if (line.length() > 0) line.append("  ·  "); line.append(formatDistance(d)); }
-                else if (!e.hasCoords()) { if (line.length() > 0) line.append("  ·  "); line.append("🔒 tap to get coords"); }
+                else if (!e.hasCoords()) { if (line.length() > 0) line.append("  ·  "); line.append("🔒 touche pour les coordonnées"); }
                 holder.subtitle.setText(line.toString());
                 return holder.view;
             }
@@ -1353,9 +1353,9 @@ public final class PogoFeedDialog {
 
         /** Meaningful, text-independent accessibility label for a row's leading icon. */
         private String iconDescription(PogoFeedData.Entry e, long now) {
-            if (e == null || e.kind == null) return "Result";
+            if (e == null || e.kind == null) return "Résultat";
             if (e.kind == PogoFeedData.Kind.RAID)
-                return e.raidHatchAt > now ? "Raid egg" : "Raid";
+                return e.raidHatchAt > now ? "Œuf de raid" : "Raid";
             return kindLabel(e.kind) + " " + displayName(e);
         }
 
@@ -1364,7 +1364,7 @@ public final class PogoFeedDialog {
         private void openDetails(PogoFeedData.Entry e) {
             if (closed) return;
             long now = System.currentTimeMillis();
-            if (e.expired(now)) { toast("That result just expired."); rebuildVisible(); adapter.notifyDataSetChanged(); return; }
+            if (e.expired(now)) { toast("Ce résultat vient d'expirer."); rebuildVisible(); adapter.notifyDataSetChanged(); return; }
             LinearLayout body = new LinearLayout(ui);
             body.setOrientation(LinearLayout.VERTICAL);
             int pad = dp(18);
@@ -1375,7 +1375,7 @@ public final class PogoFeedDialog {
             LinearLayout actions = new LinearLayout(ui);
             actions.setOrientation(LinearLayout.HORIZONTAL);
             actions.setPadding(0, dp(14), 0, 0);
-            Button map = button("Map"), walk = button("Walk here"), teleport = button("Teleport");
+            Button map = button("Carte"), walk = button("Marcher ici"), teleport = button("Téléporter");
             actions.addView(map, new LinearLayout.LayoutParams(0, dp(48), 1));
             actions.addView(walk, new LinearLayout.LayoutParams(0, dp(48), 1));
             actions.addView(teleport, new LinearLayout.LayoutParams(0, dp(48), 1));
@@ -1383,7 +1383,7 @@ public final class PogoFeedDialog {
             AlertDialog detail = new AlertDialog.Builder(ui)
                 .setTitle(displayName(e))
                 .setView(body)
-                .setNegativeButton("Close", null)
+                .setNegativeButton("Fermer", null)
                 .create();
             trackOwn(detail);
             detail.setOnShowListener(d -> {
@@ -1392,8 +1392,8 @@ public final class PogoFeedDialog {
                 walk.setOnClickListener(v -> applyMove(e, false, detail));
                 teleport.setOnClickListener(v -> {
                     if(closed)return;
-                    if(e.expired(System.currentTimeMillis())){toast("That result just expired.");return;}
-                    if(!CooldownState.valid(e.lat,e.lon)){toast("That result has no valid location.");return;}
+                    if(e.expired(System.currentTimeMillis())){toast("Ce résultat vient d'expirer.");return;}
+                    if(!CooldownState.valid(e.lat,e.lon)){toast("Ce résultat n'a pas de position valide.");return;}
                     AlertDialog confirmation=TeleportDialog.confirm(activity,e.lat,e.lon,(lat,lon)->{
                         applyMove(e,true,detail);return true;
                     });
@@ -1405,32 +1405,32 @@ public final class PogoFeedDialog {
 
         /** Detail for a row without coordinates: one "Get coords" button that calls /reveal on demand. */
         private void openLockedDetails(PogoFeedData.Entry e, LinearLayout body) {
-            Button get = button("Get coords");
+            Button get = button("Coordonnées");
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(48));
             lp.topMargin = dp(14);
             body.addView(get, lp);
             AlertDialog detail = new AlertDialog.Builder(ui)
                 .setTitle(displayName(e))
                 .setView(body)
-                .setNegativeButton("Close", null)
+                .setNegativeButton("Fermer", null)
                 .create();
             trackOwn(detail);
             detail.setOnShowListener(d -> {
                 FeedTheme.style(body); FeedTheme.styleGameButtons(body); FeedTheme.styleButtons(detail);
                 get.setOnClickListener(v -> {
-                    get.setEnabled(false); get.setText("Getting coords…");
+                    get.setEnabled(false); get.setText("Récupération des coordonnées…");
                     final String id = e.id.startsWith("shiny:") ? e.id.substring(6) : e.id.startsWith("pokemon:") ? e.id.substring(8) : e.id;
                     net.execute(() -> {
                         double[] ll = null; String err = null;
                         try { ll = client.revealOne(id, e.revealCode); }
-                        catch (PogoFeedClient.FeedException fe) { err = safeMessage(fe, "Couldn't get the coordinates."); }
-                        catch (Exception ex) { err = "Couldn't get the coordinates."; }
+                        catch (PogoFeedClient.FeedException fe) { err = safeMessage(fe, "Impossible de récupérer les coordonnées."); }
+                        catch (Exception ex) { err = "Impossible de récupérer les coordonnées."; }
                         final double[] got = ll; final String error = err;
                         main.post(() -> {
                             if (closed) return;
                             if (got == null) {
                                 toast(error);
-                                if (detail.isShowing()) { get.setEnabled(true); get.setText("Get coords"); }
+                                if (detail.isShowing()) { get.setEnabled(true); get.setText("Coordonnées"); }
                                 return;
                             }
                             PogoFeedData.Entry located = e.withCoords(got[0], got[1]);
@@ -1450,29 +1450,29 @@ public final class PogoFeedDialog {
         private void applyMove(PogoFeedData.Entry e, boolean teleport, AlertDialog detail) {
             if (closed) return;
             long now = System.currentTimeMillis();
-            if (e.expired(now)) { toast("That result just expired."); detail.dismiss(); rebuildVisible(); adapter.notifyDataSetChanged(); return; }
-            if (!Control.canEnable()) { toast("Location adapter is not ready."); return; }
+            if (e.expired(now)) { toast("Ce résultat vient d'expirer."); detail.dismiss(); rebuildVisible(); adapter.notifyDataSetChanged(); return; }
+            if (!Control.canEnable()) { toast("L'adaptateur de position n'est pas prêt."); return; }
             // Avoid hasWindowFocus() here: with this detail child open the game activity does not hold
             // window focus, so rely on it still being a live, non-finishing foreground activity.
             if (activity.isFinishing() || activity.isDestroyed()) return;
-            if (!Double.isFinite(e.lat) || !Double.isFinite(e.lon)) { toast("That result has no valid location."); return; }
+            if (!Double.isFinite(e.lat) || !Double.isFinite(e.lon)) { toast("Ce résultat n'a pas de position valide."); return; }
             if (teleport) Control.teleport(e.lat, e.lon); else Control.walkTo(e.lat, e.lon);
-            toast(teleport ? "Teleported to the selected result." : "Walking to the selected result.");
+            toast(teleport ? "Téléporté au résultat choisi." : "Marche vers le résultat choisi.");
             detail.dismiss();   // child
             dialog.dismiss();   // parent, after a confirmed action
         }
 
         private void openMap(PogoFeedData.Entry e, AlertDialog detail) {
-            if (!Double.isFinite(e.lat) || !Double.isFinite(e.lon)) { toast("That result has no valid location."); return; }
+            if (!Double.isFinite(e.lat) || !Double.isFinite(e.lon)) { toast("Ce résultat n'a pas de position valide."); return; }
             try {
                 // Centred on the selected result, with both Teleport and Walk callbacks. We never push
                 // this live data into Control.mapPoiSnapshot; the map loads its own game POIs.
                 AlertDialog map = WorldMapDialog.show(activity, e.lat, e.lon,
-                    (lat, lon) -> { if (!Control.canEnable()) { toast("Location adapter is not ready."); return false; } Control.teleport(lat, lon); return true; },
-                    (lat, lon) -> { if (!Control.canEnable()) { toast("Location adapter is not ready."); return false; } Control.walkTo(lat, lon); return true; });
+                    (lat, lon) -> { if (!Control.canEnable()) { toast("L'adaptateur de position n'est pas prêt."); return false; } Control.teleport(lat, lon); return true; },
+                    (lat, lon) -> { if (!Control.canEnable()) { toast("L'adaptateur de position n'est pas prêt."); return false; } Control.walkTo(lat, lon); return true; });
                 if (map != null) children.add(map); // dismissed with this dialog on close()
             } catch (RuntimeException ex) {
-                toast("Couldn't open the map for that result.");
+                toast("Impossible d'ouvrir la carte pour ce résultat.");
                 return;
             }
             detail.dismiss();
@@ -1484,13 +1484,13 @@ public final class PogoFeedDialog {
             String sub = displaySubtitle(e, now);
             if (sub != null && !sub.isEmpty()) sb.append(sub).append('\n');
             Double d = distCache.get(e);
-            if (d != null && Double.isFinite(d)) sb.append("Distance: ").append(formatDistance(d)).append('\n');
-            if (!e.hasCoords()) sb.append("Coordinates locked (lookup limit). Tap Get coords.").append('\n');
+            if (d != null && Double.isFinite(d)) sb.append("Distance : ").append(formatDistance(d)).append('\n');
+            if (!e.hasCoords()) sb.append("Coordonnées verrouillées (limite de recherche). Touche Coordonnées.").append('\n');
             if (Double.isFinite(e.lat) && Double.isFinite(e.lon))
                 sb.append(String.format(Locale.US, "%.6f, %.6f\n", e.lat, e.lon));
             if (e.expiresAt > 0) {
                 long remaining = e.expiresAt - now;
-                sb.append(remaining > 0 ? "Expires in " + countdown(remaining) : "Expired").append('\n');
+                sb.append(remaining > 0 ? "Expire dans " + countdown(remaining) : "Expiré").append('\n');
             }
             return sb.toString().trim();
         }
@@ -1629,27 +1629,27 @@ public final class PogoFeedDialog {
     }
 
     private static String kindLabel(PogoFeedData.Kind kind) {
-        if (kind == null) return "Result";
+        if (kind == null) return "Résultat";
         switch (kind) {
             case POKEMON: return "Pokémon";
             case STOP: return "PokéStop";
-            case GYM: return "Gym";
+            case GYM: return "Arène";
             case RAID: return "Raid";
-            case STATION: return "Power Spot";
-            case QUEST: return "Quest";
-            case WEATHER: return "Weather";
+            case STATION: return "Site de Puissance";
+            case QUEST: return "Quête";
+            case WEATHER: return "Météo";
             case ROCKET: return "Team GO Rocket";
-            default: return "Result";
+            default: return "Résultat";
         }
     }
 
     private static String loginError(PogoFeedClient.FeedException fe) {
-        if (fe.status == 401) return "Incorrect username or password.";
+        if (fe.status == 401) return "Nom d'utilisateur ou mot de passe incorrect.";
         if (fe.status == 429) {
             long s = Math.max(fe.retryAfterMs, MIN_BACKOFF_MS) / 1000;
-            return "Too many attempts. Wait " + s + "s and try again.";
+            return "Trop de tentatives. Patiente " + s + " s et réessaie.";
         }
-        return safeMessage(fe, "Sign-in failed. Please try again.");
+        return safeMessage(fe, "Échec de la connexion. Réessaie.");
     }
 
     private static String safeMessage(PogoFeedClient.FeedException fe, String fallback) {

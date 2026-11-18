@@ -42,7 +42,7 @@ final class LocalTimeOverlay extends TextView {
                 System.currentTimeMillis(), DateFormat.is24HourFormat(getContext()), Locale.getDefault());
         if (!label.contentEquals(getText())) {
             setText(label);
-            setContentDescription("Local time at spoofed location: " + label + ". Drag to move.");
+            setContentDescription("Heure locale à la position spoofée : " + label + ". Glisse pour déplacer.");
         }
     }
 

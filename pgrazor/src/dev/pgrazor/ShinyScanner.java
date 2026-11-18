@@ -50,9 +50,9 @@ public final class ShinyScanner {
 
     /** Why the scanner is waiting although it is on; null when nothing else is in its way. */
     private static String blocked() {
-        if (Control.vgpEnabled()) return "Paused while VGP+ is on";
-        if (ShundoSniper.active()) return "Paused while Shundo Sniper runs";
-        if (AutoRaid.running()) return "Paused while Auto-Raid runs";
+        if (Control.vgpEnabled()) return "En pause pendant le VGP+";
+        if (ShundoSniper.active()) return "En pause pendant le Shundo Sniper";
+        if (AutoRaid.running()) return "En pause pendant l'Auto-Raid";
         return null;
     }
     /** Read by the native transport (string slot 23). */
@@ -86,13 +86,13 @@ public final class ShinyScanner {
     /** A popup that has not been shown yet as {title, message, "found" or "result"}; null when there is none. Shown once. */
     static String[] takePopup() { synchronized (LOCK) { String[] next = popup; popup = null; return next; } }
     /** Shows the found shiny's popup again (from the map badge). */
-    static void showFound() { synchronized (LOCK) { if (foundAt != 0) popup = new String[]{"✨ Shiny found", foundText, "found"}; } }
+    static void showFound() { synchronized (LOCK) { if (foundAt != 0) popup = new String[]{"✨ Shiny trouvé", foundText, "found"}; } }
     /** The player asked to catch the found shiny: the native scanner feeds a berry and throws. */
     static void requestCatch() {
         String blocked = blocked();
         synchronized (LOCK) {
             if (foundAt == 0 || catching) return;
-            if (blocked != null) { popup = new String[]{"Cannot catch yet", blocked + ". Stop it, then tap the shiny badge.", "result"}; return; }
+            if (blocked != null) { popup = new String[]{"Capture impossible pour l'instant", blocked + ". Arrête-le, puis touche le badge shiny.", "result"}; return; }
             catchSeq++; catching = true;
         }
     }
@@ -117,9 +117,9 @@ public final class ShinyScanner {
                     if ("throwing".equals(result)) { catching = true; return; }
                     if ("opened".equals(result)) { catching = false; return; }  // the game takes it from here
                     catching = false;
-                    if ("caught".equals(result)) { foundAt = 0; popup = new String[]{"✨ Shiny caught", who + ". " + said + ".", "result"}; }
-                    else if ("fled".equals(result)) { foundAt = 0; popup = new String[]{"Shiny fled", who + ". " + said + ".", "result"}; }
-                    else popup = new String[]{"Catch did not finish", who + ". " + said + ". Tap the shiny badge to try again.", "result"};
+                    if ("caught".equals(result)) { foundAt = 0; popup = new String[]{"✨ Shiny capturé", who + ". " + said + ".", "result"}; }
+                    else if ("fled".equals(result)) { foundAt = 0; popup = new String[]{"Le shiny s'est enfui", who + ". " + said + ".", "result"}; }
+                    else popup = new String[]{"La capture n'a pas abouti", who + ". " + said + ". Touche le badge shiny pour réessayer.", "result"};
                     return;
                 }
                 if ("status".equals(phase) || "error".equals(phase)) { nativeStatus = o.optString("message"); return; }
@@ -133,13 +133,13 @@ public final class ShinyScanner {
                         foundSpecies = species; foundCp = o.optInt("cp"); foundLat = lat; foundLon = lon; foundAt = SystemClock.elapsedRealtime();
                         org.json.JSONArray iv = o.optJSONArray("iv");
                         for (int i = 0; i < 3; i++) foundIv[i] = iv == null ? -1 : iv.optInt(i, -1);
-                        foundText = "Shiny " + name(species) + (foundCp > 0 ? " · CP " + foundCp : "")
+                        foundText = "Shiny " + name(species) + (foundCp > 0 ? " · PC " + foundCp : "")
                             + (foundIv[0] >= 0 && foundIv[1] >= 0 && foundIv[2] >= 0 ? " · IV " + foundIv[0] + "/" + foundIv[1] + "/" + foundIv[2] : "")
-                            + "\n\n" + (stop ? "Walking stopped. " : "") + "Marked with ✨ on the map."
-                            + "\nCatch it: opens the encounter" + (prefs.hold ? ", or throws for you if it has left the map." : ".")
-                            + "\nDismiss: lets it go.";
+                            + "\n\n" + (stop ? "Marche arrêtée. " : "") + "Marqué d'un ✨ sur la carte."
+                            + "\nCapturer : ouvre la rencontre" + (prefs.hold ? ", ou lance pour toi s'il a quitté la carte." : ".")
+                            + "\nIgnorer : le laisse partir.";
                         notice = foundText.substring(0, foundText.indexOf('\n'));
-                        popup = new String[]{"✨ Shiny found", foundText, "found"};
+                        popup = new String[]{"✨ Shiny trouvé", foundText, "found"};
                     }
                 }
             }
@@ -148,7 +148,7 @@ public final class ShinyScanner {
             return;
         }
         if (shiny) {
-            final String text = "Shiny " + name(species) + " nearby!";
+            final String text = "Shiny " + name(species) + " à proximité !";
             Control.event("shiny-scan-found", text);
             if (notify) notifyPhone(notice);
             if (stop) MAIN.post(ShinyScanner::stopWalking);
@@ -174,9 +174,9 @@ public final class ShinyScanner {
         if (context == null || !mayNotify(context)) return;
         try {
             android.app.NotificationManager manager = (android.app.NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-            manager.createNotificationChannel(new android.app.NotificationChannel("pgrazor-shiny", "PGRazor shiny found", android.app.NotificationManager.IMPORTANCE_HIGH));
+            manager.createNotificationChannel(new android.app.NotificationChannel("pgrazor-shiny", "PGRazor : shiny trouvé", android.app.NotificationManager.IMPORTANCE_HIGH));
             manager.notify(7302, new android.app.Notification.Builder(context, "pgrazor-shiny").setSmallIcon(android.R.drawable.star_on)
-                .setContentTitle("✨ Shiny found").setContentText(text).setAutoCancel(true).build());
+                .setContentTitle("✨ Shiny trouvé").setContentText(text).setAutoCancel(true).build());
         } catch (RuntimeException error) { Control.event("shiny-scan-notification-error", error.toString()); }
     }
     private static void askToNotify(Activity activity) {
@@ -215,10 +215,10 @@ public final class ShinyScanner {
         long age = SystemClock.elapsedRealtime() - at;
         // A held shiny stays until it is caught or dismissed; otherwise the badge goes after a while or once far away.
         if (!held && !throwing && (age < 0 || age > FOUND_TTL_MS || away > FOUND_FAR_METERS)) { dismissFound(); return ""; }
-        String label = "✨ Shiny " + name(species) + (cp > 0 ? " · CP " + cp : "");
+        String label = "✨ Shiny " + name(species) + (cp > 0 ? " · PC " + cp : "");
         if (iv[0] >= 0 && iv[1] >= 0 && iv[2] >= 0) label += " · " + iv[0] + "/" + iv[1] + "/" + iv[2];
-        if (throwing) label += " · catching…";
-        else if (left) label += " · left the map";
+        if (throwing) label += " · capture…";
+        else if (left) label += " · a quitté la carte";
         else if (!Double.isNaN(away)) label += " · " + Math.round(away) + " m";
         return label;
     }
@@ -231,10 +231,10 @@ public final class ShinyScanner {
         int encounters = EncounterCounter.total();
         synchronized (LOCK) {
             if (!prefs.enabled) return "Off";
-            String counts = checked + " checked, " + shinies + (shinies == 1 ? " shiny" : " shinies") + " · "
-                + encounters + (prefs.dailyLimit > 0 ? "/" + prefs.dailyLimit : "") + " in 24 h";
+            String counts = checked + " vérifiés, " + shinies + (shinies == 1 ? " shiny" : " shiny") + " · "
+                + encounters + (prefs.dailyLimit > 0 ? "/" + prefs.dailyLimit : "") + " en 24 h";
             if (blocked != null) return blocked + " · " + counts;
-            return (nativeStatus.isEmpty() ? "Waiting for the map" : nativeStatus) + " · " + counts;
+            return (nativeStatus.isEmpty() ? "En attente de la carte" : nativeStatus) + " · " + counts;
         }
     }
 
@@ -246,16 +246,16 @@ public final class ShinyScanner {
         int pad = MapTheme.dp(ui, 16); body.setPadding(pad, pad, pad, pad);
 
         TextView description = new TextView(ui);
-        description.setText("Checks wild Pokémon within 80 m for shinies. Each check uses one encounter.");
+        description.setText("Vérifie si les Pokémon sauvages à moins de 80 m sont shiny. Chaque vérification utilise une rencontre.");
         body.addView(description);
         final TextView status = new TextView(ui); body.addView(status);
-        final CheckBox on = new CheckBox(ui); on.setText("Scan for shinies"); body.addView(on);
-        final CheckBox notifyBox = new CheckBox(ui); notifyBox.setText("Phone notification"); body.addView(notifyBox);
-        final CheckBox stopBox = new CheckBox(ui); stopBox.setText("Stop walking when found"); body.addView(stopBox);
-        final CheckBox holdBox = new CheckBox(ui); holdBox.setText("Hold it (pause checks until caught or dismissed)"); body.addView(holdBox);
+        final CheckBox on = new CheckBox(ui); on.setText("Scanner les shiny"); body.addView(on);
+        final CheckBox notifyBox = new CheckBox(ui); notifyBox.setText("Notification sur le téléphone"); body.addView(notifyBox);
+        final CheckBox stopBox = new CheckBox(ui); stopBox.setText("Arrêter la marche quand trouvé"); body.addView(stopBox);
+        final CheckBox holdBox = new CheckBox(ui); holdBox.setText("Le garder (pause des vérifications jusqu'à capture ou abandon)"); body.addView(holdBox);
         final Button speed = button(body), species = button(body), limit = button(body);
         TextView note = new TextView(ui);
-        note.setText("Pauses while VGP+, Shundo Sniper or Auto-Raid runs.");
+        note.setText("Se met en pause pendant le VGP+, le Shundo Sniper ou l'Auto-Raid.");
         body.addView(note);
 
         final boolean[] refreshing = {false};
@@ -264,9 +264,9 @@ public final class ShinyScanner {
             status.setText(status());
             synchronized (LOCK) {
                 on.setChecked(prefs.enabled); notifyBox.setChecked(prefs.notify); stopBox.setChecked(prefs.stopWalking); holdBox.setChecked(prefs.hold);
-                speed.setText("Speed: " + ShinyScanPreferences.speedSummary(prefs.speed));
-                species.setText("Species: " + speciesSummary(prefs.species));
-                limit.setText("Encounter limit: " + ShinyScanPreferences.limitSummary(prefs.dailyLimit));
+                speed.setText("Vitesse : " + ShinyScanPreferences.speedSummary(prefs.speed));
+                species.setText("Espèces : " + speciesSummary(prefs.species));
+                limit.setText("Limite de rencontres : " + ShinyScanPreferences.limitSummary(prefs.dailyLimit));
             }
             refreshing[0] = false;
         };
@@ -280,26 +280,26 @@ public final class ShinyScanner {
         holdBox.setOnCheckedChangeListener((v, checked) -> { if (refreshing[0]) return; synchronized (LOCK) { prefs.hold = checked; } Control.saveSettings(); update.run(); });
         speed.setOnClickListener(v -> {
             String[] labels = new String[ShinyScanPreferences.SPEED_LABELS.length];
-            String[] hints = {"1 check every 2 s", "About 1 a second", "Up to 3 a second"};
+            String[] hints = {"1 vérification toutes les 2 s", "Environ 1 par seconde", "Jusqu'à 3 par seconde"};
             for (int i = 0; i < labels.length; i++) labels[i] = ShinyScanPreferences.SPEED_LABELS[i] + "\n" + hints[i];
-            choose(activity, "Scan speed", labels, index -> { synchronized (LOCK) { prefs.speed = index; } Control.saveSettings(); update.run(); });
+            choose(activity, "Vitesse de scan", labels, index -> { synchronized (LOCK) { prefs.speed = index; } Control.saveSettings(); update.run(); });
         });
         limit.setOnClickListener(v -> {
             final int[] choices = ShinyScanPreferences.LIMIT_CHOICES;
             String[] labels = new String[choices.length];
             for (int i = 0; i < choices.length; i++)
-                labels[i] = choices[i] == 0 ? "No limit" : choices[i] + " in 24 hours";
-            choose(activity, "Encounter limit", labels, index -> { synchronized (LOCK) { prefs.dailyLimit = choices[index]; } Control.saveSettings(); update.run(); });
+                labels[i] = choices[i] == 0 ? "Sans limite" : choices[i] + " en 24 heures";
+            choose(activity, "Limite de rencontres", labels, index -> { synchronized (LOCK) { prefs.dailyLimit = choices[index]; } Control.saveSettings(); update.run(); });
         });
-        species.setOnClickListener(v -> PokemonSpeciesDialog.show(activity, "Species to check", "species", AutoRaidPreferences.MAX_BOSSES,
+        species.setOnClickListener(v -> PokemonSpeciesDialog.show(activity, "Espèces à vérifier", "species", AutoRaidPreferences.MAX_BOSSES,
             () -> { synchronized (LOCK) { return prefs.species; } },
             value -> { String list = AutoRaidPreferences.normalizeBosses(value); synchronized (LOCK) { prefs.species = list; } Control.saveSettings(); },
-            update, "Every species (no selection)", null));
+            update, "Toutes les espèces (aucune sélection)", null));
 
         update.run();
         ScrollView scroll = new ScrollView(ui); scroll.addView(body);
         AlertDialog dialog = new AlertDialog.Builder(ui).setTitle("Shiny Scanner").setView(scroll)
-            .setPositiveButton("Done", null).create();
+            .setPositiveButton("OK", null).create();
         Handler handler = new Handler(Looper.getMainLooper());
         Runnable refresh = new Runnable() {
             public void run() { if (dialog.isShowing()) { status.setText(status()); handler.postDelayed(this, 1000); } }
@@ -316,7 +316,7 @@ public final class ShinyScanner {
     private interface Choice { void pick(int index); }
     private static void choose(Activity a, String title, String[] labels, Choice choice) {
         Context ui = MapTheme.wrap(a);
-        AlertDialog d = new AlertDialog.Builder(ui).setTitle(title).setNegativeButton("Cancel", null).create();
+        AlertDialog d = new AlertDialog.Builder(ui).setTitle(title).setNegativeButton("Annuler", null).create();
         ChoiceList.attach(d, labels, choice::pick);
         DialogLifecycle.bind(a, d, null);
         d.setOnShowListener(x -> { MapTheme.styleButtons(d);
@@ -325,14 +325,14 @@ public final class ShinyScanner {
         d.show();
     }
     private static String speciesSummary(String list) {
-        if (list == null || list.isEmpty()) return "Every species";
+        if (list == null || list.isEmpty()) return "Toutes les espèces";
         String[] ids = list.split(",");
         StringBuilder out = new StringBuilder();
         for (int i = 0; i < Math.min(3, ids.length); i++) {
             if (i > 0) out.append(", ");
             try { out.append(name(Integer.parseInt(ids[i]))); } catch (NumberFormatException e) { out.append('#').append(ids[i]); }
         }
-        if (ids.length > 3) out.append(" +").append(ids.length - 3).append(" more");
+        if (ids.length > 3) out.append(" +").append(ids.length - 3).append(" de plus");
         return out.toString();
     }
     private static Button button(LinearLayout body) {

@@ -36,8 +36,8 @@ public final class GymFeedOverlay extends View {
     public void refresh(boolean visible){
         boolean on=GymAutomationSettings.running();
         setVisibility(visible&&GymAutomationSettings.overlayEnabled()?VISIBLE:GONE);
-        setContentDescription("Gym Slotter and Berry Feeder "+(on?"on; tap to stop":"off; tap to start")
-            +". Drag to reposition. "+GymAutomationSettings.status());
+        setContentDescription("Placement en arène et nourrissage "+(on?"on; tap to stop":"désactivé ; touche pour démarrer")
+            +". Glisse pour déplacer. "+GymAutomationSettings.status());
         invalidate();
     }
 

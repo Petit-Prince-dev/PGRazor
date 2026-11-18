@@ -25,10 +25,10 @@ public final class BatchEvolutionSettings {
     private static long nextToken=System.currentTimeMillis()>0?System.currentTimeMillis():1;
     private static long token;
     private static int mode;
-    private static String tag="Evolve";
+    private static String tag="Évoluer";
     private static boolean removeTag;
     private static String phase="idle";
-    private static String message="Enter a tag, then preview the batch.";
+    private static String message="Entre une étiquette, puis prévisualise le lot.";
     private static long total,completed,skipped,xp,elapsedMs;
     private static long candyCost=-1,itemCost=-1;
 
@@ -80,7 +80,7 @@ public final class BatchEvolutionSettings {
 
     /** Called on logout/account reset. This also invalidates late native events. */
     public static void reset() {
-        synchronized(LOCK) {invalidate();tag="Evolve";removeTag=false;}
+        synchronized(LOCK) {invalidate();tag="Évoluer";removeTag=false;}
     }
 
     private static long whole(JSONObject event,String key) throws Exception {
@@ -109,7 +109,7 @@ public final class BatchEvolutionSettings {
             ||"done".equals(value)||"stopped".equals(value)||"error".equals(value);
     }
     private static void invalidate() {
-        token=0;mode=0;phase="idle";message="Enter a tag, then preview the batch.";
+        token=0;mode=0;phase="idle";message="Entre une étiquette, puis prévisualise le lot.";
         total=completed=skipped=xp=elapsedMs=0;candyCost=itemCost=-1;
     }
     private static long freshToken() {
@@ -121,10 +121,10 @@ public final class BatchEvolutionSettings {
         String value=input.trim();
         if(value.startsWith("#"))value=value.substring(1).trim();
         int bytes=value.getBytes(StandardCharsets.UTF_8).length;
-        if(bytes<1||bytes>64)throw new IllegalArgumentException("Enter a tag of 1 to 64 UTF-8 bytes.");
+        if(bytes<1||bytes>64)throw new IllegalArgumentException("Entre une étiquette de 1 à 64 octets UTF-8.");
         for(int i=0;i<value.length();i++) {
             char c=value.charAt(i);
-            if(c=='|'||Character.isISOControl(c))throw new IllegalArgumentException("Tag cannot contain a pipe or control character.");
+            if(c=='|'||Character.isISOControl(c))throw new IllegalArgumentException("L'étiquette ne peut pas contenir de barre verticale ni de caractère de contrôle.");
         }
         return value;
     }
@@ -135,22 +135,22 @@ public final class BatchEvolutionSettings {
         LinearLayout body=new LinearLayout(ui);body.setOrientation(LinearLayout.VERTICAL);
         int pad=MapTheme.dp(ui,16);body.setPadding(pad,pad,pad,pad);
         TextView explanation=new TextView(ui);
-        explanation.setText("Choose a tag to preview eligible Pokemon. Each is evolved once, without the animation. Favorites, your buddy, deployed Pokemon, eggs, Shadow and purified Pokemon, and evolutions needing a branch choice or special condition are skipped. Candy and items are checked before each evolution. Start your Lucky Egg yourself if wanted.");
+        explanation.setText("Choisis une étiquette pour prévisualiser les Pokémon éligibles. Chacun évolue une fois, sans animation. Les favoris, ton copain, les Pokémon en arène, les œufs, les Pokémon Obscurs et purifiés, et les évolutions à choix multiple ou à condition spéciale sont ignorés. Bonbons et objets sont vérifiés avant chaque évolution. Lance ton Œuf Chance toi-même si tu veux.");
         body.addView(explanation);
-        EditText tagInput=new EditText(ui);tagInput.setSingleLine(true);tagInput.setHint("Tag name (for example, Evolve)");
+        EditText tagInput=new EditText(ui);tagInput.setSingleLine(true);tagInput.setHint("Nom de l'étiquette (par exemple, Évoluer)");
         synchronized(LOCK) {tagInput.setText(tag);}
         body.addView(tagInput);
         CheckBox remove=new CheckBox(ui);
-        remove.setText("Remove this tag after each confirmed evolution");
+        remove.setText("Retirer cette étiquette après chaque évolution confirmée");
         synchronized(LOCK) {remove.setChecked(removeTag);}
         body.addView(remove);
         TextView status=new TextView(ui);body.addView(status);
-        Button preview=new Button(ui);preview.setAllCaps(false);preview.setText("Preview batch");body.addView(preview);
-        Button start=new Button(ui);start.setAllCaps(false);start.setText("Start batch");body.addView(start);
-        Button stop=new Button(ui);stop.setAllCaps(false);stop.setText("Stop (current evolution may finish)");body.addView(stop);
+        Button preview=new Button(ui);preview.setAllCaps(false);preview.setText("Prévisualiser le lot");body.addView(preview);
+        Button start=new Button(ui);start.setAllCaps(false);start.setText("Lancer le lot");body.addView(start);
+        Button stop=new Button(ui);stop.setAllCaps(false);stop.setText("Stop (l'évolution en cours peut se terminer)");body.addView(stop);
         ScrollView scroll=new ScrollView(ui);scroll.addView(body);
-        AlertDialog dialog=new AlertDialog.Builder(ui).setTitle("Batch evolution").setView(scroll)
-            .setPositiveButton("Close",null).create();
+        AlertDialog dialog=new AlertDialog.Builder(ui).setTitle("Évolution en lot").setView(scroll)
+            .setPositiveButton("Fermer",null).create();
         Handler handler=new Handler(Looper.getMainLooper());
         Runnable refresh=new Runnable(){public void run(){
             if(!dialog.isShowing())return;
@@ -180,13 +180,13 @@ public final class BatchEvolutionSettings {
             refreshControls(status,tagInput,remove,preview,start,stop);
         });
         preview.setOnClickListener(v->{
-            if(AutoRaid.running()||OneShotAutomation.enabled()||GiftBatchSettings.running()){android.widget.Toast.makeText(activity,"Stop the current Automation task first.",android.widget.Toast.LENGTH_SHORT).show();return;}
+            if(AutoRaid.running()||OneShotAutomation.enabled()||GiftBatchSettings.running()){android.widget.Toast.makeText(activity,"Arrête d'abord la tâche d'automatisation en cours.",android.widget.Toast.LENGTH_SHORT).show();return;}
             String value;
             try {value=normalizedTag(tagInput.getText().toString());}
             catch(IllegalArgumentException e){tagInput.setError(e.getMessage());return;}
             synchronized(LOCK) {
                 invalidate();tag=value;token=freshToken();mode=1;phase="scanning";
-                message="Scanning #"+tag+"...";
+                message="Analyse #"+tag+"...";
             }
             refreshControls(status,tagInput,remove,preview,start,stop);
         });
@@ -200,16 +200,16 @@ public final class BatchEvolutionSettings {
                 expectedToken=token;count=total;candy=candyCost;items=itemCost;removeAfter=removeTag;
             }
             String cost=(candy>=0&&items>=0)
-                ?"Up to "+candy+" candy and "+items+" evolution items may be consumed. Each cost is checked before evolving."
-                :"Candy and evolution item totals are unavailable; each cost is checked before evolving.";
-            AlertDialog confirm=new AlertDialog.Builder(MapTheme.wrap(activity)).setTitle("Start batch evolution?")
-                .setMessage(count+" eligible Pokemon will be evolved once. "+cost
+                ?"Jusqu'à "+candy+" Bonbons et "+items+" objets d'évolution peuvent être consommés. Chaque coût est vérifié avant l'évolution."
+                :"Les totaux de Bonbons et d'objets d'évolution sont indisponibles ; chaque coût est vérifié avant l'évolution.";
+            AlertDialog confirm=new AlertDialog.Builder(MapTheme.wrap(activity)).setTitle("Lancer l'évolution en lot ?")
+                .setMessage(count+" Pokémon éligibles vont évoluer une fois. "+cost
                     +(removeAfter?" The selected tag will be removed after each confirmed evolution.":"")
-                    +" No Lucky Egg will be used automatically.")
-                .setNegativeButton("Cancel",null).setPositiveButton("Start batch",(d,which)->{
+                    +" Aucun Œuf Chance ne sera utilisé automatiquement.")
+                .setNegativeButton("Annuler",null).setPositiveButton("Lancer le lot",(d,which)->{
                     synchronized(LOCK) {
                         if(token==expectedToken&&mode==1&&"ready".equals(phase)&&total>0) {
-                            mode=2;phase="running";message="Starting batch...";
+                            mode=2;phase="running";message="Lancement du lot…";
                         }
                     }
                     refreshControls(status,tagInput,remove,preview,start,stop);
@@ -221,7 +221,7 @@ public final class BatchEvolutionSettings {
             synchronized(LOCK) {
                 if(mode==0||token==0)return;
                 mode=0;phase="stopping";
-                message="Stopping. The current evolution may finish before the batch stops.";
+                message="Arrêt. L'évolution en cours peut se terminer avant l'arrêt du lot.";
             }
             refreshControls(status,tagInput,remove,preview,start,stop);
         });
@@ -245,7 +245,7 @@ public final class BatchEvolutionSettings {
     private static String summary() {
         String shownPhase=phase.substring(0,1).toUpperCase(Locale.US)+phase.substring(1);
         long seconds=elapsedMs/1000;
-        return shownPhase+": "+message+"\nEligible: "+total+"   Completed: "+completed
-            +"   Skipped: "+skipped+"\nXP: "+xp+"   Time: "+String.format(Locale.US,"%d:%02d",seconds/60,seconds%60);
+        return shownPhase+": "+message+"\nÉligibles : "+total+"   Terminés : "+completed
+            +"   Ignorés : "+skipped+"\nXP : "+xp+"   Temps : "+String.format(Locale.US,"%d:%02d",seconds/60,seconds%60);
     }
 }

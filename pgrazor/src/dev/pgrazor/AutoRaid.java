@@ -14,36 +14,36 @@ public final class AutoRaid {
     private static AutoRaidPreferences preferences=new AutoRaidPreferences(), session;
     private static long token=System.currentTimeMillis(), lastEvent, route, travelSerial, motionGeneration;
     private static boolean running,stopping;
-    private static String message="Not running";
+    private static String message="Inactif";
     private static int completed;
     public static AutoRaidPreferences preferences(){synchronized(LOCK){return preferences.copy();}}
     public static void configure(AutoRaidPreferences value){
         AutoRaidPreferences copy=value.copy();copy.validate();
-        synchronized(LOCK){if(running||stopping)throw new IllegalStateException("Stop Auto-Raid before changing its settings.");preferences=copy;}
+        synchronized(LOCK){if(running||stopping)throw new IllegalStateException("Arrête l'Auto-Raid avant de modifier ses réglages.");preferences=copy;}
         Control.saveSettings();
     }
-    public static void read(Properties p){synchronized(LOCK){preferences=new AutoRaidPreferences();preferences.read(p);running=stopping=false;session=null;token++;route=travelSerial=0;message="Not running";}}
+    public static void read(Properties p){synchronized(LOCK){preferences=new AutoRaidPreferences();preferences.read(p);running=stopping=false;session=null;token++;route=travelSerial=0;message="Inactif";}}
     public static void write(Properties p){synchronized(LOCK){preferences.write(p);}}
     public static boolean running(){synchronized(LOCK){return running||stopping;}}
     public static String status(){synchronized(LOCK){return message+(session==null?"":" · "+completed+"/"+session.maxRaids+" raids");}}
     public static void start(AutoRaidPreferences value){
-        if(!Control.automationReady())throw new IllegalStateException("Wait for the game and location to be ready.");
-        if((Control.battleOptions()&1)==0)throw new IllegalStateException("Enable Raid auto quick attack in battle settings first.");
+        if(!Control.automationReady())throw new IllegalStateException("Attends que le jeu et la position soient prêts.");
+        if((Control.battleOptions()&1)==0)throw new IllegalStateException("Active d'abord l'attaque rapide auto en raid dans les réglages de combat.");
         if(OneShotAutomation.enabled()||GiftBatchSettings.running()||BatchEvolutionSettings.enabled()||ShundoSniper.active()||GymAutomationSettings.running())
-            throw new IllegalStateException("Stop the current automation before starting Auto-Raid.");
-        if(Control.engine.walking||Control.gameRoutesRunning()||Control.automationPlanning())throw new IllegalStateException("Stop the current walk or Route first.");
+            throw new IllegalStateException("Arrête l'automatisation en cours avant de lancer l'Auto-Raid.");
+        if(Control.engine.walking||Control.gameRoutesRunning()||Control.automationPlanning())throw new IllegalStateException("Arrête d'abord la marche ou la Route en cours.");
         configure(value);
-        synchronized(LOCK){session=preferences.copy();token++;completed=0;travelSerial=route=0;motionGeneration=Control.engine.routeGeneration();lastEvent=SystemClock.elapsedRealtime();running=true;stopping=false;message="Checking raid support";}
+        synchronized(LOCK){session=preferences.copy();token++;completed=0;travelSerial=route=0;motionGeneration=Control.engine.routeGeneration();lastEvent=SystemClock.elapsedRealtime();running=true;stopping=false;message="Vérification du support des raids";}
         Control.event("auto-raid-session","Started; Premium passes "+(value.premiumPass?"allowed":"disabled"));
     }
-    public static void stop(){synchronized(LOCK){if(!running&&!stopping)return;running=false;stopping=true;message="Stopping; waiting for the current raid action";stopMovement();}}
+    public static void stop(){synchronized(LOCK){if(!running&&!stopping)return;running=false;stopping=true;message="Arrêt ; attente de l'action de raid en cours";stopMovement();}}
     private static void stopMovement(){if(route!=0){Control.engine.stopRoute(route);route=0;}}
-    public static void reset(){synchronized(LOCK){stopMovement();running=stopping=false;token++;session=null;travelSerial=0;message="Not running";}}
+    public static void reset(){synchronized(LOCK){stopMovement();running=stopping=false;token++;session=null;travelSerial=0;message="Inactif";}}
     /** Called by the main movement loop. Manual movement revokes this session's travel. */
     public static void tick(boolean manual){synchronized(LOCK){
         if(!running&&!stopping)return;
-        if(running&&(manual||Control.engine.routeGeneration()!=motionGeneration)){stopMovement();running=false;stopping=true;message="Stopping: movement changed";}
-        if(SystemClock.elapsedRealtime()-lastEvent>45000){stopMovement();running=stopping=false;token++;message="Stopped: raid controller stopped responding; check the game before restarting.";}
+        if(running&&(manual||Control.engine.routeGeneration()!=motionGeneration)){stopMovement();running=false;stopping=true;message="Arrêt : déplacement modifié";}
+        if(SystemClock.elapsedRealtime()-lastEvent>45000){stopMovement();running=stopping=false;token++;message="Arrêté : le contrôleur de raid ne répond plus ; vérifie le jeu avant de relancer.";}
     }}
     public static String config(){
         if(!running())return null;
@@ -82,11 +82,11 @@ public final class AutoRaid {
     // Control holds its state lock first, matching preference reload/export lock order.
     static void travel(long received,long serial,double lat,double lon){synchronized(LOCK){
         if(received!=token||!running||serial!=travelSerial)return;
-        if(!Control.automationReady()){stop();message="Stopping: game unavailable before travel";return;}
+        if(!Control.automationReady()){stop();message="Arrêt : jeu indisponible avant le trajet";return;}
         try{
             if(session.walk){Control.walkRoute(new double[][]{{lat,lon}});route=Control.engine.activeRouteToken();}
             else {Control.teleport(lat,lon);route=0;}
             motionGeneration=Control.engine.routeGeneration();
-        }catch(IllegalArgumentException unavailable){stop();message="Stopping: "+unavailable.getMessage();}
+        }catch(IllegalArgumentException unavailable){stop();message="Arrêt : "+unavailable.getMessage();}
     }}
 }

@@ -65,12 +65,12 @@ public final class GpxStore {
 
     /** Save a route under a new id, rejecting a name that already exists or a full store. */
     public Entry save(GpxRoute route) throws IOException { synchronized(LOCK) {
-        if (route == null) throw new IOException("No route to save.");
-        if (!directory.isDirectory() && !directory.mkdirs()) throw new IOException("Could not create the route store.");
+        if (route == null) throw new IOException("Aucune route à enregistrer.");
+        if (!directory.isDirectory() && !directory.mkdirs()) throw new IOException("Impossible de créer le stockage des routes.");
         File[] existing = files();
-        if (existing.length >= MAX_FILES) throw new IOException("The route store is full (" + MAX_FILES + " routes). Delete one before saving another.");
+        if (existing.length >= MAX_FILES) throw new IOException("Le stockage des routes est plein (" + MAX_FILES + " routes). Supprimes-en une avant d'en enregistrer une autre.");
         for (Entry entry : list())
-            if (entry.name.equalsIgnoreCase(route.name)) throw new IOException("A route named “" + route.name + "” already exists. Choose another name.");
+            if (entry.name.equalsIgnoreCase(route.name)) throw new IOException("Une route nommée «" + route.name + " » existe déjà. Choisis un autre nom.");
         String id;
         File target;
         do { id = UUID.randomUUID().toString(); target = new File(directory, id + ".gpx"); } while (target.exists());
@@ -80,7 +80,7 @@ public final class GpxStore {
                 GpxCodec.write(out, route);
                 out.getFD().sync();
             }
-            if (!temp.renameTo(target)) throw new IOException("Could not save the route to device storage.");
+            if (!temp.renameTo(target)) throw new IOException("Impossible d'enregistrer la route sur l'appareil.");
             temp = null;
         } finally {
             if (temp != null) temp.delete();
@@ -91,10 +91,10 @@ public final class GpxStore {
     /** Load a stored route by id, preserving its name and point order. */
     public GpxRoute load(String id) throws IOException { synchronized(LOCK) {
         File file = resolve(id);
-        if (!file.isFile()) throw new FileNotFoundException("No stored route with that id.");
+        if (!file.isFile()) throw new FileNotFoundException("Aucune route enregistrée avec cet identifiant.");
         try (InputStream in = new FileInputStream(file)) {
             List<GpxRoute> routes = GpxCodec.read(in, id);
-            if (routes.isEmpty()) throw new IOException("The stored route is empty or damaged.");
+            if (routes.isEmpty()) throw new IOException("La route enregistrée est vide ou endommagée.");
             return routes.get(0);
         }
     } }
@@ -102,7 +102,7 @@ public final class GpxStore {
     /** Delete a stored route by id; a missing route is treated as already deleted. */
     public void delete(String id) throws IOException { synchronized(LOCK) {
         File file = resolve(id);
-        if (file.exists() && !file.delete()) throw new IOException("Could not delete the route.");
+        if (file.exists() && !file.delete()) throw new IOException("Impossible de supprimer la route.");
     } }
 
     private File[] files() {
@@ -116,11 +116,11 @@ public final class GpxStore {
     }
 
     private File resolve(String id) throws IOException {
-        if (id == null || !ID.matcher(id).matches()) throw new IOException("Invalid route id.");
+        if (id == null || !ID.matcher(id).matches()) throw new IOException("Identifiant de route invalide.");
         File file = new File(directory, id + ".gpx");
         // Defence in depth: the resolved path must stay inside the store even if the id ever slipped through.
         if (!file.getCanonicalPath().startsWith(directory.getCanonicalPath() + File.separator))
-            throw new IOException("Invalid route id.");
+            throw new IOException("Identifiant de route invalide.");
         return file;
     }
 }

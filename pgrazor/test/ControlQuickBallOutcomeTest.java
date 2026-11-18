@@ -42,7 +42,7 @@ public final class ControlQuickBallOutcomeTest {
         boolean desired=Control.desiredEnabled();
         Control.setQuickBallEnabled(true); Handler.drain();
         check(Control.quickBallAllowed(),"Ready connected foreground feature is active");
-        String[][] cases={{"caught","Caught"},{"broke-free","Not caught - broke free"},{"fled","Not caught - fled"}};
+        String[][] cases={{"caught","Capturé"},{"broke-free","Pas capturé - s'est échappé"},{"fled","Pas capturé - s'est enfui"}};
         for(String[] c:cases) {
             int before=Toast.made.size();
             check(Control.quickBallOutcome(c[0]),"Confirmed outcome queues: "+c[0]);
@@ -63,7 +63,7 @@ public final class ControlQuickBallOutcomeTest {
         int before=Toast.made.size();
         check(Control.quickBallOutcome("caught") && Control.quickBallOutcome("fled"),"Two outcomes queue");
         Handler.drain();
-        check(Toast.made.size()==before+1 && last().text.toString().equals("Not caught - fled"),"Only the newest queued outcome displays");
+        check(Toast.made.size()==before+1 && last().text.toString().equals("Pas capturé - s'est enfui"),"Only the newest queued outcome displays");
         check(logged("suppressed outcome=caught; superseded or turned off"),"Superseded outcome logged");
 
         Toast visible=last();
@@ -104,7 +104,7 @@ public final class ControlQuickBallOutcomeTest {
 
         Control.configureQuickSummary(true);Control.setQuickSummaryReady(true,"Ready");Control.setAutoTransferReady(true,"Ready");Control.setAutoTransferEnabled(true);
         Control.setQuickBallEnabled(false);Handler.drain();
-        for(String[] c:new String[][]{{"transferred","Transferred"},{"transfer-error","Transfer Error"}}){
+        for(String[] c:new String[][]{{"transferred","Transféré"},{"transfer-error","Erreur de transfert"}}){
             check(Control.quickBallOutcome(c[0]),"Transfer toast independent of fast-ball toggle");Handler.drain();check(last().shown&&last().text.toString().equals(c[1]),"Transfer toast text");
         }
         raced("transferred",()->{Control.setAutoTransferEnabled(false);Control.setAutoTransferEnabled(true);},"superseded or turned off");

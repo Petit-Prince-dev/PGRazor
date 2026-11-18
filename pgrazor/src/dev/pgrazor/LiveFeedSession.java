@@ -90,7 +90,7 @@ public final class LiveFeedSession {
                 .putString(KEY_CIPHERTEXT, Base64.encodeToString(ciphertext, Base64.NO_WRAP))
                 .putString(KEY_IV, Base64.encodeToString(iv, Base64.NO_WRAP))
                 .commit();
-        if (!ok) throw new java.io.IOException("Could not store the session. Please retry.");
+        if (!ok) throw new java.io.IOException("Impossible d'enregistrer la session. Réessaie.");
         cachedToken = token;
     }
 

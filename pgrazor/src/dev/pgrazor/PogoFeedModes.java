@@ -30,12 +30,12 @@ final class PogoFeedModes {
     private PogoFeedModes() {}
 
     enum Mode {
-        POKEMON("Pokémon", null, "Pokémon filters"),
-        RAIDS("Raids", "/raids/search", "Raid filters"),
-        QUESTS("Quests", "/quests/search", "Quest filters"),
-        WEATHER("Weather", "/weather/search", "Weather filters"),
-        ROCKET("Rocket", "/rocket/search", "Rocket filters"),
-        POWER_SPOTS("Power Spots", "/powerspots/search", "Power Spot filters");
+        POKEMON("Pokémon", null, "Filtres Pokémon"),
+        RAIDS("Raids", "/raids/search", "Filtres de raid"),
+        QUESTS("Quêtes", "/quests/search", "Filtres de quêtes"),
+        WEATHER("Météo", "/weather/search", "Filtres météo"),
+        ROCKET("Rocket", "/rocket/search", "Filtres Rocket"),
+        POWER_SPOTS("Sites de Puissance", "/powerspots/search", "Filtres Sites de Puissance");
 
         final String label, path, filtersTitle;
         Mode(String label, String path, String filtersTitle) { this.label = label; this.path = path; this.filtersTitle = filtersTitle; }
@@ -47,28 +47,28 @@ final class PogoFeedModes {
     }
 
     /** Raid tiers as the site lists them; the API value is index + 1. */
-    static final String[] RAID_TIERS = {"Tier 1", "Tier 2", "Tier 3", "Tier 4", "Legendary", "Mega",
-        "Legendary Mega", "Ultra Beast", "Elite", "Primal", "Shadow Tier 1", "Shadow Tier 2", "Shadow Tier 3",
-        "Shadow Tier 4", "Shadow Legendary", "Super Mega"};
+    static final String[] RAID_TIERS = {"Niveau 1", "Niveau 2", "Niveau 3", "Niveau 4", "Légendaire", "Méga",
+        "Méga légendaire", "Ultra-Chimère", "Élite", "Primo", "Obscur niveau 1", "Obscur niveau 2", "Obscur niveau 3",
+        "Obscur niveau 4", "Obscur légendaire", "Super Méga"};
     static final String[] EX_MODES = {"all", "ex_only", "normal_only"};
-    static final String[] EX_LABELS = {"All", "EX only", "Normal only"};
+    static final String[] EX_LABELS = {"Tous", "EX uniquement", "Normaux uniquement"};
     static final String[] RAID_STATUS = {"active", "egg"};
-    static final String[] RAID_STATUS_LABELS = {"Active", "Egg"};
+    static final String[] RAID_STATUS_LABELS = {"Actif", "Œuf"};
     /** Weather ids 1..7 (index + 1). */
-    static final String[] WEATHERS = {"Sunny", "Rainy", "Partly Cloudy", "Cloudy", "Windy", "Snow", "Fog"};
+    static final String[] WEATHERS = {"Ensoleillé", "Pluvieux", "Partiellement nuageux", "Nuageux", "Venteux", "Neige", "Brouillard"};
     static final String[] REWARD_TYPES = {"Pokemon", "Item", "Stardust", "Mega Energy", "PokéCoin"};
     /** Power spot battle levels 1..6 (index + 1). */
-    static final String[] SPOT_LEVELS = {"1★", "2★", "3★", "4★", "5★", "6★ (G-Max)"};
+    static final String[] SPOT_LEVELS = {"1★", "2★", "3★", "4★", "5★", "6★ (Gigamax)"};
     /** Fallback when {@code GET /rocket/types} cannot be loaded: {id, label, group}. */
     static final String[][] ROCKET_TYPES = {
-        {"kecleon", "Kecleon", "special"}, {"male", "Male Grunt", "special"}, {"female", "Female Grunt", "special"},
-        {"decoy", "Decoy Grunt", "special"}, {"bug", "Bug Type", "type"}, {"dark", "Dark Type", "type"},
-        {"dragon", "Dragon Type", "type"}, {"fairy", "Fairy Type", "type"}, {"fighting", "Fighting Type", "type"},
-        {"fire", "Fire Type", "type"}, {"flying", "Flying Type", "type"}, {"grass", "Grass Type", "type"},
-        {"ground", "Ground Type", "type"}, {"ice", "Ice Type", "type"}, {"steel", "Steel Type", "type"},
-        {"normal", "Normal Type", "type"}, {"poison", "Poison Type", "type"}, {"psychic", "Psychic Type", "type"},
-        {"rock", "Rock Type", "type"}, {"water", "Water Type", "type"}, {"ghost", "Ghost Type", "type"},
-        {"electric", "Electric Type", "type"}, {"cliff", "Cliff", "leader"}, {"arlo", "Arlo", "leader"},
+        {"kecleon", "Kecleon", "special"}, {"male", "Sbire (homme)", "special"}, {"female", "Sbire (femme)", "special"},
+        {"decoy", "Faux Sbire", "special"}, {"bug", "Type Insecte", "type"}, {"dark", "Type Ténèbres", "type"},
+        {"dragon", "Type Dragon", "type"}, {"fairy", "Type Fée", "type"}, {"fighting", "Type Combat", "type"},
+        {"fire", "Type Feu", "type"}, {"flying", "Type Vol", "type"}, {"grass", "Type Plante", "type"},
+        {"ground", "Type Sol", "type"}, {"ice", "Type Glace", "type"}, {"steel", "Type Acier", "type"},
+        {"normal", "Type Normal", "type"}, {"poison", "Type Poison", "type"}, {"psychic", "Type Psy", "type"},
+        {"rock", "Type Roche", "type"}, {"water", "Type Eau", "type"}, {"ghost", "Type Spectre", "type"},
+        {"electric", "Type Électrik", "type"}, {"cliff", "Cliff", "leader"}, {"arlo", "Arlo", "leader"},
         {"sierra", "Sierra", "leader"}, {"giovanni", "Giovanni", "leader"}};
 
     // ------------------------------------------------------------------ specs
@@ -119,9 +119,9 @@ final class PogoFeedModes {
 
     /** A required choice the site also insists on, or null when the spec can be searched. */
     static String missing(Mode m, JSONObject spec) {
-        if (m == Mode.WEATHER && spec.isNull("weather_id")) return "Choose a weather in Filters.";
-        if (m == Mode.ROCKET && (spec.isNull("type") || spec.optString("type", "").isEmpty())) return "Choose a Rocket type in Filters.";
-        if (m == Mode.QUESTS && spec.optString("reward_type", "").isEmpty()) return "Choose a reward type in Filters.";
+        if (m == Mode.WEATHER && spec.isNull("weather_id")) return "Choisis une météo dans Filtres.";
+        if (m == Mode.ROCKET && (spec.isNull("type") || spec.optString("type", "").isEmpty())) return "Choisis un type Rocket dans Filtres.";
+        if (m == Mode.QUESTS && spec.optString("reward_type", "").isEmpty()) return "Choisis un type de récompense dans Filtres.";
         return null;
     }
 
@@ -174,43 +174,43 @@ final class PogoFeedModes {
                     JSONArray t = arr(spec, "tiers");
                     List<String> names = new ArrayList<>();
                     for (int i = 0; i < t.length(); i++) { int v = t.optInt(i); if (v >= 1 && v <= RAID_TIERS.length) names.add(RAID_TIERS[v - 1]); }
-                    parts.add(names.isEmpty() ? "Any tier" : join(names, ", "));
+                    parts.add(names.isEmpty() ? "Tous les niveaux" : join(names, ", "));
                 } else {
                     int n = arr(spec, "bosses").length();
-                    parts.add(n == 0 ? "Any boss" : n + (n == 1 ? " boss" : " bosses"));
+                    parts.add(n == 0 ? "Tous les boss" : n + (n == 1 ? " boss" : " boss"));
                 }
                 int ex = indexOf(EX_MODES, spec.optString("exclusive_mode", "all"));
                 if (ex > 0) parts.add(EX_LABELS[ex]);
-                parts.add("egg".equals(spec.optString("status")) ? "Eggs" : "Active");
+                parts.add("egg".equals(spec.optString("status")) ? "Œufs" : "Actif");
                 break;
             }
             case QUESTS: {
                 String type = spec.optString("reward_type", "");
-                parts.add(type.isEmpty() ? "Any reward" : type);
+                parts.add(type.isEmpty() ? "Toutes les récompenses" : type);
                 int picked = 0; for (String k : QUEST_LISTS) if (!k.equals("quest_titles")) picked += arr(spec, k).length();
-                if (picked > 0) parts.add(picked + " selected");
+                if (picked > 0) parts.add(picked + " sélectionnés");
                 int tasks = arr(spec, "quest_titles").length();
-                if (tasks > 0) parts.add(tasks + (tasks == 1 ? " task" : " tasks"));
+                if (tasks > 0) parts.add(tasks + (tasks == 1 ? " tâche" : " tâches"));
                 break;
             }
             case WEATHER: {
                 int id = spec.optInt("weather_id", 0);
-                parts.add(id >= 1 && id <= WEATHERS.length ? WEATHERS[id - 1] : "No weather chosen");
+                parts.add(id >= 1 && id <= WEATHERS.length ? WEATHERS[id - 1] : "Aucune météo choisie");
                 break;
             }
             case ROCKET: {
                 String type = spec.optString("type", "");
                 String label = type;
                 for (String[] t : ROCKET_TYPES) if (t[0].equals(type)) label = t[1];
-                parts.add(spec.isNull("type") || type.isEmpty() ? "No type chosen" : label);
+                parts.add(spec.isNull("type") || type.isEmpty() ? "Aucun type choisi" : label);
                 break;
             }
             case POWER_SPOTS: {
                 int n = arr(spec, "pokemon_ids").length();
-                parts.add(n == 0 ? "Any boss" : n + (n == 1 ? " boss" : " bosses"));
+                parts.add(n == 0 ? "Tous les boss" : n + (n == 1 ? " boss" : " boss"));
                 JSONArray lv = arr(spec, "battle_levels");
                 if (lv.length() > 0) { List<String> l = new ArrayList<>(); for (int i = 0; i < lv.length(); i++) l.add(lv.optInt(i) + "★"); parts.add(join(l, ", ")); }
-                if (spec.optBoolean("active_only", false)) parts.add("Active only");
+                if (spec.optBoolean("active_only", false)) parts.add("Actifs uniquement");
                 break;
             }
             default: break;
@@ -247,17 +247,17 @@ final class PogoFeedModes {
     private static PogoFeedData.Entry raid(JSONObject r, String code) {
         boolean egg = r.optBoolean("is_egg", false) || r.optInt("pokemon_id", 0) <= 0;
         String tier = str(r, "tier_name");
-        String name = egg ? "Egg" + (tier.isEmpty() ? "" : " · " + tier) : withForm(str(r, "pokemon_name"), str(r, "form"));
-        if (name.isEmpty()) name = "Raid boss";
+        String name = egg ? "Œuf" + (tier.isEmpty() ? "" : " · " + tier) : withForm(str(r, "pokemon_name"), str(r, "form"));
+        if (name.isEmpty()) name = "Boss de raid";
         long end = parseIso(str(r, "raid_end")), battle = parseIso(str(r, "raid_battle"));
         List<String> d = new ArrayList<>();
         if (!egg && !tier.isEmpty()) d.add(tier);
-        if (egg && battle > 0) d.add("hatches " + clock(battle));
-        if (r.has("cp") && !r.isNull("cp")) d.add("CP " + r.optInt("cp"));
+        if (egg && battle > 0) d.add("éclot " + clock(battle));
+        if (r.has("cp") && !r.isNull("cp")) d.add("PC " + r.optInt("cp"));
         String moves = moves(r);
         if (!moves.isEmpty()) d.add(moves);
         if (r.optBoolean("ex_eligible", false)) d.add("EX");
-        if (r.optBoolean("weather_boosted", false)) d.add("Boosted");
+        if (r.optBoolean("weather_boosted", false)) d.add("Boosté");
         String gym = str(r, "gym_name");
         if (!gym.isEmpty()) d.add(gym);
         int level = r.optInt("raid_level", 0);
@@ -278,7 +278,7 @@ final class PogoFeedModes {
             if (!label.isEmpty()) labels.add(label);
             if (dex < 0 && w.has("pokemon_id") && !w.isNull("pokemon_id")) dex = w.optInt("pokemon_id", -1);
         }
-        String name = labels.isEmpty() ? "Quest" : join(labels, ", ");
+        String name = labels.isEmpty() ? "Quête" : join(labels, ", ");
         List<String> d = new ArrayList<>();
         String task = str(r, "task");
         int target = r.optInt("target", 0);
@@ -295,7 +295,7 @@ final class PogoFeedModes {
         String name = str(r, "weather_name");
         if (name.isEmpty() && id >= 1 && id <= WEATHERS.length) name = WEATHERS[id - 1];
         String place = str(r, "location");
-        return new PogoFeedData.Entry("weather:" + id + ":" + place, PogoFeedData.Kind.WEATHER, name.isEmpty() ? "Weather" : name, place,
+        return new PogoFeedData.Entry("weather:" + id + ":" + place, PogoFeedData.Kind.WEATHER, name.isEmpty() ? "Météo" : name, place,
                 Double.NaN, Double.NaN, -1, -1, -1, -1, parseIso(str(r, "expires_at")), false, 0, 0, false, false,
                 PogoFeedData.Attrs.UNKNOWN, code);
     }
@@ -317,9 +317,9 @@ final class PogoFeedModes {
         String name = withForm(str(r, "pokemon_name"), str(r, "form"));
         List<String> d = new ArrayList<>();
         int level = r.optInt("battle_level", 0);
-        if (level > 0) d.add(level >= 6 ? "6★ G-Max" : level + "★");
+        if (level > 0) d.add(level >= 6 ? "6★ Gigamax" : level + "★");
         long start = parseIso(str(r, "battle_start"));
-        if (!r.optBoolean("battle_active", true) && start > 0) d.add("starts " + clock(start));
+        if (!r.optBoolean("battle_active", true) && start > 0) d.add("commence " + clock(start));
         String gender = str(r, "gender");
         if (!gender.isEmpty()) d.add(gender);
         String moves = moves(r);
@@ -327,7 +327,7 @@ final class PogoFeedModes {
         String spot = str(r, "name"), place = str(r, "location");
         if (!spot.isEmpty()) d.add(spot);
         if (!place.isEmpty()) d.add(place);
-        return new PogoFeedData.Entry("spot:" + str(r, "spot_id"), PogoFeedData.Kind.STATION, name.isEmpty() ? "Power Spot" : name,
+        return new PogoFeedData.Entry("spot:" + str(r, "spot_id"), PogoFeedData.Kind.STATION, name.isEmpty() ? "Site de Puissance" : name,
                 join(d, " · "), Double.NaN, Double.NaN, r.optInt("pokemon_id", -1), -1, level, -1,
                 parseIso(str(r, "battle_end")), false, 0, 0, false, false, PogoFeedData.Attrs.UNKNOWN, code);
     }

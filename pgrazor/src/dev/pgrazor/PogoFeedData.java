@@ -271,7 +271,7 @@ public final class PogoFeedData {
                 long remaining = expiresAt - now;
                 if (sb.length() > 0) sb.append(" · ");
                 if (remaining <= 0) sb.append(kind == Kind.POKEMON ? "despawned" : "ended");
-                else sb.append(kind == Kind.POKEMON ? "despawns in " : "ends in ").append(duration(remaining));
+                else sb.append(kind == Kind.POKEMON ? "disparaît dans " : "se termine dans ").append(duration(remaining));
             }
             return sb.toString();
         }
@@ -323,8 +323,8 @@ public final class PogoFeedData {
 
         int refresh = root.optInt("refresh_seconds", root.optInt("viewport_refresh_seconds", DEFAULT_REFRESH_SECONDS));
         String note = "";
-        if (truncated) note = "Showing the first " + MAX_ENTRIES + " results.";
-        else if (root.optBoolean("limit_reached", false)) note = "The service limited how many objects it returned.";
+        if (truncated) note = "Affichage des " + MAX_ENTRIES + " premiers résultats.";
+        else if (root.optBoolean("limit_reached", false)) note = "Le service a limité le nombre d'objets renvoyés.";
         // Surface the viewport's own shiny-access signal so the My Shinies tab can show a truthful
         // "not enabled / still loading" state; only act on it when the field is explicitly present.
         String shiny = shinyAccessNote(root);
@@ -350,7 +350,7 @@ public final class PogoFeedData {
         boolean truncated = parseShinyArray(root.optJSONArray("shinies"), now, entries, ids);
 
         int refresh = boundRefresh(root.optInt("refresh_sec", 30));
-        String note = truncated ? "Showing the first " + MAX_ENTRIES + " results." : "";
+        String note = truncated ? "Affichage des " + MAX_ENTRIES + " premiers résultats." : "";
         String access = shinyAccessNote(root);
         if (!access.isEmpty()) note = note.isEmpty() ? access : note + "\n" + access;
         return new Snapshot(entries, now, refresh, note);
@@ -358,9 +358,9 @@ public final class PogoFeedData {
 
     private static String shinyAccessNote(JSONObject root) {
         if (root.has("shiny_access") && !root.isNull("shiny_access") && !root.optBoolean("shiny_access", true))
-            return "Shiny access is not enabled for this account.";
+            return "L'accès aux shiny n'est pas activé pour ce compte.";
         if (root.has("shiny_ready") && !root.isNull("shiny_ready") && !root.optBoolean("shiny_ready", true))
-            return "Shinies are still loading — try again shortly.";
+            return "Les shiny sont encore en chargement — réessaie dans un instant.";
         return "";
     }
 
@@ -409,19 +409,19 @@ public final class PogoFeedData {
             }
 
             String name = clean(o.optString("pokemon_name", o.optString("pokemonName", o.optString("name", ""))));
-            if (name.isEmpty()) name = dex > 0 ? "#" + dex : "Unknown Pokémon";
+            if (name.isEmpty()) name = dex > 0 ? "#" + dex : "Pokémon inconnu";
             if (isShiny && !name.startsWith("✨")) name = "✨ " + name;
 
             String details;
             if (hasStats && iv >= 0) {
                 StringBuilder d = new StringBuilder();
-                if (cp >= 0) d.append("CP ").append(cp);
-                if (level >= 0) { if (d.length() > 0) d.append(" · "); d.append("Lv ").append(level == Math.rint(level) ? Long.toString((long)level) : Double.toString(level)); }
+                if (cp >= 0) d.append("PC ").append(cp);
+                if (level >= 0) { if (d.length() > 0) d.append(" · "); d.append("Niv ").append(level == Math.rint(level) ? Long.toString((long)level) : Double.toString(level)); }
                 if (d.length() > 0) d.append(" · ");
                 d.append(String.format(java.util.Locale.US, "%.1f%% IV", iv));
                 details = d.toString();
             } else {
-                details = isShiny ? "Shiny Wild" : "Wild · stats hidden";
+                details = isShiny ? "Shiny sauvage" : "Sauvage · stats cachées";
             }
             // Optional extra line from the Pokesearch API (size · gender · moves · place).
             String extra = clean(o.optString("extra_details", ""));
@@ -479,8 +479,8 @@ public final class PogoFeedData {
             if (name.isEmpty()) name = dex > 0 ? "#" + dex : "Shiny";
 
             StringBuilder d = new StringBuilder();
-            if (cp >= 0) d.append("CP ").append(cp);
-            if (level >= 0) { if (d.length() > 0) d.append(" · "); d.append("Lv ").append(fmtLevel(level)); }
+            if (cp >= 0) d.append("PC ").append(cp);
+            if (level >= 0) { if (d.length() > 0) d.append(" · "); d.append("Niv ").append(fmtLevel(level)); }
             if (iv >= 0) { if (d.length() > 0) d.append(" · "); d.append(String.format(java.util.Locale.US, "%.1f%% IV", iv)); }
             if (attrs.hasIvComponents()) { if (d.length() > 0) d.append(" · "); d.append(atk).append('/').append(def).append('/').append(sta); }
             String details = d.length() > 0 ? d.toString() : "Shiny";
@@ -522,18 +522,18 @@ public final class PogoFeedData {
         String id = "stop:" + fortId;
         if (!ids.add(id)) return;
         String name = clean(o.optString("name", ""));
-        if (name.isEmpty()) name = "Pokéstop";
+        if (name.isEmpty()) name = "PokéStop";
 
         // Only surface a feature when it is explicitly flagged true and its expiry is still in the future.
         List<String> feats = new ArrayList<>();
         long lure = o.optLong("lure_expire_ms", 0);
-        if (o.optBoolean("has_lure", false) && lure > now) feats.add("Lure " + duration(lure - now));
+        if (o.optBoolean("has_lure", false) && lure > now) feats.add("Leurre " + duration(lure - now));
         long invasion = o.optLong("invasion_expire_ms", 0);
         if (o.optBoolean("has_invasion", false) && invasion > now) feats.add("Invasion " + duration(invasion - now));
         long kecleon = o.optLong("kecleon_expire_ms", 0);
         if (o.optBoolean("has_kecleon", false) && kecleon > now) feats.add("Kecleon " + duration(kecleon - now));
 
-        String details = feats.isEmpty() ? "Pokéstop" : join(feats);
+        String details = feats.isEmpty() ? "PokéStop" : join(feats);
         // The stop itself persists, so it has no expiry; feature countdowns live in the detail text.
         out.add(new Entry(id, Kind.STOP, name, details, lat, lon, -1, -1, -1, -1, 0, false));
     }
@@ -541,7 +541,7 @@ public final class PogoFeedData {
     private static void addGymOrRaid(JSONObject o, String fortId, double lat, double lon, long now,
                                      List<Entry> out, Set<String> ids) {
         String name = clean(o.optString("name", ""));
-        if (name.isEmpty()) name = "Gym";
+        if (name.isEmpty()) name = "Arène";
         int team = o.optInt("team", 0);
         long raidEnd = o.optLong("raid_end_ms", 0);
 
@@ -555,11 +555,11 @@ public final class PogoFeedData {
 
             StringBuilder d = new StringBuilder();
             boolean egg = hatch > now; // not yet hatched
-            d.append(teamName(team)).append(" \u00b7 ").append(occupancy(o)).append(" \u00b7 ").append(egg ? "Raid egg" : "Raid");
-            if (rawLevel > 0) d.append(" · Raid type ").append(rawLevel); // no invented star rating
+            d.append(teamName(team)).append(" \u00b7 ").append(occupancy(o)).append(" \u00b7 ").append(egg ? "Œuf de raid" : "Raid");
+            if (rawLevel > 0) d.append(" · Type de raid ").append(rawLevel); // no invented star rating
             if (boss > 0) d.append(" · #").append(boss);
-            else if (!egg) d.append(" · boss unknown");
-            if (!egg && cp > 0) d.append(" · CP ").append(cp);
+            else if (!egg) d.append(" · boss inconnu");
+            if (!egg && cp > 0) d.append(" · PC ").append(cp);
 
             // Only a hatched raid with a boss id is a confirmed live boss; an egg's boss id is a prediction
             // and must never become a live sprite once this stale row's hatch time quietly passes.
@@ -573,7 +573,7 @@ public final class PogoFeedData {
         if (!ids.add(id)) return;
         StringBuilder d = new StringBuilder(teamName(team));
         d.append(" · ").append(occupancy(o));
-        if (o.optBoolean("in_battle", false)) d.append(" · in battle");
+        if (o.optBoolean("in_battle", false)) d.append(" · en combat");
         out.add(new Entry(id, Kind.GYM, name, d.toString(), lat, lon, -1, -1, -1, -1, 0, false, team, 0L, false));
     }
 
@@ -587,11 +587,11 @@ public final class PogoFeedData {
 
     private static String teamName(int team) {
         switch (team) {
-            case 1: return "Mystic";
-            case 2: return "Valor";
-            case 3: return "Instinct";
-            case 0: return "Uncontested";
-            default: return "Team unknown";
+            case 1: return "Sagesse";
+            case 2: return "Bravoure";
+            case 3: return "Intuition";
+            case 0: return "Libre";
+            default: return "Équipe inconnue";
         }
     }
 
@@ -614,12 +614,12 @@ public final class PogoFeedData {
             String id = "station:" + stationId;
             if (!ids.add(id)) continue;
             String name = clean(o.optString("name", ""));
-            if (name.isEmpty()) name = "Power Station";
+            if (name.isEmpty()) name = "Site de Puissance";
             int level = o.optInt("battle_level", 0);
             int boss = o.has("boss_dex_id") && !o.isNull("boss_dex_id") ? o.optInt("boss_dex_id", -1) : -1;
 
-            StringBuilder d = new StringBuilder("Max battle");
-            if (level > 0) d.append(" Lv").append(level); // battle-kind semantics unverified; show level only
+            StringBuilder d = new StringBuilder("Combat Max");
+            if (level > 0) d.append(" Niv").append(level); // battle-kind semantics unverified; show level only
             if (boss > 0) d.append(" · #").append(boss);
             out.add(new Entry(id, Kind.STATION, name, d.toString(), lat, lon, boss, -1, level, -1, end, false));
         }

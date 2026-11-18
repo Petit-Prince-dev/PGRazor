@@ -41,11 +41,11 @@ public final class Control {
         OneShotAutomation.reset();
         AutoRaid.reset();
         GiftBatchSettings.reset();
-        gameRoutes.stop("Account switch"); gameRoutesPlanning=false; gameRoutes.setPlanning(false); autoWalkPlanning=false;
+        gameRoutes.stop("Changement de compte"); gameRoutesPlanning=false; gameRoutes.setPlanning(false); autoWalkPlanning=false;
         vgp.suspend();
         mapTapEpoch++; invalidateQuickBallOutcome();
         engine.stop(); saveState();
-        if(stateWriteFailed)throw new IOException("Location save did not finish");
+        if(stateWriteFailed)throw new IOException("L'enregistrement de la position n'a pas abouti");
     }
     static void flushAccountWrites() throws IOException { flushSettings(2500); Cooldown.flush(); }
     public static boolean adventureSyncDismissAllowed() {
@@ -66,7 +66,7 @@ public final class Control {
         engine, SystemClock::elapsedRealtime, System::currentTimeMillis);
     private static volatile boolean gameRoutesPlanning;
     private static String gameRoutesLastStatus="";
-    private static volatile String gameRoutesReadiness="Waiting for Route support";
+    private static volatile String gameRoutesReadiness="En attente du support des Routes";
     public static void setGameRoutesPlanning(boolean open) { gameRoutesPlanning=open; gameRoutes.setPlanning(open); }
     public static boolean gameRoutesReady() { return gameRoutes.ready(); }
     public static boolean gameRoutesRunning() { return gameRoutes.running(); }
@@ -84,7 +84,7 @@ public final class Control {
     public static void setGameRoutesSnapshot(String value) { gameRoutes.acceptSnapshot(value); }
     public static void gameRoutesAction(String value) { gameRoutes.acceptAction(value); }
     public static void startGameRoutes(int count) {
-        if(!hostLive()||!canEnable())throw new IllegalArgumentException("Location adapter is not ready");
+        if(!hostLive()||!canEnable())throw new IllegalArgumentException("L'adaptateur de position n'est pas prêt");
         gameRoutes.start(count); saveState();
     }
     public static void stopGameRoutes() { gameRoutes.stop("Stopped"); saveState(); }
@@ -93,7 +93,7 @@ public final class Control {
         String status=gameRoutes.status();
         if(!status.equals(gameRoutesLastStatus)){gameRoutesLastStatus=status;event("game-routes",status);}
     }
-    public static volatile String connection = "PREVIEW - game not connected";
+    public static volatile String connection = "APERÇU - jeu non connecté";
     public static volatile long latitudeReads, longitudeReads;
     private static PrintWriter log;
     private static File logFile;
@@ -121,7 +121,7 @@ public final class Control {
     private static volatile boolean quickSummaryAutoDismiss;
     private static volatile boolean autoTransferEnabled, autoTransferReady;
     private static volatile int transferProtect=255;
-    private static volatile String transferStatus="Waiting for transfer support";
+    private static volatile String transferStatus="En attente du support des transferts";
     // Custom keep list (canonical, sorted/de-duplicated positive dex IDs) plus the persistent Keep All
     // overlay. Keep All holds every catch regardless of the other rules; the keep list protects the
     // listed species. Both persist; Keep All active state is a normal saved preference (unlike VGP).
@@ -165,9 +165,9 @@ public final class Control {
     public static void setSpawnRange(double original,double effective){if(!spawnBooster||!spawnAllowed()||!Double.isFinite(original)||!Double.isFinite(effective)||original<=0||effective<original)return;spawnOriginal=original;spawnEffective=effective;spawnRangeAt=SystemClock.elapsedRealtime();}
     public static String spawnStatus(){
         if(!spawnBooster)return "Off";
-        if(!spawnAllowed())return "Waiting for map support";
-        if(spawnRangeAt==0||SystemClock.elapsedRealtime()-spawnRangeAt>5000)return "Waiting for a range check; move a few steps on the map";
-        return String.format(java.util.Locale.US,"Range check: %.0f to %.0f m (local)",spawnOriginal,spawnEffective);
+        if(!spawnAllowed())return "En attente du support de la carte";
+        if(spawnRangeAt==0||SystemClock.elapsedRealtime()-spawnRangeAt>5000)return "En attente d'un test de portée ; fais quelques pas sur la carte";
+        return String.format(java.util.Locale.US,"Vérif. de portée : %.0f à %.0f m (local)",spawnOriginal,spawnEffective);
     }
     public static boolean spawnBooster(){return spawnBooster;}
     public static void setSpawnBooster(boolean enabled){spawnRangeAt=0;spawnBooster=enabled;saveSettings();}
@@ -175,7 +175,7 @@ public final class Control {
     public static boolean spawnAllowed(){return spawnReady&&quickSummaryReady()&&hostLive();}
     private static volatile int giftOptions;
     private static volatile boolean giftsReady;
-    private static volatile String giftStatus="Waiting for gift support";
+    private static volatile String giftStatus="En attente du support des cadeaux";
     public static int giftOptions(){return giftOptions;}
     public static void setGiftOptions(int value){if(value<0||value>7)return;giftOptions=value;saveSettings();}
     public static void setGiftsReady(boolean ready,String status){giftsReady=ready;giftStatus=status;}
@@ -240,7 +240,7 @@ public final class Control {
     public static boolean vgpAllowed(){if(!locationKnown())return false;guardVgpCooldown();return vgpEnabled&&vgpReady&&itemAccessAllowed()&&!ShundoSniper.active()&&!AutoRaid.running();}  // Shundo Sniper pauses VGP+
     public static void vgpResult(String action,boolean success){vgp.result(action,success);}
     private static volatile boolean autoIncubate, incubateLongest, incubatorReady;
-    private static volatile String incubatorStatus="Waiting for incubation support";
+    private static volatile String incubatorStatus="En attente du support de l'incubation";
     public static boolean autoIncubate(){return autoIncubate;}
     public static boolean incubateLongest(){return incubateLongest;}
     public static void setAutoIncubate(boolean v){autoIncubate=v;saveSettings();}
@@ -253,7 +253,7 @@ public final class Control {
     private static volatile int buddyBerry;
     private static volatile boolean buddyReady;
     private static volatile long buddyMapSample;
-    private static volatile String buddyStatus="Waiting for buddy support";
+    private static volatile String buddyStatus="En attente du support du copain";
     public static int buddyBerry(){return buddyBerry;}
     public static void setBuddyBerry(int id){if(id!=0&&id!=701&&id!=703&&id!=705&&id!=706&&id!=707)return;buddyBerry=id;saveSettings();}
     public static void setBuddyReady(boolean ready,String status){buddyReady=ready;buddyStatus=status;}
@@ -335,7 +335,7 @@ public final class Control {
     public static int berryCount(int id){for(String row:itemCatalog.split("\n")){String[] b=row.split("\\|",-1);try{if(b.length==3&&Integer.parseInt(b[0])==id)return Integer.parseInt(b[2]);}catch(NumberFormatException ignored){}}return 0;}
     private static volatile int battleOptions;
     private static volatile boolean battlesReady;
-    private static volatile String battleStatus="Waiting for battle support";
+    private static volatile String battleStatus="En attente du support des combats";
     public static int battleOptions(){return battleOptions;}
     public static String battleStatus(){return battleStatus;}
     public static void setBattleOptions(int value){if(value<0||value>1023)return;battleOptions=value;saveSettings();event("battle-options",String.valueOf(value));}
@@ -347,7 +347,7 @@ public final class Control {
     public static void setGymRepeatEnabled(boolean enabled){gymRepeatEnabled=enabled;saveSettings();event("gym-repeat",enabled?"ON":"OFF");}
     private static volatile int rocketOptions;
     private static volatile boolean rocketReady;
-    private static volatile String rocketStatus="Waiting for battle support";
+    private static volatile String rocketStatus="En attente du support des combats";
     public static int rocketOptions(){return rocketOptions;}
     public static String rocketStatus(){return rocketStatus;}
     public static void setRocketOptions(int value){if(value<0||value>7)return;rocketOptions=value;saveSettings();event("rocket-options",String.valueOf(value));}
@@ -355,7 +355,7 @@ public final class Control {
     public static void setRocketStatus(String status){rocketStatus=status;}
     public static boolean rocketAllowed(){return rocketReady&&quickSummaryReady()&&hostLive();}
     private static volatile boolean itemTransferEnabled,itemTransferReady;
-    private static volatile String itemRules="",itemLimits="",itemCatalog="",itemStatus="Waiting for item bag";
+    private static volatile String itemRules="",itemLimits="",itemCatalog="",itemStatus="En attente du sac";
     public static boolean itemTransferEnabled(){return itemTransferEnabled;}
     public static String itemRules(){return itemRules;}
     public static String itemLimits(){return itemLimits;}
@@ -383,18 +383,18 @@ public final class Control {
         TreeMap<Integer,String> rows=new TreeMap<>();
         for(String row:itemCatalog.split("\n")){String[] bits=row.split("\\|",-1);try{if(bits.length==3)rows.put(Integer.parseInt(bits[0]),bits[0]+"|"+bits[1]+"|0");}catch(NumberFormatException ignored){}}
         for(String row:value.split("\n")){String[] bits=row.split("\\|",-1);try{if(bits.length==3&&Integer.parseInt(bits[0])>0&&Integer.parseInt(bits[2])>=0)rows.put(Integer.parseInt(bits[0]),row);}catch(NumberFormatException ignored){}}
-        itemCatalog=String.join("\n",rows.values());itemStatus="Ready: "+rows.size()+" recyclable item types";
+        itemCatalog=String.join("\n",rows.values());itemStatus="Prêt : "+rows.size()+" types d'objets jetables";
     }
     private static boolean validItemRules(String value){
         if(value==null||value.length()>30000)return false;HashSet<Integer> seen=new HashSet<>();
         for(String row:value.split(";")){if(row.isEmpty())continue;if(!row.matches("[0-9]{1,7}:[0-9]{1,6}"))return false;String[] b=row.split(":");int id=Integer.parseInt(b[0]),cap=Integer.parseInt(b[1]);if(id<=0||cap>100000||!seen.add(id))return false;}return true;
     }
     public static void saveItemRules(boolean enabled,String rules,String limits){
-        if(!validItemRules(rules)||!validItemRules(limits))throw new IllegalArgumentException("Invalid item limit");
+        if(!validItemRules(rules)||!validItemRules(limits))throw new IllegalArgumentException("Limite d'objet invalide");
         itemRules=rules;itemLimits=limits;itemTransferEnabled=enabled;saveSettings();event("item-rules",enabled?"Enabled":"Disabled");
     }
     private static volatile boolean quickSpinEnabled, quickSpinReady;
-    private static volatile String quickSpinStatus="Waiting for game";
+    private static volatile String quickSpinStatus="En attente du jeu";
     public static boolean quickSpinEnabled() { return quickSpinEnabled; }
     public static String quickSpinStatus() { return quickSpinStatus; }
     public static void setQuickSpinEnabled(boolean value) { quickSpinEnabled=value; saveSettings(); event("quick-spin-setting",value?"ON":"OFF"); }
@@ -430,11 +430,11 @@ public final class Control {
     // Explicit export/import block until durable; a shorter bound keeps a background flush from stalling.
     private static final long SETTINGS_FLUSH_MS = 5000, SETTINGS_BACKGROUND_FLUSH_MS = 1000;
     public static void embedded(String status) {
-        setGameRoutesReady(false,"Waiting for game");
+        setGameRoutesReady(false,"En attente du jeu");
         engine.pause(); preview = false; backendReady = false; connection = status;
-        setQuickSummaryReady(false,"Waiting for catch summary support");
-        setQuickBallReady(false,"Waiting for ball animation support");
-        invalidateCameraHeading("Adapter initializing");
+        setQuickSummaryReady(false,"En attente du support du résumé de capture");
+        setQuickBallReady(false,"En attente du support de l'animation de Ball");
+        invalidateCameraHeading("Initialisation de l'adaptateur");
         cameraSampleRequest.set(false);
         cameraDiagnosticRunning = false;
         saveState();
@@ -446,7 +446,7 @@ public final class Control {
         synchronized(quickSummaryLock) {
             wasReady=quickSummaryReady;
             quickSummaryConfigured=configured; quickSummaryReady=false; autoTransferReady=false;
-            quickSummaryStatus=configured ? "Checking catch summary support" : "";
+            quickSummaryStatus=configured ? "Vérification du support du résumé de capture" : "";
         }
         if(wasReady)event("gameplay-readiness","component=catch-summary ready=false reason=reconfigured configured="+configured);
     }
@@ -465,7 +465,7 @@ public final class Control {
             if(!quickSummaryReady)autoTransferReady=false;
             disabled=quickSummaryEnabled && !quickSummaryReady;
 
-            String text=status==null || status.length()==0 ? (quickSummaryReady ? "Ready" : "Unavailable") : status;
+            String text=status==null || status.length()==0 ? (quickSummaryReady ? "Prêt" : "Indisponible") : status;
             quickSummaryStatus=quickSummaryConfigured ? text.substring(0,Math.min(text.length(),320)) : "";
         }
         if(changed)event("gameplay-readiness","component=catch-summary ready="+actual+" configured="+configured);
@@ -479,7 +479,7 @@ public final class Control {
         }
         // One Quick Catch choice controls dismissal and the 20x animation.
         setQuickBallEnabled(actual);
-        if(changed)event("quick-summary-setting",actual ? (quickSummaryAutoDismiss ? "ON; summary and details auto-dismiss; new-species screens remain" : "ON; shorter post-catch wait; summary stays open") : "OFF");
+        if(changed)event("quick-summary-setting",actual ? (quickSummaryAutoDismiss ? "ON ; résumé et détails fermés auto ; les écrans de nouvelle espèce restent" : "ON ; attente après capture réduite ; le résumé reste ouvert") : "OFF");
     }
     public static boolean quickSummaryAllowed() {
         return quickSummaryEnabled && quickSummaryReady && hostLive();
@@ -649,7 +649,7 @@ public final class Control {
     // PvP keep for auto-transfer, per league (0 Great, 1 Ultra, 2 Master): a catch is kept when its
     // stat-product rank is at or below that league's rank for a species in PvPoke's top PVP_META.
     // pvpKeepLeagues has a bit per league that is on; each league keeps its rank while off.
-    static final String[] PVP_LEAGUES={"Great League","Ultra League","Master League"};
+    static final String[] PVP_LEAGUES={"Super Ligue","Hyper Ligue","Master Ligue"};
     static final String[] PVP_RANK_KEYS={"pvpGreatRank","pvpUltraRank","pvpMasterRank"};
     static final int[] PVP_RANKS={10,25,50,100}, PVP_DEFAULT_RANKS={50,10,10};
     static final int PVP_META=150;
@@ -681,11 +681,11 @@ public final class Control {
     public static void setBatteryFps20(boolean on){batteryFps20=on;saveSettings();event("battery","20 fps cap "+(on?"ON":"OFF"));}
     public static void setBatteryLowQuality(boolean on){batteryLowQuality=on;saveSettings();event("battery","low graphics quality "+(on?"ON":"OFF"));}
     /** "B2|lowRes|fps20|lowQuality|blackScreen" for the native graphics module (transport slot 20). */
-    public static String batteryConfig(){return "B2|"+(batteryLowRes?1:0)+"|"+(batteryFps20?1:0)+"|"+(batteryLowQuality?1:0)+"|"+(ShundoSniper.dark()?1:0);}
+    public static String batteryConfig(){return "B2|"+(batteryLowRes?1:0)+"|"+(batteryFps20?1:0)+"|"+(batteryLowQuality?1:0)+"|"+(ShundoSniper.dark()||ScreenPower.off()?1:0);}
     // Smart healing (off by default): the native module heals with the cheapest mix of potions and
     // revives. healWhen: 0 after battles, 1 periodically, 2 both. healThreshold: heal below this percent
     // of max HP, 100 = any missing HP. healStatus is the module's last problem or this session's items.
-    public static final String[] HEAL_WHEN_LABELS={"After battles","Periodically","After battles & periodically"};
+    public static final String[] HEAL_WHEN_LABELS={"Après les combats","Régulièrement","Après les combats & régulièrement"};
     private static volatile boolean healEnabled,healRevive=true,healFull;
     private static volatile int healWhen,healThreshold=50;
     private static volatile String healStatus="";
@@ -715,7 +715,7 @@ public final class Control {
     public static void configureQuickBall(boolean configured) {
         synchronized(quickBallLock) {
             quickBallConfigured=configured; quickBallReady=false; ivOwnedReady=false; setThrowReady(false);setMapTapReady(false);
-            quickBallStatus=configured ? "Checking successful ball animation support" : "";
+            quickBallStatus=configured ? "Vérification du support de l'animation de Ball réussie" : "";
         }
         invalidateQuickBallOutcome();
     }
@@ -729,7 +729,7 @@ public final class Control {
             quickBallReady=quickBallConfigured && ready;
             disabled=quickBallEnabled && !quickBallReady;
             if(!quickBallReady){setThrowReady(false);setMapTapReady(false);}
-            String text=status==null || status.length()==0 ? (quickBallReady ? "Ready" : "Unavailable") : status;
+            String text=status==null || status.length()==0 ? (quickBallReady ? "Prêt" : "Indisponible") : status;
             quickBallStatus=quickBallConfigured ? text.substring(0,Math.min(text.length(),320)) : "";
         }
         if(!ready)invalidateQuickBallOutcome();
@@ -780,7 +780,7 @@ public final class Control {
     public static int throwRating() { return throwGrade; }
     /** Throw variety: 0 off, 1 Excellent & Great, 2 Excellent, Great & Nice, 3 all (with a plain throw). */
     public static int throwVariety() { return throwVariety; }
-    public static final String[] THROW_VARIETY_LABELS={"Off","Excellent & Great","Excellent, Great & Nice","All"};
+    public static final String[] THROW_VARIETY_LABELS={"Off","Excellent & Super","Excellent, Super & Bien","Tous"};
     public static boolean throwCurve() { return throwCurve; }
     public static boolean throwAr() { return throwAr; }
     public static boolean throwArReady() { return throwArReady && throwReady(); }
@@ -807,7 +807,7 @@ public final class Control {
     public static void configureInteractionDiagnostics(boolean configured) {
         interactionDiagnosticsConfigured=configured; interactionDiagnosticRunning=false;
         interactionTraceRequest.set(false); interactionStopRequest.set(false);
-        interactionDiagnosticStatus=configured ? "Catch/spin diagnostics: checking metadata shortly" : "";
+        interactionDiagnosticStatus=configured ? "Diagnostic capture/spin : vérification des métadonnées sous peu" : "";
     }
     public static boolean interactionDiagnosticsConfigured() { return interactionDiagnosticsConfigured; }
     public static boolean interactionDiagnosticsReady() { return interactionDiagnosticsConfigured && hostLive(); }
@@ -822,7 +822,7 @@ public final class Control {
     public static boolean requestInteractionTrace() {
         if (!interactionDiagnosticsReady() || interactionDiagnosticRunning || interactionTraceRequest.get()) return false;
         engine.stop(); saveState(); interactionStopRequest.set(false); interactionTraceRequest.set(true);
-        interactionDiagnosticStatus="Capture requested; waiting for observer";
+        interactionDiagnosticStatus="Capture demandée ; en attente de l'observateur";
         event("interaction-trace-requested","Stationary capture for60s; fasterSummary="+quickSummaryEnabled());
         return true;
     }
@@ -831,9 +831,9 @@ public final class Control {
     public static boolean takeInteractionStopRequest() { return interactionStopRequest.getAndSet(false) || (interactionDiagnosticRunning && !interactionDiagnosticsReady()); }
     public static boolean desiredEnabled() { return desiredEnabled; }
     public static synchronized void setLocationSpoofing(boolean enabled) {
-        gameRoutes.stop("Location mode changed");
+        gameRoutes.stop("Mode de position modifié");
         desiredEnabled=enabled; if(!enabled){realLocation=null;realLatitude=Double.NaN;realLongitude=Double.NaN;} mapTapEpoch++; autoWalkPlanning=false;
-        engine.pause(); invalidateCameraHeading("Location mode changed");
+        engine.pause(); invalidateCameraHeading("Mode de position modifié");
         restoreRuntime("location-setting"); saveSettings(); saveState();
         event("location-spoofing",enabled?"ON":"OFF; using device location");
     }
@@ -906,16 +906,16 @@ public final class Control {
             CameraHeadingState.Sample sample=cameraHeading.sample(SystemClock.elapsedRealtime());
             if (!cameraSteeringRequested() || !sample.valid) {
                 if (cameraRelative()) stopManualMotion();
-                return "Waiting for camera; release and drag again";
+                return "En attente de la caméra ; relâche et glisse à nouveau";
             }
-            return String.format(Locale.US,"Camera heading %.0f\u00b0; up follows the view",sample.heading);
+            return String.format(Locale.US,"Direction caméra %.0f\u00b0 ; le haut suit la vue",sample.heading);
         }
     }
     public static void configureCameraDiagnostics(boolean configured) {
         cameraDiagnosticsConfigured = configured;
         cameraSampleRequest.set(false);
         cameraDiagnosticRunning = false;
-        cameraDiagnosticStatus = configured ? "Camera diagnostic ready" : "";
+        cameraDiagnosticStatus = configured ? "Diagnostic caméra prêt" : "";
     }
     public static boolean cameraDiagnosticsConfigured() { return cameraDiagnosticsConfigured; }
     public static boolean cameraDiagnosticsReady() { return cameraDiagnosticsConfigured && hostLive(); }
@@ -927,7 +927,7 @@ public final class Control {
         if (!cameraDiagnosticsReady() || cameraSamplePending()) return false;
         if (engine.walking) event("walk-cancelled", "Camera diagnostic requested");
         engine.stop(); saveState();
-        cameraDiagnosticStatus = "Camera sample requested (10s)";
+        cameraDiagnosticStatus = "Échantillon caméra demandé (10 s)";
         cameraSampleRequest.set(true);
         event("camera-sample-requested", "Stationary sample; desiredEnabled=" + desiredEnabled + "; location override preference unchanged");
         return true;
@@ -938,28 +938,28 @@ public final class Control {
     }
     public static void cameraDiagnostic(String text) {
         if (!cameraDiagnosticsConfigured) return;
-        if (text == null || text.length() == 0) text = "Camera diagnostic ready";
+        if (text == null || text.length() == 0) text = "Diagnostic caméra prêt";
         cameraDiagnosticStatus = text.length() > 320 ? text.substring(0, 320) : text;
     }
     public static boolean canEnable() { return desiredEnabled && connected() && (preview || backendReady); }
     public static void connect() {
         engine.pause();
-        invalidateCameraHeading("Adapter reconnecting");
+        invalidateCameraHeading("Reconnexion de l'adaptateur");
         preview = false; backendReady = true;
         instrumented = true;
-        connection = "Java location adapter - game acceptance unverified";
+        connection = "Adaptateur de position Java - acceptation par le jeu non vérifiée";
         renewLease();
         main.post(() -> restoreRuntime("backend-ready"));
     }
     public static void renewLease() {
         leaseDeadline = android.os.SystemClock.elapsedRealtime() + 8000;
         if(leaseExpired) {
-            leaseExpired=false; connection="Java location adapter - game acceptance unverified";
+            leaseExpired=false; connection="Adaptateur de position Java - acceptation par le jeu non vérifiée";
             main.post(() -> { restoreRuntime("heartbeat-restored"); event("heartbeat-restored","Saved preference restored stationary; desiredEnabled="+desiredEnabled); });
         }
     }
     public static void checkLease() {
-        if(!connected() && !leaseExpired) { leaseExpired=true; cameraSampleRequest.set(false); invalidateQuickBallOutcome(); invalidateCameraHeading("Connection lost"); engine.pause(); saveState(); connection="Adapter heartbeat late - suspended"; event("heartbeat-expired","Runtime suspended; saved enabled preference unchanged"); }
+        if(!connected() && !leaseExpired) { leaseExpired=true; cameraSampleRequest.set(false); invalidateQuickBallOutcome(); invalidateCameraHeading("Connexion perdue"); engine.pause(); saveState(); connection="Battement de l'adaptateur en retard - suspendu"; event("heartbeat-expired","Runtime suspended; saved enabled preference unchanged"); }
     }
     public static boolean connected() { return !instrumented || android.os.SystemClock.elapsedRealtime() <= leaseDeadline; }
     /** Shared host gate: foreground, with a ready backend whose connection lease is still live. */
@@ -982,6 +982,7 @@ public final class Control {
         loadState(app);
         loadSettings(app);
         Cooldown.init(app);
+        RootUpdates.onGameStart(app);
         app.registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
             public void onActivityResumed(Activity activity) { GoogleBrowserAuth.onHostResumed(activity); attach(activity); }
             public void onActivityPaused(Activity activity) {
@@ -1009,14 +1010,14 @@ public final class Control {
     }
     public static void disconnect() {
         engine.pause(); backendReady = false;
-        setQuickSummaryReady(false,"Catch summary support disconnected");
-        setQuickBallReady(false,"Ball animation support disconnected");
-        invalidateCameraHeading("Adapter disconnected");
+        setQuickSummaryReady(false,"Support du résumé de capture déconnecté");
+        setQuickBallReady(false,"Support de l'animation de Ball déconnecté");
+        invalidateCameraHeading("Adaptateur déconnecté");
         cameraSampleRequest.set(false);
         cameraDiagnosticRunning = false;
-        if (cameraDiagnosticsConfigured) cameraDiagnosticStatus = "Camera diagnostic unavailable: adapter disconnected";
+        if (cameraDiagnosticsConfigured) cameraDiagnosticStatus = "Diagnostic caméra indisponible : adaptateur déconnecté";
         saveState();
-        connection = "DISCONNECTED - location override off";
+        connection = "DÉCONNECTÉ - spoof de position coupé";
         event("disconnected", "Runtime suspended; saved enabled preference unchanged");
     }
 
@@ -1024,13 +1025,13 @@ public final class Control {
         synchronized(stateLock) { AutoRaid.travel(session,travel,latitude,longitude); }
     }
     public static void teleport(double latitude, double longitude) {
-        gameRoutes.stop("Destination changed");
+        gameRoutes.stop("Destination modifiée");
         engine.position(latitude, longitude); engine.stop();
         engine.enabled = foreground && canEnable();
         saveState();
     }
     public static void walkTo(double latitude, double longitude) {
-        gameRoutes.stop("Manual walking started");
+        gameRoutes.stop("Marche manuelle lancée");
         engine.walkTo(latitude, longitude);
         if (!foreground || !canEnable()) engine.pause();
         saveState();
@@ -1038,14 +1039,14 @@ public final class Control {
     public static void walkRoute(double[][] waypoints) { walkRoute(waypoints, false); }
     /** As {@link #walkRoute(double[][])}, but a looping route repeats from its first stop; same lifecycle/save/readiness. */
     public static void walkRoute(double[][] waypoints, boolean loop) {
-        gameRoutes.stop("Another route started");
+        gameRoutes.stop("Autre route lancée");
         engine.walkRoute(waypoints, loop);
         if (!foreground || !canEnable()) engine.pause();
         saveState();
     }
     public static void startAutoWalk(double[][] waypoints,boolean loop) {
-        if(!foreground||!canEnable())throw new IllegalArgumentException("Location adapter is not ready");
-        gameRoutes.stop("Autowalk started");
+        if(!foreground||!canEnable())throw new IllegalArgumentException("L'adaptateur de position n'est pas prêt");
+        gameRoutes.stop("Autowalk lancé");
         engine.walkRoute(waypoints,loop);saveState();
         event("autowalk-started","stops="+waypoints.length+" loop="+loop+" speed="+engine.speedKmh);
     }
@@ -1055,13 +1056,13 @@ public final class Control {
         saveState();return next;
     }
     public static void suspendForBackground() {
-        gameRoutes.stop("App left foreground; check the active in-game Route before restarting");
+        gameRoutes.stop("L'appli n'est plus au premier plan ; vérifie la Route en cours dans le jeu avant de relancer");
         gameRoutesPlanning=false;gameRoutes.setPlanning(false);
         requestInteractionStop();
         OneShotAutomation.reset();
         AutoRaid.reset();
         GiftBatchSettings.reset();
-        foreground = false; autoWalkPlanning=false;mapPoiOpen=false;mapPoiSnapshot="";mapPoiAt=0; mapTapEpoch++; invalidateQuickBallOutcome(); cameraSampleRequest.set(false); invalidateCameraHeading("App backgrounded");
+        foreground = false; autoWalkPlanning=false;mapPoiOpen=false;mapPoiSnapshot="";mapPoiAt=0; mapTapEpoch++; invalidateQuickBallOutcome(); cameraSampleRequest.set(false); invalidateCameraHeading("Appli en arrière-plan");
         // Losing the foreground switches VGP off, clears any target, and never auto-resumes.
         vgp.suspend();
         engine.pause(); saveState();
@@ -1198,7 +1199,7 @@ public final class Control {
                 ShinyScanner.read(p);
                 desiredEnabled=Boolean.parseBoolean(p.getProperty("locationSpoofing","true"));
                 darkTheme=Boolean.parseBoolean(p.getProperty("darkTheme","true"));
-                quickMenuHidden=boundedSetting(p,"quickMenuHidden",8191);
+                quickMenuHidden=boundedSetting(p,"quickMenuHidden",16383);
                 try{uiScalePercent=Integer.parseInt(p.getProperty("uiScalePercent","100"));}catch(NumberFormatException invalid){uiScalePercent=100;}
                 if(uiScalePercent!=25&&uiScalePercent!=50&&uiScalePercent!=75&&uiScalePercent!=100)uiScalePercent=100;
                 joystickVisible=Boolean.parseBoolean(p.getProperty("joystickVisible","true"));
@@ -1310,7 +1311,7 @@ public final class Control {
     }
     static Properties exportSettings() throws IOException {
         synchronized(stateLock) {
-            if(settingsFile==null)throw new IOException("Settings are not ready");
+            if(settingsFile==null)throw new IOException("Les réglages ne sont pas prêts");
             // Persist the live snapshot and wait for it so the read reflects current choices; a failed
             // write surfaces synchronously here rather than silently returning stale settings.
             settingsWriter.submit(settingsSnapshot());
@@ -1468,9 +1469,9 @@ public final class Control {
             try{org.json.JSONObject o=new org.json.JSONObject(detail);String phase=o.optString("phase");
                 if("error".equals(phase))smartBattleStatus=o.optString("message","");
                 else if("ready".equals(phase))smartBattleStatus="";
-                else if("team".equals(phase))smartBattleStatus="Team set to counter "+o.optInt("foes")+(o.optInt("foes")==1?" opponent":" opponents");
-                else if("swapped".equals(phase))smartBattleStatus="Swapped to your best counter";
-                else if("swap-refused".equals(phase))smartBattleStatus="The game refused a swap; staying in";
+                else if("team".equals(phase))smartBattleStatus="Équipe réglée contre "+o.optInt("foes")+(o.optInt("foes")==1?" opponent":" adversaires");
+                else if("swapped".equals(phase))smartBattleStatus="Changement pour ton meilleur counter";
+                else if("swap-refused".equals(phase))smartBattleStatus="Le jeu a refusé le changement ; reste en jeu avec";
             }catch(Exception ignored){}
         }
         if("smart-heal".equals(kind)){
@@ -1478,10 +1479,10 @@ public final class Control {
                 if("error".equals(phase)||"warning".equals(phase))healStatus=o.optString("message","");
                 else if("ready".equals(phase))healStatus="";
                 else if("healed".equals(phase)){
-                    org.json.JSONArray used=o.optJSONArray("used");String[] names={"Potion","Super Potion","Hyper Potion","Max Potion","Revive","Max Revive"};
+                    org.json.JSONArray used=o.optJSONArray("used");String[] names={"Potion","Super Potion","Hyper Potion","Potion Max","Rappel","Rappel Max"};
                     StringBuilder sb=new StringBuilder();
                     for(int i=0;used!=null&&i<names.length&&i<used.length();i++){int n=used.optInt(i);if(n>0)sb.append(sb.length()==0?"":", ").append(n).append(' ').append(names[i]);}
-                    healStatus=sb.length()==0?"":"Used this session: "+sb;
+                    healStatus=sb.length()==0?"":"Utilisés cette session : "+sb;
                 }}
             catch(Exception ignored){}
         }

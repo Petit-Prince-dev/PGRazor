@@ -55,17 +55,17 @@ public final class MapSearchDialog {
         int pad = dp(activity, 12);
         layout.setPadding(pad, pad, pad, pad);
 
-        layout.addView(label(ui, "Search near the map area, or enter coordinates (latitude, longitude). Add a city for places farther away.", 13));
+        layout.addView(label(ui, "Cherche autour de la zone de la carte, ou entre des coordonnées (latitude, longitude). Ajoute une ville pour les lieux plus éloignés.", 13));
 
         EditText input = new EditText(ui);
-        input.setHint("Place, address or coordinates");
+        input.setHint("Lieu, adresse ou coordonnées");
         input.setSingleLine(true);
         // No live autocomplete: results appear only on an explicit Search action.
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         input.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
         input.setFilters(new InputFilter[] { new InputFilter.LengthFilter(QUERY_LIMIT) });
 
-        Button searchButton = button(ui, "Search");
+        Button searchButton = button(ui, "Rechercher");
         LinearLayout inputRow = new LinearLayout(ui);
         inputRow.setGravity(Gravity.CENTER_VERTICAL);
         inputRow.addView(input, new LinearLayout.LayoutParams(0, -2, 1));
@@ -82,10 +82,10 @@ public final class MapSearchDialog {
         scroller.addView(resultList);
         layout.addView(scroller, new LinearLayout.LayoutParams(-1, 0, 1));
 
-        TextView attribution = label(ui, "Search: Photon / OpenStreetMap contributors", 11);
+        TextView attribution = label(ui, "Recherche : Photon / contributeurs OpenStreetMap", 11);
         attribution.setPadding(0, dp(activity, 6), 0, 0);
         layout.addView(attribution);
-        layout.addView(label(ui, "Results may be incomplete.", 11));
+        layout.addView(label(ui, "Les résultats peuvent être incomplets.", 11));
 
         Controller controller = new Controller(activity, lat, lon, input, searchButton, status, resultList, callback);
 
@@ -95,17 +95,17 @@ public final class MapSearchDialog {
             return false;
         });
 
-        AlertDialog dialog = new AlertDialog.Builder(ui).setTitle("Find a place").setView(layout)
-            .setNegativeButton("Close", null).create();
+        AlertDialog dialog = new AlertDialog.Builder(ui).setTitle("Trouver un lieu").setView(layout)
+            .setNegativeButton("Fermer", null).create();
         controller.dialog = dialog;
         DialogLifecycle.bind(activity, dialog, controller::close);
         dialog.setOnShowListener(d -> {
             MapTheme.fullScreen(dialog); MapTheme.style(layout); MapTheme.styleButtons(dialog);
             if (controller.client == null) {
                 searchButton.setEnabled(false);
-                status.setText("Place search is unavailable right now.");
+                status.setText("La recherche de lieux est indisponible pour l'instant.");
             } else {
-                status.setText("Type a place or coordinates and tap Search.");
+                status.setText("Tape un lieu ou des coordonnées puis touche Rechercher.");
             }
             input.requestFocus();
         });
@@ -152,19 +152,19 @@ public final class MapSearchDialog {
                 InputMethodManager typed=(InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE);
                 if(typed!=null)typed.hideSoftInputFromWindow(input.getWindowToken(),0);
                 resultList.removeAllViews();
-                status.setText("Coordinates");
+                status.setText("Coordonnées");
                 resultList.addView(resultRow(new Place(String.format(java.util.Locale.US, "%.6f, %.6f", point[0], point[1]),
-                    "Select to place the destination pin here, then choose Teleport or Walk here.", point[0], point[1])));
+                    "Sélectionne pour placer l'épingle de destination ici, puis choisis Téléporter ou Marcher ici.", point[0], point[1])));
                 return;
             }
             if (client == null || !searchButton.isEnabled()) return;
-            if (query.length() < 2) { status.setText("Enter at least two characters to search."); return; }
+            if (query.length() < 2) { status.setText("Entre au moins deux caractères pour chercher."); return; }
             InputMethodManager keyboard=(InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE);
             if(keyboard!=null)keyboard.hideSoftInputFromWindow(input.getWindowToken(),0);
             // A new query supersedes any in-flight lookup and clears the previous matches immediately.
             final int gen = ++generation;
             resultList.removeAllViews();
-            status.setText("Searching…");
+            status.setText("Recherche…");
             searchButton.setEnabled(false);
             final PlaceSearchClient c = client;
             final double lat = biasLat, lon = biasLon;
@@ -174,9 +174,9 @@ public final class MapSearchDialog {
                         List<Place> found = c.search(query, lat, lon);
                         main.post(() -> deliver(gen, found, null));
                     } catch (IOException e) {
-                        main.post(() -> deliver(gen, null, "Search is unavailable or busy. Wait a moment, check your connection, and try again."));
+                        main.post(() -> deliver(gen, null, "La recherche est indisponible ou occupée. Patiente, vérifie ta connexion et réessaie."));
                     } catch (RuntimeException e) {
-                        main.post(() -> deliver(gen, null, "Search could not be completed. Please try again."));
+                        main.post(() -> deliver(gen, null, "La recherche n'a pas abouti. Réessaie."));
                     }
                 });
             } catch (java.util.concurrent.RejectedExecutionException shuttingDown) {
@@ -190,10 +190,10 @@ public final class MapSearchDialog {
             resultList.removeAllViews();
             if (error != null) { status.setText(error); return; }
             if (found == null || found.isEmpty()) {
-                status.setText("No matching places found. Try a broader name or add a city.");
+                status.setText("Aucun lieu trouvé. Essaie un nom plus large ou ajoute une ville.");
                 return;
             }
-            status.setText(found.size() == 1 ? "1 match" : found.size() + " matches");
+            status.setText(found.size() == 1 ? "1 résultat" : found.size() + " résultats");
             for (Place place : found) {
                 if (place == null) continue;
                 resultList.addView(resultRow(place));
@@ -212,7 +212,7 @@ public final class MapSearchDialog {
                 row.addView(detail);
             }
             final double lat = place.latitude, lon = place.longitude;
-            row.setContentDescription("Show " + (place.name == null ? "place" : place.name) + " on the map");
+            row.setContentDescription("Afficher " + (place.name == null ? "place" : place.name) + " sur la carte");
             // Selecting only reports coordinates; the world-map integration decides to centre the map.
             row.setOnClickListener(w -> { if(closed)return; callback.select(lat, lon); if (dialog != null) dialog.dismiss(); });
             return row;
