@@ -45,7 +45,8 @@ public final class Pad {
     private TextView encounterBadge;private OverlayDrag encounterDrag;
     // "Écran éteint" (ScreenPower): a black veil above the game and every PGRazor overlay. A double tap
     // brings the screen back; its hint fades after a few seconds.
-    private FrameLayout blackScreen;private TextView blackHint;private boolean blackShown;private long blackLastTap;
+    private FrameLayout blackScreen;private TextView blackHint;private boolean blackShown;private long blackLastTap;private String blackIssue="";
+    private static final String BLACK_HINT="Écran éteint : le jeu continue de tourner.\nTouche deux fois pour rallumer.";
     private TextView gymAutomationStatus;
     private TextView automationStatus;
     private OverlayDrag automationDrag;
@@ -150,7 +151,7 @@ public final class Pad {
         overlays=new FrameLayout(host);parent.addView(overlays,new FrameLayout.LayoutParams(-1,-1));
         blackScreen=new FrameLayout(host);blackScreen.setBackgroundColor(Color.BLACK);blackScreen.setVisibility(View.GONE);
         blackScreen.setClickable(true);blackScreen.setContentDescription("Écran éteint. Touche deux fois pour rallumer.");
-        blackHint=text("Écran éteint : le jeu continue de tourner.\nTouche deux fois pour rallumer.",13,Color.rgb(140,140,140));blackHint.setGravity(Gravity.CENTER);
+        blackHint=text(BLACK_HINT,13,Color.rgb(140,140,140));blackHint.setGravity(Gravity.CENTER);
         blackScreen.addView(blackHint,new FrameLayout.LayoutParams(-1,-2,Gravity.CENTER));
         blackScreen.setOnTouchListener((v,e)->{
             if(e.getActionMasked()!=MotionEvent.ACTION_DOWN)return true;
@@ -339,7 +340,13 @@ public final class Pad {
         boolean black=ScreenPower.off();
         if(blackScreen!=null&&black!=blackShown){
             blackShown=black;blackScreen.setVisibility(black?View.VISIBLE:View.GONE);
-            if(black){blackScreen.bringToFront();blackHint.setVisibility(View.VISIBLE);handler.postDelayed(()->{if(blackHint!=null)blackHint.setVisibility(View.GONE);},3000);}
+            if(black){blackIssue="";blackHint.setText(BLACK_HINT);blackScreen.bringToFront();blackHint.setVisibility(View.VISIBLE);handler.postDelayed(()->{if(blackHint!=null)blackHint.setVisibility(View.GONE);},3000);}
+        }
+        if(black&&blackHint!=null&&!ScreenPower.rootIssue().equals(blackIssue)){
+            // The root helper did not switch the panel off: say so on the veil for a few seconds.
+            blackIssue=ScreenPower.rootIssue();
+            blackHint.setText(blackIssue.isEmpty()?BLACK_HINT:BLACK_HINT+"\n\n"+blackIssue);
+            if(!blackIssue.isEmpty()){blackHint.setVisibility(View.VISIBLE);handler.postDelayed(()->{if(blackHint!=null)blackHint.setVisibility(View.GONE);},8000);}
         }
         if(encounterBadge!=null){String count=!Control.encounterOverlay()||settings.isVisible()||(quickMenu!=null&&quickMenu.isShowing())?"":EncounterCounter.label();
             encounterBadge.setVisibility(count.isEmpty()?View.GONE:View.VISIBLE);

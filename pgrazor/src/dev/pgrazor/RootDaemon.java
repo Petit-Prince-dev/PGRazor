@@ -2,6 +2,8 @@ package dev.pgrazor;
 
 import android.os.Build;
 import android.os.IBinder;
+import android.system.Os;
+import android.system.StructStat;
 import java.io.*;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
@@ -28,6 +30,7 @@ public final class RootDaemon {
     private String lastScreenRequest;
     private boolean panelOff, restoreWhenAwake;
     private long lastPanelCheck;
+    private static final long REAPPLY_MS = 1500;
 
     private RootDaemon(File module) {
         this.module = module;
@@ -42,6 +45,7 @@ public final class RootDaemon {
 
     private void run() {
         log("start sdk=" + Build.VERSION.SDK_INT + " module=" + module + " version=" + installedVersion());
+        publishState("ready");
         while (true) {
             try {
                 pollScreen();
@@ -65,14 +69,20 @@ public final class RootDaemon {
         long now = System.currentTimeMillis();
         if (wantOff) {
             restoreWhenAwake = false;
-            if (!panelOff && (changed || now - lastPanelCheck > 2000)) {
+            // Android powers the panel back on by itself (a brightness change, a toast, a notification, a
+            // display state update), and nothing tells this helper: while the game asks for "off", the
+            // panel is switched off again every REAPPLY_MS. Switching an already-off panel off is a no-op.
+            if (changed || now - lastPanelCheck > REAPPLY_MS) {
                 lastPanelCheck = now;
                 if (interactive()) {
                     try { new FileOutputStream(offMarker).close(); } catch (IOException ignored) {}
                     boolean ok = setPanel(false);
-                    panelOff = ok;
-                    if (!ok) offMarker.delete();
-                    log("panel off " + (ok ? "ok" : "failed"));
+                    if (changed || ok != panelOff) {
+                        log("panel off " + (ok ? "ok" : "failed"));
+                        publishState(ok ? "off ok" : "off failed");
+                    }
+                    if (!ok && !panelOff) offMarker.delete();
+                    panelOff = ok || panelOff;
                 }
             }
             return;
@@ -84,6 +94,7 @@ public final class RootDaemon {
             if (interactive()) {
                 boolean ok = setPanel(true);
                 log("panel on " + (ok ? "ok" : "failed") + " (" + request + ")");
+                publishState("on");
                 panelOff = false;
                 restoreWhenAwake = false;
                 offMarker.delete();
@@ -91,6 +102,25 @@ public final class RootDaemon {
                 panelOff = false;
                 restoreWhenAwake = true;
             }
+        }
+    }
+
+    /** Tells the game what happened, in its own files folder, owned and labelled like that folder so it can read it. */
+    private void publishState(String state) {
+        try {
+            if (!gameFiles.isDirectory()) return;
+            File temp = new File(gameFiles, ScreenPower.STATE + ".tmp"), target = new File(gameFiles, ScreenPower.STATE);
+            try (OutputStream out = new FileOutputStream(temp)) {
+                out.write((state + " " + System.currentTimeMillis()).getBytes(StandardCharsets.UTF_8));
+            }
+            StructStat folder = Os.stat(gameFiles.getPath());
+            Os.chown(temp.getPath(), folder.st_uid, folder.st_gid);
+            Os.chmod(temp.getPath(), 0644);
+            try { Os.setxattr(temp.getPath(), "security.selinux", Os.getxattr(gameFiles.getPath(), "security.selinux"), 0); }
+            catch (Exception label) { log("state label: " + label); }
+            Os.rename(temp.getPath(), target.getPath());
+        } catch (Exception error) {
+            log("state: " + error);
         }
     }
 
