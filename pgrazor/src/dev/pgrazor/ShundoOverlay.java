@@ -46,7 +46,7 @@ public final class ShundoOverlay extends LinearLayout {
         badgeLayout.rightMargin = SettingsUi.dp(activity, 6);
         top.addView(badge, badgeLayout);
         dark = button(activity, "Écran off");
-        dark.setContentDescription("Éteint l'écran pour économiser la batterie pendant le sniper. Touche deux fois l'écran noir pour revenir au jeu.");
+        dark.setContentDescription("Éteint l'écran pour économiser la batterie pendant le sniper. Appuie sur un bouton de volume pour revenir au jeu.");
         dark.setOnClickListener(v -> ScreenPower.turnOff(activity));
         LayoutParams darkLayout = new LayoutParams(LayoutParams.WRAP_CONTENT, SettingsUi.dp(activity, 30));
         darkLayout.rightMargin = SettingsUi.dp(activity, 6);

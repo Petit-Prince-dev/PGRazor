@@ -194,7 +194,18 @@ final class NativeText {
             "Weepar Berry", "Baie Repoi", "Pinap Berry", "Baie Nanana", "Golden Razz Berry", "Baie Framby dorée",
             "Golden Nanab Berry", "Baie Nanab dorée", "Silver Pinap Berry", "Baie Nanana argentée",
             "Poke Ball", "Poké Ball", "Lure Module", "Module Leurre", "Mega Energy", "Méga-Énergie",
-            "Super Potion", "Super Potion", "Hyper Potion", "Hyper Potion", "Max Potion", "Potion Max", "Max Revive", "Rappel Max");
+            "Super Potion", "Super Potion", "Hyper Potion", "Hyper Potion", "Max Potion", "Potion Max", "Max Revive", "Rappel Max",
+            "Great Ball", "Super Ball", "Ultra Ball", "Hyper Ball", "Master Ball", "Master Ball", "Premier Ball", "Honor Ball",
+            "Potion", "Potion", "Revive", "Rappel", "Lucky Egg", "Œuf Chance", "Incense", "Encens", "Star Piece", "Morceau d'Étoile",
+            "Golden Pinap Berry", "Baie Nanana argentée", "Poffin", "Poffin", "Sun Stone", "Pierre Soleil",
+            "King's Rock", "Roche Royale", "Metal Coat", "Peau Métal", "Dragon Scale", "Écaille Draco", "Up-Grade", "Améliorator",
+            "Sinnoh Stone", "Pierre Sinnoh", "Unova Stone", "Pierre Unys", "Magnetic Lure Module", "Module Leurre Magnétique",
+            "Glacial Lure Module", "Module Leurre Glacial", "Mossy Lure Module", "Module Leurre Moussu",
+            "Rainy Lure Module", "Module Leurre Pluvieux", "Golden Lure Module", "Module Leurre Doré",
+            "Rare Candy", "Super Bonbon", "Rare Candy XL", "Super Bonbon XL", "Fast TM", "CT Attaque Immédiate",
+            "Charged TM", "CT Attaque Chargée", "Elite Fast TM", "CT Élite Attaque Immédiate", "Elite Charged TM", "CT Élite Attaque Chargée",
+            "Star Piece", "Morceau d'Étoile", "Remote Raid Pass", "Passe de Raid à distance", "Premium Battle Pass", "Passe de Combat Premium",
+            "Max Particle Pack", "Pack de Particules Dynamax", "Beans", "Haricots");
 
         // ----- Auto-Raid -----
         put("Auto-Raid active", "Auto-Raid actif",

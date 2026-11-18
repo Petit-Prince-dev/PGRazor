@@ -27,7 +27,7 @@ import java.util.concurrent.Executors;
  * off, the same way screen-mirroring tools do: the system still thinks the screen is on, so the game
  * keeps running, and nothing at all is visible (no status bar, no notification). The game asks for it
  * through a small request file in its own files folder; the helper reads it as root, keeps the panel
- * off while asked to and reports back in {@link #STATE}. A double tap on the veil, a volume key (root:
+ * off while asked to and reports back in {@link #STATE}. A volume key (watched by the root helper:
  * the touchscreen is often off with the panel), leaving the game or the power button brings the
  * screen back.
  */
@@ -155,7 +155,7 @@ public final class ScreenPower {
 
     /**
      * Main thread, called often while the screen is off: the root helper reports "woken" when a volume key
-     * or a double tap brought the panel back (the touchscreen is often off with the panel, so the veil
+     * brought the panel back (the touchscreen is often off with the panel, so the veil
      * never sees the taps). The veil then goes away too.
      */
     static void pollWake(Activity activity) {

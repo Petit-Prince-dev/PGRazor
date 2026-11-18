@@ -43,10 +43,10 @@ public final class Pad {
     private TextView shinyBadge,shinyMark;private OverlayDrag shinyDrag;private AlertDialog shinyPopup;
     // Encounter counter badge (optional): this account's encounters in the last 24 hours; drag to move it.
     private TextView encounterBadge;private OverlayDrag encounterDrag;
-    // "Écran éteint" (ScreenPower): a black veil above the game and every PGRazor overlay. A double tap
-    // brings the screen back; its hint fades after a few seconds.
-    private FrameLayout blackScreen;private TextView blackHint;private boolean blackShown;private long blackLastTap;private String blackIssue="";
-    private static final String BLACK_HINT="Écran éteint : le jeu continue de tourner.\nTouche deux fois l'écran ou appuie sur un bouton de volume pour rallumer.";
+    // "Écran éteint" (ScreenPower): a black veil above the game and every PGRazor overlay. A volume
+    // button (root helper) brings the screen back; its hint fades after a few seconds.
+    private FrameLayout blackScreen;private TextView blackHint;private boolean blackShown;private String blackIssue="";
+    private static final String BLACK_HINT="Écran éteint : le jeu continue de tourner.\nAppuie sur un bouton de volume pour rallumer.";
     private TextView gymAutomationStatus;
     private TextView automationStatus;
     private OverlayDrag automationDrag;
@@ -108,7 +108,7 @@ public final class Pad {
         if(quickMenu!=null&&quickMenu.isShowing())quickMenu.hide();
         stick.release(true);
         ScreenPower.turnOff(activity);
-        blackLastTap=0;refresh();
+        refresh();
     }
     private final class RazorIcon extends View {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -150,14 +150,13 @@ public final class Pad {
         parent.addView(settings.view(), new FrameLayout.LayoutParams(-1, -1));
         overlays=new FrameLayout(host);parent.addView(overlays,new FrameLayout.LayoutParams(-1,-1));
         blackScreen=new FrameLayout(host);blackScreen.setBackgroundColor(Color.BLACK);blackScreen.setVisibility(View.GONE);
-        blackScreen.setClickable(true);blackScreen.setContentDescription("Écran éteint. Touche deux fois pour rallumer.");
+        blackScreen.setClickable(true);blackScreen.setContentDescription("Écran éteint. Appuie sur un bouton de volume pour rallumer.");
         blackHint=text(BLACK_HINT,13,Color.rgb(140,140,140));blackHint.setGravity(Gravity.CENTER);
         blackScreen.addView(blackHint,new FrameLayout.LayoutParams(-1,-2,Gravity.CENTER));
+        // Touches only swallow input and show the hint: the volume buttons (root helper) bring the screen back.
         blackScreen.setOnTouchListener((v,e)->{
             if(e.getActionMasked()!=MotionEvent.ACTION_DOWN)return true;
-            long now=SystemClock.uptimeMillis();
-            if(now-blackLastTap<=450){blackLastTap=0;ScreenPower.turnOn(activity);refresh();}
-            else{blackLastTap=now;if(blackHint!=null&&blackHint.getVisibility()!=View.VISIBLE){blackHint.setVisibility(View.VISIBLE);handler.postDelayed(()->{if(blackHint!=null)blackHint.setVisibility(View.GONE);},2500);}}
+            if(blackHint!=null&&blackHint.getVisibility()!=View.VISIBLE){blackHint.setVisibility(View.VISIBLE);handler.postDelayed(()->{if(blackHint!=null)blackHint.setVisibility(View.GONE);},2500);}
             return true;
         });
 

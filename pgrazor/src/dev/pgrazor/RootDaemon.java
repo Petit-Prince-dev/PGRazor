@@ -30,11 +30,10 @@ public final class RootDaemon {
     private String lastScreenRequest;
     private volatile boolean panelOff;
     private boolean restoreWhenAwake;
-    /** Set by the input watcher: a volume key or a double tap asked for the screen back. */
+    /** Set by the input watcher: a volume key asked for the screen back. */
     private volatile boolean wakeRequested;
     /** The "off" request the user woke the screen from: not cut again until the game sends a new request. */
     private String wokenFrom;
-    private long lastTouchDown;
     private long lastPanelCheck;
     private static final long REAPPLY_MS = 1500;
 
@@ -76,8 +75,8 @@ public final class RootDaemon {
         long now = System.currentTimeMillis();
         if (!request.equals(wokenFrom)) wokenFrom = null;
         if (wantOff && wakeRequested && panelOff) {
-            // Many phones switch the touchscreen off with the panel, so the game never sees the double tap:
-            // the helper brings the panel back itself and tells the game, which then lifts its veil.
+            // The touchscreen is often off with the panel: a volume key is the way back.
+            // The helper brings the panel back itself and tells the game, which then lifts its veil.
             wakeRequested = false;
             boolean ok = setPanel(true);
             log("panel on by user input " + (ok ? "ok" : "failed"));
@@ -129,7 +128,7 @@ public final class RootDaemon {
 
     /**
      * Watches the phone's input devices as root (getevent): while this helper holds the panel off, a volume
-     * key press or two touches within 600 ms ask for the screen back. Restarted if getevent exits.
+     * key press asks for the screen back. Restarted if getevent exits.
      */
     private void startInputWatcher() {
         Thread watcher = new Thread(() -> {
@@ -154,12 +153,7 @@ public final class RootDaemon {
 
     private void onInput(String line) {
         if (!panelOff || !line.contains("EV_KEY") || !line.trim().endsWith("DOWN")) return;
-        if (line.contains("KEY_VOLUMEDOWN") || line.contains("KEY_VOLUMEUP")) { wakeRequested = true; return; }
-        if (line.contains("BTN_TOUCH") || line.contains("BTN_TOOL_FINGER")) {
-            long now = System.currentTimeMillis();
-            if (now - lastTouchDown <= 600) { wakeRequested = true; lastTouchDown = 0; }
-            else lastTouchDown = now;
-        }
+        if (line.contains("KEY_VOLUMEDOWN") || line.contains("KEY_VOLUMEUP")) wakeRequested = true;
     }
 
     /** Tells the game what happened, in its own files folder, owned and labelled like that folder so it can read it. */

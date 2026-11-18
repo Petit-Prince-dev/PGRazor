@@ -1004,6 +1004,10 @@ final class SettingsPanel {
         return Control.engine.enabled?SettingsUi.success():SettingsUi.warn();
     }
 
+    /** Recommended item sorting: {item id, maximum kept}. Poké Ball, Super Ball, Hyper Ball, Potion, Super Potion,
+     *  Hyper Potion, Potion Max, Rappel, Baie Framby, Baie Nanab, Baie Nanana. */
+    private static final int[][] RECOMMENDED_ITEMS={{1,0},{2,50},{3,400},{101,0},{102,0},{103,0},{104,100},{201,0},{701,50},{703,50},{705,50}};
+
     private void showItemSettings(){
         Control.requestItemCatalog();
         LinearLayout form=new LinearLayout(activity);form.setOrientation(LinearLayout.VERTICAL);form.setPadding(dp(16),dp(8),dp(16),dp(8));
@@ -1014,19 +1018,30 @@ final class SettingsPanel {
         for(String row:Control.itemRules().split(";"))try{String[] b=row.split(":");int id=Integer.parseInt(b[0]);selected.add(id);limits.put(id,Integer.parseInt(b[1]));}catch(RuntimeException ignored){}
         LinearLayout rows=new LinearLayout(activity);rows.setOrientation(LinearLayout.VERTICAL);ScrollView scroll=new ScrollView(activity);scroll.addView(rows);form.addView(scroll,new LinearLayout.LayoutParams(-1,dp(380)));
         java.util.Map<Integer,CheckBox> boxes=new java.util.LinkedHashMap<>();java.util.Map<Integer,EditText> inputs=new java.util.LinkedHashMap<>();
-        Runnable populate=()->{for(String row:Control.itemCatalog().split("\n")){String[] b=row.split("\\|",-1);if(b.length!=3)continue;int id;try{id=Integer.parseInt(b[0]);}catch(NumberFormatException invalid){continue;}if(boxes.containsKey(id)){boxes.get(id).setText(b[1]+" ("+b[2]+" dans le sac)");continue;}
+        Runnable populate=()->{for(String row:Control.itemCatalog().split("\n")){String[] b=row.split("\\|",-1);if(b.length!=3)continue;int id;try{id=Integer.parseInt(b[0]);}catch(NumberFormatException invalid){continue;}if(boxes.containsKey(id)){boxes.get(id).setText(NativeText.fr(b[1])+" ("+b[2]+" dans le sac)");continue;}
             LinearLayout line=new LinearLayout(activity);line.setOrientation(LinearLayout.HORIZONTAL);line.setGravity(Gravity.CENTER_VERTICAL);
-            CheckBox box=new CheckBox(activity);box.setText(b[1]+" ("+b[2]+" dans le sac)");box.setChecked(selected.contains(id));line.addView(box,new LinearLayout.LayoutParams(0,-2,1));
-            EditText cap=new EditText(dialogContext());cap.setInputType(InputType.TYPE_CLASS_NUMBER);cap.setSingleLine(true);cap.setHint("Max");cap.setText(String.valueOf(limits.containsKey(id)?limits.get(id):100));cap.setContentDescription("Maximum de "+b[1]+" à garder");SettingsUi.enabled(cap,enabled.isChecked()&&box.isChecked());box.setOnCheckedChangeListener((button,checked)->SettingsUi.enabled(cap,enabled.isChecked()&&checked));line.addView(cap,new LinearLayout.LayoutParams(dp(80),-2));rows.addView(line);styleTree(line);boxes.put(id,box);inputs.put(id,cap);
+            CheckBox box=new CheckBox(activity);box.setText(NativeText.fr(b[1])+" ("+b[2]+" dans le sac)");box.setChecked(selected.contains(id));line.addView(box,new LinearLayout.LayoutParams(0,-2,1));
+            EditText cap=new EditText(dialogContext());cap.setInputType(InputType.TYPE_CLASS_NUMBER);cap.setSingleLine(true);cap.setHint("Max");cap.setText(String.valueOf(limits.containsKey(id)?limits.get(id):100));cap.setContentDescription("Maximum de "+NativeText.fr(b[1])+" à garder");SettingsUi.enabled(cap,enabled.isChecked()&&box.isChecked());box.setOnCheckedChangeListener((button,checked)->SettingsUi.enabled(cap,enabled.isChecked()&&checked));line.addView(cap,new LinearLayout.LayoutParams(dp(80),-2));rows.addView(line);styleTree(line);boxes.put(id,box);inputs.put(id,cap);
         }};populate.run();
         Runnable dependencies=()->{for(java.util.Map.Entry<Integer,CheckBox> entry:boxes.entrySet()){SettingsUi.enabled(entry.getValue(),enabled.isChecked());SettingsUi.enabled(inputs.get(entry.getKey()),enabled.isChecked()&&entry.getValue().isChecked());}};
         enabled.setOnCheckedChangeListener((v,on)->dependencies.run());dependencies.run();
         TextView status=new TextView(activity);status.setText(Control.itemStatus());form.addView(status);
-        AlertDialog dialog=new AlertDialog.Builder(dialogContext()).setTitle("Trier automatiquement l'inventaire").setView(form).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer & appliquer",null).create();
+        AlertDialog dialog=new AlertDialog.Builder(dialogContext()).setTitle("Trier automatiquement l'inventaire").setView(form).setNegativeButton("Annuler",null).setNeutralButton("Recommandés",null).setPositiveButton("Enregistrer & appliquer",null).create();
+        final boolean[] recommended={false};
         final Runnable[] poll=new Runnable[1];poll[0]=()->{if(!dialog.isShowing())return;Control.requestItemCatalog();populate.run();dependencies.run();status.setText(Control.itemStatus());handler.postDelayed(poll[0],1000);};
         itemDialogs.add(dialog);
         dialog.setOnDismissListener(d->{handler.removeCallbacks(poll[0]);itemDialogs.remove(dialog);});dialog.show();styleTree(form);handler.post(poll[0]);
+        // "Recommandés": only the listed items are sorted, with these maximums; every other item is kept.
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v->{
+            recommended[0]=true;enabled.setChecked(true);selected.clear();
+            for(int[] item:RECOMMENDED_ITEMS){selected.add(item[0]);limits.put(item[0],item[1]);}
+            for(java.util.Map.Entry<Integer,CheckBox> entry:boxes.entrySet()){int id=entry.getKey();entry.getValue().setChecked(selected.contains(id));
+                if(selected.contains(id))inputs.get(id).setText(String.valueOf(limits.get(id)));}
+            dependencies.run();
+        });
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{StringBuilder rules=new StringBuilder(),all=new StringBuilder();for(java.util.Map.Entry<Integer,EditText> e:inputs.entrySet()){int cap;try{cap=Integer.parseInt(e.getValue().getText().toString().trim());if(cap<0||cap>100000)throw new NumberFormatException();}catch(NumberFormatException invalid){e.getValue().setError("Entre 0 et 100000");return;}String rule=e.getKey()+":"+cap+";";all.append(rule);if(boxes.get(e.getKey()).isChecked())rules.append(rule);}
+            // Recommended items not in the bag yet keep their rule, so they are sorted once they arrive.
+            if(recommended[0])for(int[] item:RECOMMENDED_ITEMS)if(!inputs.containsKey(item[0])){String rule=item[0]+":"+item[1]+";";all.append(rule);rules.append(rule);}
             Control.saveItemRules(enabled.isChecked(),rules.toString(),all.toString());dialog.dismiss();host.refresh();});
     }
 
