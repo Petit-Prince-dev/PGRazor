@@ -46,7 +46,7 @@ public final class Pad {
     // "Écran éteint" (ScreenPower): a black veil above the game and every PGRazor overlay. A double tap
     // brings the screen back; its hint fades after a few seconds.
     private FrameLayout blackScreen;private TextView blackHint;private boolean blackShown;private long blackLastTap;private String blackIssue="";
-    private static final String BLACK_HINT="Écran éteint : le jeu continue de tourner.\nTouche deux fois pour rallumer.";
+    private static final String BLACK_HINT="Écran éteint : le jeu continue de tourner.\nTouche deux fois l'écran ou appuie sur un bouton de volume pour rallumer.";
     private TextView gymAutomationStatus;
     private TextView automationStatus;
     private OverlayDrag automationDrag;
@@ -338,6 +338,7 @@ public final class Pad {
         applyMapScale();
         if(gymFeedOverlay!=null)gymFeedOverlay.refresh(!settings.isVisible()&&!(quickMenu!=null&&quickMenu.isShowing()));
         boolean black=ScreenPower.off();
+        if(black)ScreenPower.pollWake(activity);
         if(blackScreen!=null&&black!=blackShown){
             blackShown=black;blackScreen.setVisibility(black?View.VISIBLE:View.GONE);
             if(black){blackIssue="";blackHint.setText(BLACK_HINT);blackScreen.bringToFront();blackHint.setVisibility(View.VISIBLE);handler.postDelayed(()->{if(blackHint!=null)blackHint.setVisibility(View.GONE);},3000);}

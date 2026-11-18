@@ -27,8 +27,9 @@ import java.util.concurrent.Executors;
  * off, the same way screen-mirroring tools do: the system still thinks the screen is on, so the game
  * keeps running, and nothing at all is visible (no status bar, no notification). The game asks for it
  * through a small request file in its own files folder; the helper reads it as root, keeps the panel
- * off while asked to and reports back in {@link #STATE}. A double tap on the veil, leaving the game or
- * the power button brings the screen back.
+ * off while asked to and reports back in {@link #STATE}. A double tap on the veil, a volume key (root:
+ * the touchscreen is often off with the panel), leaving the game or the power button brings the
+ * screen back.
  */
 public final class ScreenPower {
     /** Request file in the game's files folder: "off <pid>" or "on". Read by {@link RootDaemon}. */
@@ -44,7 +45,8 @@ public final class ScreenPower {
     private static float savedBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE;
     private static boolean addedKeepScreenOn;
     private static int hiddenBars, savedBarsBehavior = -1;
-    private static long generation;
+    private static long generation, offRequestedAt, lastWakePoll;
+    private static boolean wakePollRunning;
     private static final Handler main = new Handler(Looper.getMainLooper());
     private static final ExecutorService writer = Executors.newSingleThreadExecutor(r -> {
         Thread thread = new Thread(r, "pgrazor-screen");
@@ -88,6 +90,7 @@ public final class ScreenPower {
         if (!PgAssets.rooted()) return;
         final File folder = activity.getApplicationContext().getFilesDir();
         final long requestedAt = System.currentTimeMillis() + PANEL_DELAY_MS;
+        offRequestedAt = requestedAt;
         main.postDelayed(() -> { if (off && run == generation) request(folder, "off " + android.os.Process.myPid()); }, PANEL_DELAY_MS);
         main.postDelayed(() -> { if (off && run == generation) checkRootHelper(folder, requestedAt); }, PANEL_DELAY_MS + CHECK_DELAY_MS);
     }
@@ -148,6 +151,34 @@ public final class ScreenPower {
         controller.show(bars);
         if (savedBarsBehavior >= 0) controller.setSystemBarsBehavior(savedBarsBehavior);
         savedBarsBehavior = -1;
+    }
+
+    /**
+     * Main thread, called often while the screen is off: the root helper reports "woken" when a volume key
+     * or a double tap brought the panel back (the touchscreen is often off with the panel, so the veil
+     * never sees the taps). The veil then goes away too.
+     */
+    static void pollWake(Activity activity) {
+        if (!off || !PgAssets.rooted() || activity == null) return;
+        long now = android.os.SystemClock.uptimeMillis();
+        if (now - lastWakePoll < 400 || wakePollRunning) return;
+        lastWakePoll = now;
+        wakePollRunning = true;
+        final long run = generation, since = offRequestedAt;
+        final File folder = activity.getApplicationContext().getFilesDir();
+        writer.execute(() -> {
+            String state = RootDaemon.readSmall(new File(folder, STATE));
+            boolean woken = false;
+            if (state != null && state.startsWith("woken")) {
+                try { woken = Long.parseLong(state.trim().substring(state.trim().lastIndexOf(' ') + 1)) >= since - 1000; }
+                catch (RuntimeException ignored) {}
+            }
+            final boolean wake = woken;
+            main.post(() -> {
+                wakePollRunning = false;
+                if (wake && off && run == generation) turnOn(activity);
+            });
+        });
     }
 
     /** A few seconds after the request: did the root helper really switch the panel off? */

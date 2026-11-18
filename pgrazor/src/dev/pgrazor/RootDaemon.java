@@ -28,7 +28,13 @@ public final class RootDaemon {
     private final File module, logFile, offMarker;
     private final File gameFiles = new File("/data/data/" + GAME + "/files");
     private String lastScreenRequest;
-    private boolean panelOff, restoreWhenAwake;
+    private volatile boolean panelOff;
+    private boolean restoreWhenAwake;
+    /** Set by the input watcher: a volume key or a double tap asked for the screen back. */
+    private volatile boolean wakeRequested;
+    /** The "off" request the user woke the screen from: not cut again until the game sends a new request. */
+    private String wokenFrom;
+    private long lastTouchDown;
     private long lastPanelCheck;
     private static final long REAPPLY_MS = 1500;
 
@@ -46,6 +52,7 @@ public final class RootDaemon {
     private void run() {
         log("start sdk=" + Build.VERSION.SDK_INT + " module=" + module + " version=" + installedVersion());
         publishState("ready");
+        startInputWatcher();
         while (true) {
             try {
                 pollScreen();
@@ -67,6 +74,21 @@ public final class RootDaemon {
         boolean changed = !request.equals(lastScreenRequest);
         lastScreenRequest = request;
         long now = System.currentTimeMillis();
+        if (!request.equals(wokenFrom)) wokenFrom = null;
+        if (wantOff && wakeRequested && panelOff) {
+            // Many phones switch the touchscreen off with the panel, so the game never sees the double tap:
+            // the helper brings the panel back itself and tells the game, which then lifts its veil.
+            wakeRequested = false;
+            boolean ok = setPanel(true);
+            log("panel on by user input " + (ok ? "ok" : "failed"));
+            panelOff = false;
+            offMarker.delete();
+            wokenFrom = request;
+            publishState("woken");
+            return;
+        }
+        wakeRequested = false;
+        if (wantOff && wokenFrom != null) return;
         if (wantOff) {
             restoreWhenAwake = false;
             // Android powers the panel back on by itself (a brightness change, a toast, a notification, a
@@ -102,6 +124,41 @@ public final class RootDaemon {
                 panelOff = false;
                 restoreWhenAwake = true;
             }
+        }
+    }
+
+    /**
+     * Watches the phone's input devices as root (getevent): while this helper holds the panel off, a volume
+     * key press or two touches within 600 ms ask for the screen back. Restarted if getevent exits.
+     */
+    private void startInputWatcher() {
+        Thread watcher = new Thread(() -> {
+            while (true) {
+                Process process = null;
+                try {
+                    process = new ProcessBuilder("getevent", "-lq").redirectErrorStream(true).start();
+                    try (BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                        for (String line; (line = in.readLine()) != null; ) onInput(line);
+                    }
+                } catch (Throwable error) {
+                    log("input watcher: " + error);
+                } finally {
+                    if (process != null) process.destroy();
+                }
+                try { Thread.sleep(5000); } catch (InterruptedException ignored) { return; }
+            }
+        }, "pgrazor-input");
+        watcher.setDaemon(true);
+        watcher.start();
+    }
+
+    private void onInput(String line) {
+        if (!panelOff || !line.contains("EV_KEY") || !line.trim().endsWith("DOWN")) return;
+        if (line.contains("KEY_VOLUMEDOWN") || line.contains("KEY_VOLUMEUP")) { wakeRequested = true; return; }
+        if (line.contains("BTN_TOUCH") || line.contains("BTN_TOOL_FINGER")) {
+            long now = System.currentTimeMillis();
+            if (now - lastTouchDown <= 600) { wakeRequested = true; lastTouchDown = 0; }
+            else lastTouchDown = now;
         }
     }
 
