@@ -19,7 +19,7 @@ final class ShundoPacing {
                              boolean accountAllowed, boolean gameplayReady) {
         if (!locationReady || !locationKnown) return "En attente de la carte du jeu";
         if (!active) return "En pause : retourne dans le jeu et active la localisation";
-        if (!accountAllowed) return "En attente du compte de jeu ; ouvre Changer de compte pour les détails";
+        if (!accountAllowed) return "En attente du compte de jeu";
         if (!gameplayReady) return "En attente que le jeu soit prêt";
         return "";
     }

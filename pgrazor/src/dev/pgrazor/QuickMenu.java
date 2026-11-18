@@ -27,7 +27,6 @@ public final class QuickMenu {
         void onFavorites();
         void onHotspots();
         void onTeleport();
-        void onAccounts();
         void onSettings();
         /** Asks to hide every PGRazor overlay (three fingers on screen show them again). */
         void onHideOverlays();
@@ -39,7 +38,7 @@ public final class QuickMenu {
         ACCOUNTS = MenuIcon.ACCOUNTS, SETTINGS = MenuIcon.SETTINGS, EVENTS = MenuIcon.EVENTS, AUTOMATION = MenuIcon.AUTOMATION, HIDE = MenuIcon.HIDE, ROUTES = MenuIcon.ROUTES, RESEARCH = MenuIcon.RESEARCH, POWER = MenuIcon.POWER;
 
     // Append-only order: persisted visibility bits must not follow icon IDs (some are shared).
-    static final String[] CUSTOMIZABLE = {"Carte", "Vitesse de marche", "Autowalk", "Routes du jeu", "Flux", "Favoris", "Hotspots", "Téléportation", "Changer de compte", "Événements", "Automatisation", "Études", "Masquer l'overlay", "Éteindre l'écran"};
+    static final String[] CUSTOMIZABLE = {"Carte", "Vitesse de marche", "Autowalk", "Routes du jeu", "Flux", "Favoris", "Hotspots", "Téléportation", null, "Événements", "Automatisation", "Études", "Masquer l'overlay", "Éteindre l'écran"};
     private final List<View> rows = new ArrayList<>();
     private final List<Integer> visibilityBits = new ArrayList<>();
     private int appliedHidden = -1;
@@ -76,7 +75,6 @@ public final class QuickMenu {
         card.addView(row(FAVORITES, "Favoris", true, listener::onFavorites, 32));
         card.addView(row(MAP, "Hotspots", true, listener::onHotspots, 64));
         card.addView(row(TELEPORT, "Téléportation", true, listener::onTeleport, 128));
-        card.addView(row(ACCOUNTS, "Changer de compte", true, listener::onAccounts, 256));
         card.addView(row(EVENTS, "Événements", true, () -> dev.pgrazor.events.EventPanel.showSelector(activity, Control.darkTheme()), 512));
         card.addView(row(AUTOMATION, "Automatisation", true, () -> AutomationPanel.show(activity), 1024));
         card.addView(row(RESEARCH, "Études", true, () -> ResearchSettings.show(activity), 2048));

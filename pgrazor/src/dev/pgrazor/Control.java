@@ -26,28 +26,19 @@ public final class Control {
         return app!=null && hostLive() && active() && !catchScreenVisible()
             && dev.pgrazor.events.EventSettings.boxCollectorEnabled(app);
     }
-    public static String accountCommand(){return AccountProfiles.command();}
-    public static String[] accountCommandSnapshot(){return AccountProfiles.commandSnapshot();}
-    public static boolean accountManagementAllowed(){return foreground && backendReady && connected();}
-    public static void accountIdentity(String id,String name){AccountProfiles.identity(id,name);}
-    public static void setAccountsReady(boolean ready){AccountProfiles.support(ready);}
-    public static void accountSessionEnded(){AccountProfiles.sessionEnded();}
-    public static void accountLogoutComplete(){AccountProfiles.logoutComplete();}
-    public static void accountLogoutFailed(){AccountProfiles.logoutFailed();}
-    public static void accountSignInResetComplete(){AccountProfiles.signInResetComplete();}
-    public static void accountSessionSaved(){AccountProfiles.sessionSaved();}
+    // Multi-account support is removed. The native runtime still calls these with a fixed schema:
+    // no account command is ever issued and account reports are ignored.
+    public static String accountCommand(){return "";}
+    public static String[] accountCommandSnapshot(){return new String[]{"","0"};}
+    public static boolean accountManagementAllowed(){return false;}
+    public static void accountIdentity(String id,String name){}
+    public static void setAccountsReady(boolean ready){}
+    public static void accountSessionEnded(){}
+    public static void accountLogoutComplete(){}
+    public static void accountLogoutFailed(){}
+    public static void accountSignInResetComplete(){}
+    public static void accountSessionSaved(){}
     static Activity accountActivity(){return pad==null?null:pad.activity;}
-    static void quiesceAccounts() throws IOException {
-        OneShotAutomation.reset();
-        AutoRaid.reset();
-        GiftBatchSettings.reset();
-        gameRoutes.stop("Changement de compte"); gameRoutesPlanning=false; gameRoutes.setPlanning(false); autoWalkPlanning=false;
-        vgp.suspend();
-        mapTapEpoch++; invalidateQuickBallOutcome();
-        engine.stop(); saveState();
-        if(stateWriteFailed)throw new IOException("L'enregistrement de la position n'a pas abouti");
-    }
-    static void flushAccountWrites() throws IOException { flushSettings(2500); Cooldown.flush(); }
     public static boolean adventureSyncDismissAllowed() {
         Application app=hostApplication;
         // Spoofing owns this policy. Real Android location grants do not enable Adventure Sync.
@@ -983,7 +974,6 @@ public final class Control {
         // Recover recent run tails after a crash without changing or deleting private originals.
         new Thread(() -> recoverRunLogs(app),"pgrazor-log-recovery").start();
         event("session-start", connection);
-        AccountProfiles.init(app);
         loadState(app);
         loadSettings(app);
         Cooldown.init(app);

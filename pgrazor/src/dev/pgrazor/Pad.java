@@ -228,7 +228,6 @@ public final class Pad {
             public void onFavorites(){QuickLocationDialogs.showFavorites(activity,Pad.this::quickTeleport);}
             public void onTeleport(){stick.release(true);QuickLocationDialogs.showTeleport(activity,Pad.this::quickTeleport,Pad.this::quickWalk);}
             public void onHotspots(){stick.release(true);HotspotsDialog.showQuick(activity,Pad.this::quickTeleport,Pad.this::quickWalk);}
-            public void onAccounts(){stick.release(true);AccountsDialog.show(activity);}
             public void onSettings(){openSettings();}
             public void onHideOverlays(){confirmHideOverlays();}
             public void onScreenOff(){turnScreenOff();}

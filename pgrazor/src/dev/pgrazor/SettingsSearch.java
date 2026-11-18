@@ -234,7 +234,6 @@ final class SettingsSearch {
         put(DESCRIPTIONS, "Lower resolution", "Draw the map and Pokémon at half resolution.");
         put(DESCRIPTIONS, "Limit to 20 FPS", "Cap the game at 20 frames per second.");
         put(DESCRIPTIONS, "Low graphics quality", "Turn off shadows, fog, reflections and other heavy effects.");
-        put(DESCRIPTIONS, "Accounts", "Switch, add or manage game accounts.");
         put(DESCRIPTIONS, "Export / import settings", "Back up or restore every saved setting.");
         put(DESCRIPTIONS, "Run log / export", "Open the run log and export it as text.");
         put(DESCRIPTIONS, "Diagnostics", "Camera and catch or spin capture diagnostics.");
@@ -385,7 +384,6 @@ final class SettingsSearch {
         put(DESCRIPTIONS, "Résolution réduite", "Affiche la carte et les Pokémon en demi-résolution.");
         put(DESCRIPTIONS, "Limiter à 20 FPS", "Limite le jeu à 20 images par seconde.");
         put(DESCRIPTIONS, "Graphismes bas", "Désactive les ombres, le brouillard, les reflets et autres effets lourds.");
-        put(DESCRIPTIONS, "Comptes", "Change, ajoute ou gère les comptes de jeu.");
         put(DESCRIPTIONS, "Exporter / importer les réglages", "Sauvegarde ou restaure tous les réglages.");
         put(DESCRIPTIONS, "Journal / export", "Ouvre le log de la session et l'exporte en texte.");
         put(DESCRIPTIONS, "Diagnostics", "Diagnostics caméra et capture/spin.");

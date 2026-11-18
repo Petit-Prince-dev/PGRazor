@@ -750,6 +750,7 @@ final class SettingsPanel {
         LinearLayout menu = group(page,"Entrées du menu rapide");
         caption(menu,"Choisis les entrées affichées. Ça n'active ni ne désactive aucune fonction. « Paramètres » reste visible.");
         for(int i=0;i<QuickMenu.CUSTOMIZABLE.length;i++){
+            if(QuickMenu.CUSTOMIZABLE[i]==null)continue; // retired entry keeps its bit
             final int bit=1<<i;
             CheckBox box=new CheckBox(activity);box.setText(QuickMenu.CUSTOMIZABLE[i]);
             box.setChecked(Control.quickMenuVisible(bit));quickMenuChoices[i]=box;menu.addView(box);
@@ -758,9 +759,8 @@ final class SettingsPanel {
     }
 
     private void buildAccountsPage() {
-        LinearLayout page = page(MenuIcon.ACCOUNTS, "Comptes & sauvegarde");
-        LinearLayout data = group(page, "Compte & données");
-        launch(data, "Comptes", () -> AccountsDialog.show(activity));
+        LinearLayout page = page(MenuIcon.ACCOUNTS, "Sauvegarde & diagnostics");
+        LinearLayout data = group(page, "Données");
         launch(data, "Exporter / importer les réglages", () -> {
             if(PgAssets.rooted())new SettingsBackup(activity).show();
             else activity.startActivity(new Intent(activity,LogActivity.class).putExtra("settingsBackup",true));
@@ -805,7 +805,7 @@ final class SettingsPanel {
         summary(6,AutoRaid.running()?"Auto-Raid running":ShundoSniper.active()?"Shundo Sniper running":ShinyScanner.enabled()?"Shiny Scanner on":"Shundo, scan shiny, raids, Encens, nourrissage d'arène, cadeaux, évolution, études");
         summary(7,"Halloween · Go Wild");
         summary(8,"Interface "+Control.uiScalePercent()+"% · "+(Control.darkTheme()?"Dark":"clair")+" "+(Control.skipCutscenes()?" · Skip cutscenes":""));
-        summary(9,"Comptes, export / import, journal, diagnostics");
+        summary(9,"Export / import, journal, diagnostics");
     }
 
     /** The root panel view; Pad owns attachment to the window and insets wiring. */
@@ -1205,7 +1205,7 @@ final class SettingsPanel {
     }
 
     private void refreshLocationOptions() {
-        for(int i=0;i<quickMenuChoices.length;i++)quickMenuChoices[i].setChecked(Control.quickMenuVisible(1<<i));
+        for(int i=0;i<quickMenuChoices.length;i++)if(quickMenuChoices[i]!=null)quickMenuChoices[i].setChecked(Control.quickMenuVisible(1<<i));
         idleWalkSwitch.setChecked(Control.idleWalking());idleWalkSwitch.setEnabled(Control.desiredEnabled());idleWalkSwitch.setAlpha(Control.desiredEnabled()?1f:.45f);
         set(mapTap,"Appui sur la carte : "+new String[]{"Ne rien faire","Marcher","Téléporter","Marcher / double appui pour téléporter"}[Control.mapTapMode()]);
         mapTap.setEnabled(Control.quickBallConfigured());
