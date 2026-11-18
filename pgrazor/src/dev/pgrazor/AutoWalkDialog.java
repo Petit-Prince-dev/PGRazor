@@ -85,7 +85,6 @@ public final class AutoWalkDialog {
         countField.setInputType(InputType.TYPE_CLASS_NUMBER);
         countField.setFilters(new InputFilter[]{new InputFilter.LengthFilter(String.valueOf(NEARBY_LIMIT).length())});
         countField.setHint("Tous");
-        countField.setText("50");
         countField.setSingleLine(true);
         countField.setContentDescription("Nombre d'arrêts à visiter ; laisse vide pour tous les lieux proches");
         countRow.addView(countField, new LinearLayout.LayoutParams(dp(activity, 72), -2));
