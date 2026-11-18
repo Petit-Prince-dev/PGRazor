@@ -305,8 +305,8 @@ public final class Pad {
     }
     private String transferToggleDescription(){
         boolean keep=Control.transferKeepAll(),master=Control.autoTransferEnabled();
-        String state=keep?"Keep All on; manual catches are kept":(master?"Normal transfer rules apply":"Le transfert auto est désactivé");
-        return "Transfert des rencontres manuelles : "+state+". Touche pour "+(keep?"use normal transfer rules":"garder les captures manuelles")+". Glisse pour déplacer.";
+        String state=keep?"« Tout garder » activé ; les captures manuelles sont gardées":(master?"Les règles de transfert normales s'appliquent":"Le transfert auto est désactivé");
+        return "Transfert des rencontres manuelles : "+state+". Touche pour "+(keep?"appliquer les règles de transfert normales":"garder les captures manuelles")+". Glisse pour déplacer.";
     }
 
     private void applyMapScale(){

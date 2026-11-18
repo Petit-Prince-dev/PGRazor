@@ -69,7 +69,7 @@ public final class AutoRaid {
                         throw new IllegalArgumentException("Invalid raid travel");
                 }
                 lastEvent=SystemClock.elapsedRealtime();
-                message=event.optString("message",message);completed=Math.min(session.maxRaids,Math.max(completed,event.optInt("completed",completed)));
+                message=NativeText.fr(event.optString("message",message));completed=Math.min(session.maxRaids,Math.max(completed,event.optInt("completed",completed)));
                 if("done".equals(phase)||"stopped".equals(phase)||"error".equals(phase)){stopMovement();running=stopping=false;return;}
                 if("travel".equals(phase)&&running){
                     if(serial<=travelSerial)return;travelSerial=serial;

@@ -36,7 +36,7 @@ public final class GymFeedOverlay extends View {
     public void refresh(boolean visible){
         boolean on=GymAutomationSettings.running();
         setVisibility(visible&&GymAutomationSettings.overlayEnabled()?VISIBLE:GONE);
-        setContentDescription("Placement en arène et nourrissage "+(on?"on; tap to stop":"désactivé ; touche pour démarrer")
+        setContentDescription("Placement en arène et nourrissage "+(on?"activé ; touche pour arrêter":"désactivé ; touche pour démarrer")
             +". Glisse pour déplacer. "+GymAutomationSettings.status());
         invalidate();
     }

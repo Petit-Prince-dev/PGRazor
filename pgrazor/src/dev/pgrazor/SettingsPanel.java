@@ -42,10 +42,9 @@ final class SettingsPanel {
     private final LinearLayout panel, content, body, home, results;
     private final ScrollView bodyScroll;
     private TextView coords, speedReadout, homeStatus;
-    private View closeIcon, themeIcon, backIcon;
+    private View closeIcon, backIcon;
     private TextView title, versionLabel, discord;
     private SettingsUi.Dot homeDot;
-    private Switch darkSwitch;
     // Settings search: the index is built once on first use, after every page has painted its labels.
     private SettingsSearch searchIndex;
     private final java.util.List<View> searchTargets=new java.util.ArrayList<>();
@@ -97,7 +96,6 @@ final class SettingsPanel {
     private final CheckBox[] battleChoices=new CheckBox[10];
     private Runnable buddyRefresh=()->{},smartRefresh=()->{};
     // PGRazor Root updates (rooted builds only): status line read from the root helper, throttled.
-    private TextView rootUpdateStatus;private Switch rootUpdateAuto;private long rootUpdateRead;
     // Groups gated by backend readiness (catch-summary support, ball-animation support), refreshed without
     // recreation, and the per-page notes shown while some of them are hidden.
     private final java.util.List<View> summaryGated=new java.util.ArrayList<>(), ballGated=new java.util.ArrayList<>();
@@ -180,22 +178,6 @@ final class SettingsPanel {
         owner.addView(t);captions.add(t);return t;
     }
 
-    /** Shows the destination theme: golden sun in dark mode, indigo moon in light mode. */
-    private final class ThemeIcon extends View {
-        private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
-        ThemeIcon(Context c){super(c);setFocusable(true);setClickable(true);setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x3345e1ba),null,rounded(0xffffffff,24)));}
-        protected void onDraw(Canvas c){super.onDraw(c);float x=getWidth()/2f,y=getHeight()/2f;
-            // One neutral glyph: the action changes the theme, it is not a second status colour.
-            paint.setColor(muted());paint.setStyle(Paint.Style.FILL);paint.setStrokeWidth(dp(2));paint.setStrokeCap(Paint.Cap.ROUND);
-            if(Control.darkTheme()){
-                c.drawCircle(x,y,dp(5),paint);
-                for(int i=0;i<8;i++){double a=i*Math.PI/4;c.drawLine(x+(float)Math.cos(a)*dp(8),y+(float)Math.sin(a)*dp(8),x+(float)Math.cos(a)*dp(11),y+(float)Math.sin(a)*dp(11),paint);}
-            }else{
-                Path moon=new Path();moon.addCircle(x,y,dp(10),Path.Direction.CW);
-                Path cut=new Path();cut.addCircle(x+dp(6),y-dp(4),dp(9),Path.Direction.CW);moon.op(cut,Path.Op.DIFFERENCE);c.drawPath(moon,paint);
-            }
-        }
-    }
     /** A clean close affix: a small X drawn inside a 48dp hitbox. */
     private final class CloseIcon extends View {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -255,7 +237,7 @@ final class SettingsPanel {
         set(title,index<0?EncounterCounter.title():pageTitles.get(index));
         backIcon.setVisibility(index<0?View.GONE:View.VISIBLE);
         // The theme toggle and version make room for the longer page titles; theme is also under Display & Performance.
-        themeIcon.setVisibility(index<0?View.VISIBLE:View.GONE);versionLabel.setVisibility(index<0?View.VISIBLE:View.GONE);
+        versionLabel.setVisibility(index<0?View.VISIBLE:View.GONE);
         final int y=index<0?homeScroll:0;bodyScroll.post(()->bodyScroll.scrollTo(0,y));
     }
 
@@ -265,15 +247,13 @@ final class SettingsPanel {
         panel.setBackgroundColor(SettingsUi.bg());
         content = new LinearLayout(activity); content.setOrientation(LinearLayout.VERTICAL);
         panel.addView(content,new LinearLayout.LayoutParams(-1,-1));
-        // Full-screen settings header: back (on a category page), title, theme and close controls.
+        // Full-screen settings header: back (on a category page), title and close controls.
         LinearLayout header = new LinearLayout(activity); header.setOrientation(LinearLayout.HORIZONTAL); header.setGravity(Gravity.CENTER_VERTICAL);
         backIcon = new BackIcon(activity); backIcon.setVisibility(View.GONE); header.addView(backIcon, new LinearLayout.LayoutParams(dp(48), dp(48)));
         backIcon.setOnClickListener(v -> open(-1));
         title = text("PGRazor", 20, ink()); title.setTypeface(SettingsUi.medium()); title.setPadding(dp(4), 0, 0, 0);
         title.setSingleLine(true); title.setEllipsize(android.text.TextUtils.TruncateAt.END); title.setGravity(Gravity.CENTER_VERTICAL);
         header.addView(title, new LinearLayout.LayoutParams(0, dp(48), 1f));
-        themeIcon = new ThemeIcon(activity); header.addView(themeIcon,new LinearLayout.LayoutParams(dp(44),dp(48)));
-        themeIcon.setOnClickListener(v -> {Control.setDarkTheme(!Control.darkTheme());host.applyTheme();});
         versionLabel = text(BuildVersion.NAME, 11, SettingsUi.faint());
         versionLabel.setTypeface(SettingsUi.mono());
         versionLabel.setSingleLine(true); versionLabel.setGravity(Gravity.CENTER_VERTICAL);
@@ -339,7 +319,7 @@ final class SettingsPanel {
         homeTarget=homeGroup("Automatisation");
         buildAutomationPage();
         buildEventsPage();
-        homeTarget=homeGroup("App");
+        homeTarget=homeGroup("Appli");
         buildDisplayPage();
         buildAccountsPage();   // last: its Diagnostics group collects status lines created by the pages above
         homeTarget=null;
@@ -659,8 +639,8 @@ final class SettingsPanel {
         if(healSwitch==null)return;
         healSwitch.setChecked(Control.healEnabled()); healReviveSwitch.setChecked(Control.healRevive());
         set(healWhen,"Soigner : "+Control.HEAL_WHEN_LABELS[Control.healWhen()]);
-        set(healThreshold,Control.healThreshold()>=100?"Heal when: Any HP missing":"Soigner si : sous "+Control.healThreshold()+" % de PV");
-        set(healItems,Control.healFull()?"Items: Always heal fully":"Objets : intelligent (garde les grosses potions)");
+        set(healThreshold,Control.healThreshold()>=100?"Soigner si : il manque des PV":"Soigner si : sous "+Control.healThreshold()+" % de PV");
+        set(healItems,Control.healFull()?"Objets : toujours soigner à fond":"Objets : intelligent (garde les grosses potions)");
         boolean on=Control.healEnabled();
         SettingsUi.enabled(healWhen,on); SettingsUi.enabled(healThreshold,on); SettingsUi.enabled(healItems,on); SettingsUi.enabled(healReviveSwitch,on);
         status(healStatus,Control.healStatus());
@@ -727,8 +707,6 @@ final class SettingsPanel {
     private void buildDisplayPage() {
         LinearLayout page = page(MenuIcon.SETTINGS, "Affichage & performances");
         LinearLayout look = group(page, "Interface");
-        darkSwitch = switchRow(look, "Thème sombre"); darkSwitch.setChecked(Control.darkTheme());
-        darkSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.darkTheme())return; Control.setDarkTheme(checked); host.applyTheme(); });
         uiScale=button("Taille de l'interface : "+Control.uiScalePercent()+"%");look.addView(uiScale);
         uiScale.setOnClickListener(v->{final int[] values={100,75,50,25};String[] labels={"100%","75%","50%","25%"};int selected=0;for(int i=0;i<values.length;i++)if(values[i]==Control.uiScalePercent())selected=i;
             new AlertDialog.Builder(dialogContext()).setTitle("Taille de l'overlay").setSingleChoiceItems(labels,selected,(dialog,which)->{host.releaseJoystick(true);Control.setUiScalePercent(values[which]);host.refresh();dialog.dismiss();}).setNegativeButton("Annuler",null).show();});
@@ -787,11 +765,11 @@ final class SettingsPanel {
         });
     }
 
-    /** Home-row summary: the features that are on, or a plain "All off". Arguments alternate name, state. */
+    /** Home-row summary: the features that are on, or a plain "Tout est désactivé". Arguments alternate name, state. */
     private static String active(Object... pairs){
         StringBuilder out=new StringBuilder();
         for(int i=0;i+1<pairs.length;i+=2)if(Boolean.TRUE.equals(pairs[i+1])){if(out.length()>0)out.append(" · ");out.append(pairs[i]);}
-        return out.length()==0?"All off":out.toString();
+        return out.length()==0?"Tout est désactivé":out.toString();
     }
     private void summary(int index,String value){TextView view=pageSummaries.get(index);if(!value.contentEquals(view.getText()))view.setText(value);}
     private void refreshHome(){
@@ -802,9 +780,9 @@ final class SettingsPanel {
         summary(3,active("Overlay Go Plus",Control.vgpOverlay(),"Spin rapide",Control.quickSpinEnabled(),"Tri des objets",Control.itemTransferEnabled()));
         summary(4,active("Combat intelligent",Control.smartBattle(),"Soin intelligent",Control.healEnabled(),"Attaques auto",Control.battleOptions()!=0||Control.rocketOptions()!=0,"Arène en boucle",Control.gymRepeatEnabled()));
         summary(5,active("Moteur copain",BuddyEmotionSettings.enabled(),"Incubation auto",Control.autoIncubate(),"Ouvrir les cadeaux",(Control.giftOptions()&1)!=0,"Envoyer les cadeaux",(Control.giftOptions()&2)!=0));
-        summary(6,AutoRaid.running()?"Auto-Raid running":ShundoSniper.active()?"Shundo Sniper running":ShinyScanner.enabled()?"Shiny Scanner on":"Shundo, scan shiny, raids, Encens, nourrissage d'arène, cadeaux, évolution, études");
+        summary(6,AutoRaid.running()?"Auto-Raid en cours":ShundoSniper.active()?"Shundo Sniper actif":ShinyScanner.enabled()?"Scan shiny actif":"Shundo, scan shiny, raids, Encens, nourrissage d'arène, cadeaux, évolution, études");
         summary(7,"Halloween · Go Wild");
-        summary(8,"Interface "+Control.uiScalePercent()+"% · "+(Control.darkTheme()?"Dark":"clair")+" "+(Control.skipCutscenes()?" · Skip cutscenes":""));
+        summary(8,"Interface "+Control.uiScalePercent()+" %"+(Control.skipCutscenes()?" · Cinématiques passées":""));
         summary(9,"Export / import, journal, diagnostics");
     }
 
@@ -929,7 +907,7 @@ final class SettingsPanel {
             results.addView(card);
             return;
         }
-        TextView count=text(hits.size()==1?"1 setting":hits.size()<=60?hits.size()+" settings":hits.size()+" réglages · 60 premiers",11,SettingsUi.faint());
+        TextView count=text(hits.size()==1?"1 réglage":hits.size()<=60?hits.size()+" réglages":hits.size()+" réglages · 60 premiers",11,SettingsUi.faint());
         count.setTypeface(SettingsUi.mono());
         results.addView(count);
         int limit=Math.min(hits.size(),60);
@@ -1019,7 +997,6 @@ final class SettingsPanel {
         for(MenuIcon icon:homeIcons)icon.invalidate();
         if(backIcon!=null)backIcon.invalidate();
         if(closeIcon!=null)closeIcon.invalidate();
-        if(themeIcon!=null){themeIcon.setContentDescription(Control.darkTheme()?"Switch to light theme":"Passer au thème sombre");themeIcon.invalidate();}
     }
 
     private static int telemetryColor(){
@@ -1055,7 +1032,6 @@ final class SettingsPanel {
 
     void refresh() {
         refreshHome();
-        darkSwitch.setChecked(Control.darkTheme());
         refreshLocationStatus();
         refreshDiagnostics();
         refreshSummaryVisibility();
@@ -1078,17 +1054,6 @@ final class SettingsPanel {
         refreshHealing();
         refreshSmartBattle();
         refreshDependencies();
-        refreshRootUpdates(false);
-    }
-
-    private void refreshRootUpdates(boolean now){
-        if(rootUpdateStatus==null)return;
-        long time=android.os.SystemClock.elapsedRealtime();
-        if(!now&&time-rootUpdateRead<1500)return;
-        rootUpdateRead=time;
-        String status=RootUpdates.status(activity);
-        if(!status.contentEquals(rootUpdateStatus.getText()))rootUpdateStatus.setText(status);
-        if(rootUpdateAuto.isChecked()!=RootUpdates.automatic(activity))rootUpdateAuto.setChecked(RootUpdates.automatic(activity));
     }
 
     private void refreshDependencies(){
@@ -1153,7 +1118,7 @@ final class SettingsPanel {
         if(transferOverlaySwitch!=null){transferOverlaySwitch.setChecked(Control.transferOverlayEnabled());transferOverlaySwitch.setEnabled(Control.autoTransferEnabled());transferOverlaySwitch.setAlpha(1f);}
         if(evolveTransferSwitch!=null)evolveTransferSwitch.setChecked(Control.evolveTransferEnabled());
         set(evolveTransferStages,"Évolution : "+(Control.evolveTransferStages()==2?"toutes les étapes disponibles":"une fois"));
-        set(evolveTransferMode,"S'applique à : "+(Control.evolveTransferMode()==1?"selected species only":"règles de transfert actuelles"));
+        set(evolveTransferMode,"S'applique à : "+(Control.evolveTransferMode()==1?"espèces choisies uniquement":"règles de transfert actuelles"));
         if(evolveTransferList!=null){String sel=Control.evolveTransferSpecies();int n=sel.isEmpty()?0:sel.split(",").length;set(evolveTransferList,n>0?"Espèces sélectionnées ("+n+")":"Espèces sélectionnées");}
         status(transferStatus,Control.transferStatus());
     }

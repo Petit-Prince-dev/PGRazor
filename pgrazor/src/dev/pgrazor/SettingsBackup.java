@@ -77,7 +77,7 @@ final class SettingsBackup {
                     }
                     restore(activity,document);message="Réglages restaurés. Retourne au jeu pour les utiliser. Le VGP est désactivé.";
                 }
-            }catch(Exception e){message="Échec de la sauvegarde : "+(e.getMessage()==null?"Invalid file or storage unavailable":e.getMessage());}
+            }catch(Exception e){message="Échec de la sauvegarde : "+(e.getMessage()==null?"Fichier invalide ou stockage indisponible":e.getMessage());}
             final String text=message;activity.runOnUiThread(()->{busy=false;if(activity.isFinishing()||activity.isDestroyed())return;status.setText(text);export.setEnabled(true);restore.setEnabled(true);back.setEnabled(true);});
         },"pgrazor-settings-backup").start();
     }

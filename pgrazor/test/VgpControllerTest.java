@@ -31,7 +31,7 @@ public final class VgpControllerTest {
         spin.setProperty("smartCatchEnabled","true");spin.setProperty("smartCatchSpinGyms","true");
         SmartCatchSettings.read(spin);
         Control.event("gym-spin","{\"message\":\"Gym spun\"}");
-        check(Control.vgpStatus().equals("Gym spun"),"Gym spin reports through VGP status");
+        check(Control.vgpStatus().equals("Arène tournée"),"Gym spin reports through VGP status");
         SmartCatchSettings.read(new java.util.Properties());Control.setVgpStatus("Ready");
         Control.event("gym-spin","{\"message\":\"Gym spun\"}");
         check(Control.vgpStatus().equals("Ready"),"Late gym spin status ignored when VGP+ gym spin is disabled");

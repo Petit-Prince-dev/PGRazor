@@ -69,7 +69,7 @@ class OneShotAutomationJavaTests(unittest.TestCase):
                 path.write_text(text, encoding='utf-8')
                 sources.append(path)
             sources += [ROOT / 'src/dev/pgrazor/GiftBatchSettings.java', ROOT / 'test/GiftBatchSettingsTest.java', ROOT / 'src/dev/pgrazor/OneShotAutomation.java',
-                        ROOT / 'src/dev/pgrazor/MotionEngine.java',
+                        ROOT / 'src/dev/pgrazor/MotionEngine.java', ROOT / 'src/dev/pgrazor/NativeText.java',
                         ROOT / 'test/OneShotAutomationTest.java']
             compiled = subprocess.run([str(compiler), '-encoding', 'UTF-8', '-d', str(work),
                                        *map(str, sources)], capture_output=True, text=True, timeout=45)

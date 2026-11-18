@@ -66,9 +66,9 @@ public final class EncounterCounter {
         long now = System.currentTimeMillis();
         synchronized (LOCK) { if (store != null && dirty && !account.isEmpty()) { store.edit().putString(account, window.save(now)).apply(); savedAt = now; dirty = false; } }
     }
-    /** "1,240 encounters / 24 h", or empty while the counter is off. */
+    /** "1 240 rencontres / 24 h", or empty while the counter is off. */
     static String label() {
-        return Control.encounterCounter() ? String.format(Locale.US, "%,d encounters / 24 h", total()) : "";
+        return Control.encounterCounter() ? String.format(Locale.FRANCE, "%,d rencontres / 24 h", total()) : "";
     }
     /** The settings title: "PGRazor · 1,240 / 24 h". */
     static String title() {

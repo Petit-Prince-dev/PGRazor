@@ -16,7 +16,7 @@ class CatchChanceJavaTests(unittest.TestCase):
             self.skipTest('Android SDK JSON sources unavailable')
         with tempfile.TemporaryDirectory(prefix="pgrazor-catch-chance-") as work:
             work = Path(work)
-            sources = [ROOT / "src/dev/pgrazor/CatchChance.java", ROOT / "test/CatchChanceTest.java"]
+            sources = [ROOT / "src/dev/pgrazor/CatchChance.java", ROOT / "src/dev/pgrazor/NativeText.java", ROOT / "test/CatchChanceTest.java"]
             for original in json_sources[0].glob('*.java'):
                 text = original.read_text(encoding='utf-8')
                 text = re.sub(r'^import (?:static )?(?:android\.|libcore\.).*;\s*$', '', text, flags=re.M)

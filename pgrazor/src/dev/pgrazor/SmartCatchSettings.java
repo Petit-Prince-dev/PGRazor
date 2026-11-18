@@ -104,13 +104,13 @@ public final class SmartCatchSettings {
         return button;
     }
     private static void input(Activity a,LinearLayout body,String title,String initial,Value save,boolean numeric){
-        TextView button=button(body,title+": "+(initial.isEmpty()?"None":initial));final String[] current={initial};
+        TextView button=button(body,title+": "+(initial.isEmpty()?"Aucun":initial));final String[] current={initial};
         button.setOnClickListener(v->{
             Context ui=MapTheme.wrap(a);EditText edit=new EditText(ui);edit.setSingleLine(true);edit.setText(current[0]);
             edit.setInputType(numeric?InputType.TYPE_CLASS_NUMBER:InputType.TYPE_CLASS_TEXT);
             AlertDialog d=new AlertDialog.Builder(ui).setTitle(title).setView(edit).setPositiveButton("Enregistrer",null).setNegativeButton("Annuler",null).create();
             DialogLifecycle.bind(a,d,null);d.setOnShowListener(x->{MapTheme.style(edit);MapTheme.styleButtons(d);d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(w->{
-                try{String value=edit.getText().toString();save.set(value);current[0]=numeric?value.trim():normalizeSpecies(value);button.setText(title+": "+(current[0].isEmpty()?"None":current[0]));d.dismiss();}
+                try{String value=edit.getText().toString();save.set(value);current[0]=numeric?value.trim():normalizeSpecies(value);button.setText(title+": "+(current[0].isEmpty()?"Aucun":current[0]));d.dismiss();}
                 catch(IllegalArgumentException e){edit.setError(e.getMessage());}
             });});d.show();
         });

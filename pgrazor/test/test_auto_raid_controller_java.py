@@ -26,6 +26,7 @@ class AutoRaidControllerJavaTests(unittest.TestCase):
         real_sources = [
             ROOT / "src/dev/pgrazor/AutoRaid.java",
             ROOT / "src/dev/pgrazor/AutoRaidPreferences.java",
+            ROOT / "src/dev/pgrazor/NativeText.java",
             ROOT / "src/dev/pgrazor/MotionEngine.java",
             HERE / "AutoRaidControllerTest.java",
         ]

@@ -21,8 +21,8 @@ public final class BuddyEmotionSettings {
     public static String status(){return metric+"\n"+status;}
     public static String history(){return savedHistory;}
     public static void publish(String json){try{
-        org.json.JSONObject event=new org.json.JSONObject(json);status=event.optString("message","Waiting");
-        int ep=event.optInt("ep",-1);metric=ep<0?"EP: waiting":"EP : "+ep+(event.optBoolean("excited",false)?" | Excited":"");
+        org.json.JSONObject event=new org.json.JSONObject(json);status=NativeText.fr(event.optString("message","En attente"));
+        int ep=event.optInt("ep",-1);metric=ep<0?"EP : en attente":"EP : "+ep+(event.optBoolean("excited",false)?" | Excité":"");
         long seconds=event.optLong("maintenanceSeconds",0);
         if(seconds>0)metric+=" | Maintenance ~"+(seconds/60)+"m "+(seconds%60)+"s";
         String account=event.optString("account",""), h=event.optString("history","");

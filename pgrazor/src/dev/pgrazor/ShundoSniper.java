@@ -242,7 +242,7 @@ public final class ShundoSniper {
             if ("blocked".equals(o.optString("phase"))) { blockedToast(o.optString("what")); return; }
             synchronized (LOCK) {
                 if (target == null || o.optLong("request") != request) return;
-                String phase = o.optString("phase"), name = target.name, message = o.optString("message");
+                String phase = o.optString("phase"), name = target.name, message = NativeText.fr(o.optString("message"));
                 switch (phase) {
                     case "throttle": case "refresh-failed": case "blocked": case "block-unavailable": return;  // diagnostics, not a result
                     case "looking": targetSince = System.currentTimeMillis(); status = "Vérification de " + name + " (" + target.source + ")"; return;
@@ -517,7 +517,7 @@ public final class ShundoSniper {
                 teleporting = false;
                 if (!enabled) return;
                 target = chosen; request++; targetSince = lastTeleport = System.currentTimeMillis(); teleports++; targetKm = km;
-                status = String.format(Locale.US, "Checking %s (%s, %.1f km)", chosen.name, chosen.source, km);
+                status = String.format(Locale.US, "Vérification de %s (%s, %.1f km)", chosen.name, chosen.source, km);
             }
             Control.event("shundo-sniper", String.format(Locale.US, "target %s %s %.6f,%.6f from %s, %.1f km, %s left", chosen.encounter, chosen.name, chosen.lat, chosen.lon, chosen.source, km, chosen.expiresAt > 0 ? (chosen.expiresAt - System.currentTimeMillis()) / 1000 + " s" : "unknown"));
         });
@@ -563,13 +563,13 @@ public final class ShundoSniper {
     /** One line for the card: the spawn being checked (and for how long), a held shiny, or the idle state. */
     static String overlayStep() {
         synchronized (LOCK) {
-            if (!enabled) return status.startsWith("Stopped") ? status : "Stopped";
+            if (!enabled) return status.startsWith("Arrêté") ? status : "Arrêté";
             if (!readinessWait.isEmpty()) return readinessWait;
             if (target != null && !holding) {
                 long s = Math.max(0, (System.currentTimeMillis() - targetSince) / 1000);
                 // How far the player now is from where this run started.
                 String away = CooldownState.valid(startLat, startLon) ? km(CooldownState.distance(startLat, startLon, target.lat, target.lon)) + " depuis le début" : km(targetKm);
-                return String.format(Locale.US, "Checking %s · %s · %d s", target.name, away, s);
+                return String.format(Locale.US, "Vérification de %s · %s · %d s", target.name, away, s);
             }
             return status.isEmpty() ? looking() : status;
         }

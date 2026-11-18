@@ -167,7 +167,7 @@ public final class GiftBatchSettings {
     }
 
     private static String text(JSONObject event, String fallback) {
-        String value = event.optString("message", fallback);
+        String value = NativeText.fr(event.optString("message", fallback));
         return value == null || value.isEmpty() ? fallback : value;
     }
 }

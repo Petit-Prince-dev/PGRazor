@@ -69,7 +69,7 @@ public final class Control {
     public static String gameRoutesCommand() { return gameRoutes.command(); }
     public static boolean gameRoutesAllowed() { return hostLive() && desiredEnabled && (gameRoutesPlanning || gameRoutes.running()); }
     public static void setGameRoutesReady(boolean value,String reason) {
-        gameRoutesReadiness=reason==null||reason.isEmpty()?"Waiting for Route support":reason;
+        gameRoutesReadiness=reason==null||reason.isEmpty()?"En attente du support des Routes":reason;
         gameRoutes.setReady(value);
     }
     public static void setGameRoutesSnapshot(String value) { gameRoutes.acceptSnapshot(value); }
@@ -170,7 +170,7 @@ public final class Control {
     public static int giftOptions(){return giftOptions;}
     public static void setGiftOptions(int value){if(value<0||value>7)return;giftOptions=value;saveSettings();}
     public static void setGiftsReady(boolean ready,String status){giftsReady=ready;giftStatus=status;}
-    public static void setGiftStatus(String status){giftStatus=status;}
+    public static void setGiftStatus(String status){giftStatus=NativeText.fr(status);}
     public static String giftStatus(){return giftStatus;}
     public static boolean giftsAllowed(){return giftsReady&&quickSummaryReady()&&hostLive();}
     private static volatile boolean vgpEnabled,vgpReady,vgpOverlay;
@@ -209,8 +209,8 @@ public final class Control {
      */
     public static void setVgpStopOnCooldown(boolean value){vgp.setStopOnCooldown(value);}
     public static void setVgpOptions(int value){vgpOptions=value&7;saveSettings();}
-    public static void setVgpReady(boolean ready,String status){vgpReady=ready;vgp.setStatus(status);}
-    public static void setVgpStatus(String status){vgp.setStatus(status);}
+    public static void setVgpReady(boolean ready,String status){vgpReady=ready;vgp.setStatus(NativeText.fr(status));}
+    public static void setVgpStatus(String status){vgp.setStatus(NativeText.fr(status));}
     /** A guard reason (cooldown pause/refusal) is shown in place of a generic native status. */
     public static String vgpStatus(){return vgp.status();}
     /**
@@ -237,7 +237,7 @@ public final class Control {
     public static void setAutoIncubate(boolean v){autoIncubate=v;saveSettings();}
     public static void setIncubateLongest(boolean v){incubateLongest=v;saveSettings();}
     public static void setIncubatorReady(boolean ready,String status){incubatorReady=ready;incubatorStatus=status;}
-    public static void setIncubatorStatus(String status){incubatorStatus=status;}
+    public static void setIncubatorStatus(String status){incubatorStatus=NativeText.fr(status);}
     public static String incubatorStatus(){return incubatorStatus;}
     public static boolean incubatorAvailable(){return incubatorReady&&itemAccessAllowed();}
     public static boolean incubatorAllowed(){long age=SystemClock.elapsedRealtime()-buddyMapSample;return autoIncubate&&incubatorAvailable()&&buddyMapSample>0&&age>=0&&age<1500;}
@@ -248,7 +248,7 @@ public final class Control {
     public static int buddyBerry(){return buddyBerry;}
     public static void setBuddyBerry(int id){if(id!=0&&id!=701&&id!=703&&id!=705&&id!=706&&id!=707)return;buddyBerry=id;saveSettings();}
     public static void setBuddyReady(boolean ready,String status){buddyReady=ready;buddyStatus=status;}
-    public static void setBuddyStatus(String status){buddyStatus=status;}
+    public static void setBuddyStatus(String status){buddyStatus=NativeText.fr(status);}
     public static String buddyStatus(){return buddyStatus;}
     public static boolean buddyAvailable(){return buddyReady&&itemAccessAllowed();}
     public static boolean buddySamplingRequested(){return (buddyBerry!=0||vgpEnabled||autoIncubate||healEnabled||ShundoSniper.active()||GymAutomationSettings.enabled()||BatchEvolutionSettings.enabled()||OneShotAutomation.enabled())&&hostLive();}
@@ -331,7 +331,7 @@ public final class Control {
     public static String battleStatus(){return battleStatus;}
     public static void setBattleOptions(int value){if(value<0||value>1023)return;battleOptions=value;saveSettings();event("battle-options",String.valueOf(value));}
     public static void setBattlesReady(boolean ready,String status){battlesReady=ready;battleStatus=status;}
-    public static void setBattleStatus(String status){battleStatus=status;}
+    public static void setBattleStatus(String status){battleStatus=NativeText.fr(status);}
     public static boolean battlesAllowed(){return battlesReady&&quickSummaryReady()&&hostLive();}
     private static volatile boolean gymRepeatEnabled;
     public static boolean gymRepeatEnabled(){return gymRepeatEnabled;}
@@ -343,7 +343,7 @@ public final class Control {
     public static String rocketStatus(){return rocketStatus;}
     public static void setRocketOptions(int value){if(value<0||value>7)return;rocketOptions=value;saveSettings();event("rocket-options",String.valueOf(value));}
     public static void setRocketReady(boolean ready,String status){rocketReady=ready;rocketStatus=status;}
-    public static void setRocketStatus(String status){rocketStatus=status;}
+    public static void setRocketStatus(String status){rocketStatus=NativeText.fr(status);}
     public static boolean rocketAllowed(){return rocketReady&&quickSummaryReady()&&hostLive();}
     private static volatile boolean itemTransferEnabled,itemTransferReady;
     private static volatile String itemRules="",itemLimits="",itemCatalog="",itemStatus="En attente du sac";
@@ -368,7 +368,7 @@ public final class Control {
         itemTransferReady=ready;itemStatus=status;
         if(changed)event("gameplay-readiness","component=item-bag ready="+ready);
     }
-    public static void setItemStatus(String status){itemStatus=status==null?"":status;}
+    public static void setItemStatus(String status){itemStatus=status==null?"":NativeText.fr(status);}
     public static void setItemCatalog(String value){
         if(value==null||value.length()>100000)return;
         TreeMap<Integer,String> rows=new TreeMap<>();
@@ -482,7 +482,7 @@ public final class Control {
     public static void setAutoTransferEnabled(boolean enabled){invalidateQuickBallOutcome();autoTransferEnabled=enabled;saveSettings();event("auto-transfer-setting",enabled?"ON; new catches below90percent only":"OFF");}
     public static void setTransferProtect(int mask){transferProtect=mask>=0&&mask<=255?mask:255;saveSettings();event("auto-transfer-protection",String.valueOf(transferProtect));}
     public static void setAutoTransferReady(boolean ready,String status){autoTransferReady=ready&&quickSummaryReady();transferStatus=status==null?"":status;}
-    public static void transferResult(String status){transferStatus=status==null?"":status;}
+    public static void transferResult(String status){transferStatus=status==null?"":NativeText.fr(status);}
     /** Main transfer permission; manual Keep All is applied only by the encounter consumer. */
     public static boolean autoTransferAllowed(){return autoTransferEnabled&&autoTransferReady()&&hostLive();}
     /** Canonical keep list: sorted, de-duplicated positive dex IDs (1..2000), comma-separated; empty when none. */
@@ -580,7 +580,7 @@ public final class Control {
     public static void setIvCatchEnabled(boolean enabled){ivCatchEnabled=enabled;saveSettings();event("iv-catch-overlay",enabled?"ON":"OFF");}
     public static void setIvOwnedEnabled(boolean enabled){ivOwnedEnabled=enabled;saveSettings();event("iv-owned-overlay",enabled?"ON":"OFF");}
     public static void setIvOwnedReady(boolean ready){ivOwnedReady=ready;}
-    public static String ivDisplayStatus(){return (quickBallConfigured&&ivOwnedEnabled&&!ivOwnedReady)?"Details overlay unsupported on this app version":"";}
+    public static String ivDisplayStatus(){return (quickBallConfigured&&ivOwnedEnabled&&!ivOwnedReady)?"Overlay des détails non pris en charge sur cette version du jeu":"";}
     public static int storageIvMode(){return storageIvMode;}
     public static void setStorageIvMode(int mode){storageIvMode=mode>=0&&mode<=4?mode:0;if(storageIvMode>0)storageIvFormat=storageIvMode;saveSettings();event("storage-iv-mode",""+storageIvMode);}
     public static boolean storageIvEnabled(){return storageIvMode!=0;}
@@ -977,7 +977,6 @@ public final class Control {
         loadState(app);
         loadSettings(app);
         Cooldown.init(app);
-        RootUpdates.onGameStart(app);
         app.registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
             public void onActivityResumed(Activity activity) { GoogleBrowserAuth.onHostResumed(activity); attach(activity); }
             public void onActivityPaused(Activity activity) {
@@ -1125,7 +1124,7 @@ public final class Control {
         }
         saveState();
     }
-    private static boolean darkTheme=true, joystickVisible=true;
+    private static boolean joystickVisible=true;
     // Visibility only. Bits are stable menu-entry IDs, independent of feature settings.
     private static volatile int quickMenuHidden;
     public static int quickMenuHidden(){return quickMenuHidden;}
@@ -1138,7 +1137,8 @@ public final class Control {
     private static volatile int uiScalePercent=100;
     public static int uiScalePercent(){return uiScalePercent;}
     public static void setUiScalePercent(int value){if(value!=25&&value!=50&&value!=75&&value!=100)return;uiScalePercent=value;saveSettings();}
-    public static boolean darkTheme(){return darkTheme;}
+    /** The light theme is removed: PGRazor is always dark. */
+    public static boolean darkTheme(){return true;}
     private static volatile boolean idleWalking;
     public static boolean idleWalking(){return idleWalking;}
     public static void setIdleWalking(boolean value){
@@ -1154,7 +1154,6 @@ public final class Control {
         engine.step(seconds);
     }
     public static boolean joystickVisible(){return joystickVisible;}
-    public static void setDarkTheme(boolean value){darkTheme=value;saveSettings();}
     public static void setJoystickVisible(boolean value){joystickVisible=value;saveSettings();}
     private static void loadSettings(Application app) {
         OneShotAutomation.reset();
@@ -1193,7 +1192,6 @@ public final class Control {
                 ShundoSniper.read(p);
                 ShinyScanner.read(p);
                 desiredEnabled=Boolean.parseBoolean(p.getProperty("locationSpoofing","true"));
-                darkTheme=Boolean.parseBoolean(p.getProperty("darkTheme","true"));
                 quickMenuHidden=boundedSetting(p,"quickMenuHidden",16383);
                 try{uiScalePercent=Integer.parseInt(p.getProperty("uiScalePercent","100"));}catch(NumberFormatException invalid){uiScalePercent=100;}
                 if(uiScalePercent!=25&&uiScalePercent!=50&&uiScalePercent!=75&&uiScalePercent!=100)uiScalePercent=100;
@@ -1350,7 +1348,7 @@ public final class Control {
         ShundoSniper.write(p);
         ShinyScanner.write(p);
         p.setProperty("locationSpoofing",String.valueOf(desiredEnabled));
-        p.setProperty("darkTheme",String.valueOf(darkTheme));p.setProperty("uiScalePercent",String.valueOf(uiScalePercent));
+        p.setProperty("darkTheme","true");p.setProperty("uiScalePercent",String.valueOf(uiScalePercent));
         p.setProperty("joystickVisible",String.valueOf(joystickVisible));
         p.setProperty("quickMenuHidden",String.valueOf(quickMenuHidden));
         p.setProperty("idleWalking",String.valueOf(idleWalking));
@@ -1463,7 +1461,7 @@ public final class Control {
         if("catch-chance".equals(kind))CatchChance.publish(detail);
         if("smart-battle".equals(kind)&&detail.startsWith("{")){
             try{org.json.JSONObject o=new org.json.JSONObject(detail);String phase=o.optString("phase");
-                if("error".equals(phase))smartBattleStatus=o.optString("message","");
+                if("error".equals(phase))smartBattleStatus=NativeText.fr(o.optString("message",""));
                 else if("ready".equals(phase))smartBattleStatus="";
                 else if("team".equals(phase))smartBattleStatus="Équipe réglée contre "+o.optInt("foes")+(o.optInt("foes")==1?" opponent":" adversaires");
                 else if("swapped".equals(phase))smartBattleStatus="Changement pour ton meilleur counter";
@@ -1472,7 +1470,7 @@ public final class Control {
         }
         if("smart-heal".equals(kind)){
             try{org.json.JSONObject o=new org.json.JSONObject(detail);String phase=o.optString("phase");
-                if("error".equals(phase)||"warning".equals(phase))healStatus=o.optString("message","");
+                if("error".equals(phase)||"warning".equals(phase))healStatus=NativeText.fr(o.optString("message",""));
                 else if("ready".equals(phase))healStatus="";
                 else if("healed".equals(phase)){
                     org.json.JSONArray used=o.optJSONArray("used");String[] names={"Potion","Super Potion","Hyper Potion","Potion Max","Rappel","Rappel Max"};
@@ -1483,11 +1481,11 @@ public final class Control {
             catch(Exception ignored){}
         }
         if("cutscene-skip".equals(kind)){
-            try{org.json.JSONObject o=new org.json.JSONObject(detail);String phase=o.optString("phase");if("error".equals(phase))cutsceneSkipStatus=o.optString("message","");else if("ready".equals(phase))cutsceneSkipStatus="";}
+            try{org.json.JSONObject o=new org.json.JSONObject(detail);String phase=o.optString("phase");if("error".equals(phase))cutsceneSkipStatus=NativeText.fr(o.optString("message",""));else if("ready".equals(phase))cutsceneSkipStatus="";}
             catch(Exception ignored){}
         }
         if("storage-iv".equals(kind)){
-            try{org.json.JSONObject o=new org.json.JSONObject(detail);storageIvStatus="error".equals(o.optString("phase"))?o.optString("message",""):"";}
+            try{org.json.JSONObject o=new org.json.JSONObject(detail);storageIvStatus="error".equals(o.optString("phase"))?NativeText.fr(o.optString("message","")):"";}
             catch(Exception ignored){}
         }
         if("event-boxes".equals(kind)) {

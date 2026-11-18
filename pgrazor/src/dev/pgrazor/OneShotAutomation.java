@@ -84,17 +84,17 @@ public final class OneShotAutomation {
             JSONObject data=new JSONObject(detail);
             if(!Long.toString(token).equals(data.optString("token")))return;
             if("remote-gym".equals(kind)){
-                remoteMessage=data.optString("message","Waiting");
+                remoteMessage=NativeText.fr(data.optString("message","En attente"));
                 String phase=data.optString("phase");
                 if("done".equals(phase)||"stopped".equals(phase)||"error".equals(phase))remote=false;
             }else if("incense-open".equals(kind)){
-                incenseMessage=data.optString("message","Encounter opening requested");
+                incenseMessage=NativeText.fr(data.optString("message","Ouverture de la rencontre demandée"));
             }else if(incense&&"incense-bird".equals(kind)){
                 Control.setVgpEnabled(false);
                 finishIncense("Oiseau de Galar trouvé ! Marche et VGP arrêtés. Gère la rencontre à la main.",true);
                 notifyBird();
             }else if(incense&&"incense-session".equals(kind)){
-                if("error".equals(data.optString("phase"))){Control.setVgpEnabled(false);finishIncense(data.optString("message","Observer unavailable"),true);}
+                if("error".equals(data.optString("phase"))){Control.setVgpEnabled(false);finishIncense(NativeText.fr(data.optString("message","Suivi indisponible")),true);}
                 else incenseMessage="Marche ; à l'affût des oiseaux de Galar";
             }
         }catch(Exception ignored){}

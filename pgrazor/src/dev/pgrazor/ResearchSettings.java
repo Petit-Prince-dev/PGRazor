@@ -58,7 +58,7 @@ public final class ResearchSettings {
                 if ("claimed".equals(phase)) claimed++;
                 if ("removed".equals(phase)) removed++;
                 if ("caught".equals(phase)) caught++;
-                message = o.optString("message", "");
+                message = NativeText.fr(o.optString("message", ""));
             }
         } catch (Exception ignored) {}
     }

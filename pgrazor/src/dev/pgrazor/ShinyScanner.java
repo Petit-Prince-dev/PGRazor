@@ -112,7 +112,7 @@ public final class ShinyScanner {
                 // Caught or fled through the game's own encounter: nothing left to show.
                 if ("closed".equals(phase)) { foundAt = 0; catching = gone = false; return; }
                 if ("catch".equals(phase)) {
-                    String result = o.optString("result"), said = o.optString("message");
+                    String result = o.optString("result"), said = NativeText.fr(o.optString("message"));
                     String who = "Shiny " + name(foundSpecies);
                     if ("throwing".equals(result)) { catching = true; return; }
                     if ("opened".equals(result)) { catching = false; return; }  // the game takes it from here
@@ -122,7 +122,7 @@ public final class ShinyScanner {
                     else popup = new String[]{"La capture n'a pas abouti", who + ". " + said + ". Touche le badge shiny pour réessayer.", "result"};
                     return;
                 }
-                if ("status".equals(phase) || "error".equals(phase)) { nativeStatus = o.optString("message"); return; }
+                if ("status".equals(phase) || "error".equals(phase)) { nativeStatus = NativeText.fr(o.optString("message")); return; }
                 if (!"checked".equals(phase) && !"failed".equals(phase)) return;
                 if (!"checked".equals(phase)) return;
                 checked++;

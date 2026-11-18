@@ -47,7 +47,7 @@ class ToggleCapabilityTests(unittest.TestCase):
         entries = rooted.capability_module_entries()
         self.assertEqual(entries['customize.sh'], rooted.CUSTOMIZE_SH)
         # package() merges these into the module zip without overwriting payload/dex/loader.
-        self.assertEqual(set(entries), {'customize.sh', rooted.TOGGLE_CAPABILITY, 'service.sh', rooted.UPDATE_REPO_FILE})
+        self.assertEqual(set(entries), {'customize.sh', rooted.TOGGLE_CAPABILITY, 'service.sh'})
 
     def test_service_script_starts_the_root_helper_from_the_module_dex(self):
         script = rooted.capability_module_entries()['service.sh']
@@ -56,18 +56,10 @@ class ToggleCapabilityTests(unittest.TestCase):
         self.assertIn('dev.pgrazor.RootDaemon "$MODDIR"', script)
         self.assertIn('[ -f "$MODDIR/disable" ] && exit 0', script)
 
-    def test_update_repository_is_validated_and_advertised(self):
-        import os
-        from unittest import mock
-        with mock.patch.dict(os.environ, {'PGRAZOR_UPDATE_REPO': 'someone/PGRazor'}):
-            self.assertEqual(rooted.capability_module_entries()[rooted.UPDATE_REPO_FILE], 'someone/PGRazor\n')
-            prop = rooted.module_prop('v1.2.3-fr.4', '0.437.0', rooted.update_repo())
-            self.assertIn('version=v1.2.3-fr.4\n', prop)
-            self.assertIn('updateJson=https://github.com/someone/PGRazor/releases/latest/download/update.json\n', prop)
-        with mock.patch.dict(os.environ, {'PGRAZOR_UPDATE_REPO': 'bad repo\nupdateJson=evil'}), self.assertRaises(ValueError):
-            rooted.update_repo()
-        with mock.patch.dict(os.environ, {'PGRAZOR_UPDATE_REPO': '', 'GITHUB_REPOSITORY': ''}):
-            self.assertNotIn('updateJson', rooted.module_prop('v1.2.3', '0.437.0', rooted.update_repo()))
+    def test_module_prop_has_no_update_source(self):
+        prop = rooted.module_prop('v1.2.3-fr.4', '0.437.0')
+        self.assertIn('version=v1.2.3-fr.4\n', prop)
+        self.assertNotIn('updateJson', prop)
 
     def test_injection_off_is_never_shipped_by_default(self):
         # A fresh install must default to On: the off flag is not a packaged entry, and the

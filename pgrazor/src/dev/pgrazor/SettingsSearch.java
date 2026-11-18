@@ -228,7 +228,6 @@ final class SettingsSearch {
         put(DESCRIPTIONS, "Research", "Auto-claim, delete and catch field research.");
         put(DESCRIPTIONS, "Halloween 2026", "Event preferences for Halloween 2026.");
         put(DESCRIPTIONS, "Go Wild November 2026", "Event preferences for GO Wild Area 2026.");
-        put(DESCRIPTIONS, "Dark theme", "Switch the whole interface between the dark and light palette.");
         put(DESCRIPTIONS, "UI scale", "Resize the joystick and map overlays.");
         put(DESCRIPTIONS, "Skip cutscenes", "Skip repeatable cutscenes and hatch animations.");
         put(DESCRIPTIONS, "Lower resolution", "Draw the map and Pokémon at half resolution.");
@@ -264,7 +263,6 @@ final class SettingsSearch {
         put(SYNONYMS, "Quick spin", "pokestop spin stop");
         put(SYNONYMS, "Smart healing", "heal potion revive");
         put(SYNONYMS, "Auto incubate", "egg incubator hatch");
-        put(SYNONYMS, "Dark theme", "light mode appearance");
         put(SYNONYMS, "UI scale", "size resize scale overlays");
         put(SYNONYMS, "Limit to 20 FPS", "fps frames battery performance");
         put(SYNONYMS, "Lower resolution", "resolution battery performance graphics");
@@ -378,7 +376,6 @@ final class SettingsSearch {
         put(DESCRIPTIONS, "Études", "Réclame, supprime et capture les Études de terrain automatiquement.");
         put(DESCRIPTIONS, "Halloween 2026", "Réglages de l'événement Halloween 2026.");
         put(DESCRIPTIONS, "Go Wild November 2026", "Réglages de l'événement GO Wild Area 2026.");
-        put(DESCRIPTIONS, "Thème sombre", "Bascule toute l'interface entre thème sombre et clair.");
         put(DESCRIPTIONS, "Taille de l'interface", "Redimensionne le joystick et les overlays de la carte.");
         put(DESCRIPTIONS, "Passer les cinématiques", "Passe les cinématiques répétitives et les animations d'éclosion.");
         put(DESCRIPTIONS, "Résolution réduite", "Affiche la carte et les Pokémon en demi-résolution.");
@@ -412,7 +409,6 @@ final class SettingsSearch {
         put(SYNONYMS, "Spin rapide", "pokestop spin stop pokestop tourner".trim());
         put(SYNONYMS, "Soin intelligent", "heal potion revive soin potion rappel".trim());
         put(SYNONYMS, "Incubation auto", "egg incubator hatch oeuf incubateur éclosion".trim());
-        put(SYNONYMS, "Thème sombre", "light mode appearance mode clair sombre apparence".trim());
         put(SYNONYMS, "Taille de l'interface", "size resize scale overlays taille redimensionner".trim());
         put(SYNONYMS, "Limiter à 20 FPS", "fps frames battery performance images batterie performances".trim());
         put(SYNONYMS, "Résolution réduite", "resolution battery performance graphics résolution batterie performances graphismes".trim());

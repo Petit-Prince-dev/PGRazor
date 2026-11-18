@@ -64,7 +64,7 @@ public final class LogActivity extends Activity {
         if((request!=40&&request!=41) || result!=RESULT_OK || data==null || data.getData()==null || Control.currentLog()==null) return;
         try {
             LogExport.save(this,data.getData(),Control.currentLog(),request==41);
-            Toast.makeText(this,request==41?"Log and settings saved":"Log enregistré",Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,request==41?"Journal et réglages enregistrés":"Log enregistré",Toast.LENGTH_SHORT).show();
         } catch(IOException error) { Toast.makeText(this,"Échec de l'enregistrement : "+error.getMessage(),Toast.LENGTH_LONG).show(); }
     }
 }

@@ -184,10 +184,6 @@ public final class ShundoSniper {
 final class ScreenPower {
  static boolean off(){return false;}
 }''',
-    'dev/pgrazor/RootUpdates.java': '''package dev.pgrazor;
-final class RootUpdates {
- static void onGameStart(Object context){}
-}''',
     'dev/pgrazor/SmartCatchSettings.java': '''package dev.pgrazor;
 public final class SmartCatchSettings {
  private static final SmartCatchPreferences prefs=new SmartCatchPreferences();
@@ -250,7 +246,7 @@ class ControlJavaTests(unittest.TestCase):
                 source.write_text(text, encoding='utf-8')
                 sources.append(source)
             sources.extend(ROOT / 'src/dev/pgrazor' / name for name in (
-                'Control.java', 'MapCatchStatus.java', 'MotionEngine.java', 'LocationState.java', 'GameRoutesController.java',
+                'Control.java', 'NativeText.java', 'MapCatchStatus.java', 'MotionEngine.java', 'LocationState.java', 'GameRoutesController.java',
                 'CameraHeadingState.java', 'CameraSteering.java',
                 'BerryPriority.java', 'MapTapSequence.java', 'CooldownState.java',
                 'VgpController.java', 'CatchOutcomeController.java', 'SettingsWriter.java', 'SmartCatchPreferences.java', 'GymAutomationPreferences.java', 'BuddyEmotionPreferences.java', 'ResearchPreferences.java'))

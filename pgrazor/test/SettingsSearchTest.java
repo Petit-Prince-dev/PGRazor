@@ -86,10 +86,10 @@ public final class SettingsSearchTest {
     private static void synonyms() {
         SettingsSearch search = new SettingsSearch();
         search.add("Location spoofing", "Location & movement", "Location & Map", 0);
-        search.add("Dark theme", "Interface", "Display & Performance", 4);
+        search.add("VGP overlay", "Catching", "Catching", 4);
         eq("Location spoofing", single(search.find("fake gps")));
         eq("Location spoofing", single(search.find("mock location")));
-        eq("Dark theme", single(search.find("light mode")));
+        eq("VGP overlay", single(search.find("virtual")));
     }
 
     private static void emptyQueries() {

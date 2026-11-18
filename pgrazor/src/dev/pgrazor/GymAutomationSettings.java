@@ -18,7 +18,7 @@ public final class GymAutomationSettings {
     private static final Object lock=new Object();
     private static volatile String status="Automatisation d'arène désactivée",guardReason="",backendStatus="";
     public static void publish(String detail){try{backendStatus=new org.json.JSONObject(detail).optString("message","Waiting");status=backendStatus;}catch(Exception ignored){}}
-    public static String status(){return guardReason.isEmpty()?status:guardReason;}
+    public static String status(){return guardReason.isEmpty()?NativeText.fr(status):guardReason;}
     /** Short, stable label for Pad's status pill beneath the icon. */
     public static String overlayStatus(){
         stopForCooldown();
@@ -87,7 +87,7 @@ public final class GymAutomationSettings {
             if(wasRunning&&!preferences.running())status="Automatisation d'arène arrêtée : choisis « Placer » ou « Nourrir ».";
             if(("Deploy".equals(key)||"Feed".equals(key))
                 &&(preferences.deploy()||preferences.feed())
-                &&guardReason.startsWith("Select Deploy"))guardReason="";
+                &&guardReason.startsWith("Choisis « Placer »"))guardReason="";
         }
         persist();
     }

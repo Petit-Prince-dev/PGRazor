@@ -68,7 +68,7 @@ public final class BatchEvolutionSettings {
                 if(mode==2&&("scanning".equals(eventPhase)||"ready".equals(eventPhase)))return;
                 if(!stopping||"done".equals(eventPhase)||"stopped".equals(eventPhase)
                     ||"error".equals(eventPhase)) {
-                    phase=eventPhase;message=eventMessage;
+                    phase=eventPhase;message=NativeText.fr(eventMessage);
                 }
                 total=eventTotal;completed=eventCompleted;skipped=eventSkipped;
                 xp=eventXp;elapsedMs=eventElapsed;

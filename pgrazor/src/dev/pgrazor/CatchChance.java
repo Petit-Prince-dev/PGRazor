@@ -24,7 +24,7 @@ public final class CatchChance {
                     active = o.optBoolean("active", false) && o.optBoolean("show", false);
                     text = active ? describe(o) : "";
                 } else if ("error".equals(phase)) {
-                    status = o.optString("message", "");
+                    status = NativeText.fr(o.optString("message", ""));
                 }
             }
         } catch (Exception ignored) {}
