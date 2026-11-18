@@ -15,6 +15,7 @@ extern int pgrazor_hook(void*,void*,void**);
 #include "throws.h"
 #include "vgp_results.h"
 #include "vgp_marker.h"
+#include "vgp_aux.h"
 
 #include <algorithm>
 #include <cmath>
@@ -29,6 +30,9 @@ extern int pgrazor_hook(void*,void*,void**);
 #include <time.h>
 #include <unistd.h>
 #include <vector>
+
+// encounter_host.cpp: the shared caught-Pokemon transfer hand-off (adopts all four handles on 1).
+extern "C" int pgr_research_transfer_caught(uint64_t,uint64_t,uint64_t,uint64_t,uint64_t,uint64_t,int);
 
 // Auto-Raid runs on the proven Unity main thread. Java owns explicit session tokens,
 // settings and movement; this controller owns discovery, authorized local pass selection,
@@ -77,6 +81,7 @@ constexpr int64_t kMapSettleMs            = 2000;   // let the catch screen clos
 constexpr int64_t kUnderMinRetryMs        = 180000;
 constexpr int64_t kTransientRetryMs       = 120000;
 constexpr int64_t kPassConfirmTimeoutMs   = 15000;
+constexpr int64_t kPassAwardWaitMs        = 5000;   // the game's free-pass award lands just after the raid screen opens
 constexpr int64_t kBattleTimeoutMs        = 360000;
 constexpr int64_t kResolveTimeoutMs       = 45000;
 constexpr int64_t kEncounterTimeoutMs     = 300000;
@@ -1119,6 +1124,17 @@ void step_verify_pass(int64_t now_ms) {
             return;
 
         case pgr_auto_raid::PassDecisionStatus::NoAllowedPassAvailable:
+            // A gym opened without a daily pass awards one a moment after its raid screen opens
+            // ("You received a free raid pass!"), so look again briefly before giving up.
+            if (session.command.free_pass && now_ms - session.stage_started_ms < kPassAwardWaitMs) {
+                static const std::string kWaitMessage = "Checking for a newly awarded free raid pass";
+                if (session.last_message != kWaitMessage) {
+                    emit_status(session.command.token, "approaching", kWaitMessage, tracker.completed_raids);
+                } else {
+                    maybe_emit_heartbeat(now_ms);
+                }
+                return;
+            }
             adapter().exit_raid_or_gym(session.approach_ui.get(), session.raid_state.get(), session.gym_root_state.get());
             finish_session("stopped", "Out of allowed raid passes; Auto-Raid finished");
             return;
@@ -1686,5 +1702,6 @@ void pgr_map_auto_throw_tick(uint64_t tid,const PgrSharedMetadataOutput* metadat
     }catch(const Failure& f){map_block(f.where);}catch(...){map_block("Unexpected native failure; not retried");}
 }
 bool pgr_map_auto_throw_active(){return map_tap_active();}
-void* pgr_map_auto_throw_target(){return owner==uint64_t(gettid())&&map_tap_active()?map_tap.target.get():nullptr;}
+// After the catch the target is gone; the marker is hidden while the transfer hand-off finishes.
+void* pgr_map_auto_throw_target(){return owner==uint64_t(gettid())&&map_tap_active()&&map_tap.phase!=MapTapTransfer?map_tap.target.get():nullptr;}
 void pgr_map_auto_throw_stop(){if(owner==uint64_t(gettid())){map_gate=false;if(map_tap.target)map_block("Runtime stopped; no retry");}}

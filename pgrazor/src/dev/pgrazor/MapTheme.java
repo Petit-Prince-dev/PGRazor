@@ -3,13 +3,8 @@ package dev.pgrazor;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
-import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
-import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.RippleDrawable;
 import android.os.Build;
-import android.view.ContextThemeWrapper;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -20,39 +15,33 @@ import android.widget.TextView;
 
 /**
  * Shared dark/light palette and full-screen helpers so the world map and cooldown history match the
- * PGRazor settings panel ({@link Pad}). Map tiles keep their original raster colours; only the
- * surrounding chrome — text, buttons, checkboxes and nested dialogs — is themed.
+ * PGRazor settings panel ({@link Pad}). Every colour delegates to {@link SettingsUi}, the single token
+ * source. Map tiles keep their original raster colours; only the surrounding chrome — text, buttons,
+ * checkboxes and nested dialogs — is themed.
  */
 final class MapTheme {
     private MapTheme() {}
 
     static boolean dark() { return Control.darkTheme(); }
-    static int ink()     { return dark() ? Color.rgb(235, 241, 246) : Color.rgb(25, 35, 47); }
-    static int muted()   { return dark() ? Color.rgb(154, 171, 187) : Color.rgb(88, 105, 121); }
-    static int surface() { return dark() ? Color.rgb(20, 27, 37)    : Color.rgb(249, 251, 253); }
-    static int accent()  { return dark() ? Color.rgb(69, 225, 186)  : Color.rgb(0, 116, 92); }
+    static int ink()     { return SettingsUi.ink(); }
+    static int muted()   { return SettingsUi.muted(); }
+    static int surface() { return SettingsUi.surface(); }
+    static int accent()  { return SettingsUi.accent(); }
 
     /** A dialog-themed context so nested AlertDialogs follow the chosen dark/light appearance. */
     static Context wrap(Activity activity) {
-        return new ContextThemeWrapper(activity, dark()
-            ? android.R.style.Theme_Material_Dialog_Alert : android.R.style.Theme_Material_Light_Dialog_Alert);
+        return SettingsUi.dialogContext(activity);
     }
 
-    static int dp(Context c, float value) { return Math.round(value * c.getResources().getDisplayMetrics().density); }
-
-    private static GradientDrawable rounded(Context c, int color, int radius) {
-        GradientDrawable d = new GradientDrawable(); d.setColor(color); d.setCornerRadius(dp(c, radius)); return d;
-    }
+    static int dp(Context c, float value) { return SettingsUi.dp(c, value); }
 
     /**
-     * The app's button look: a raised fill with a thin outline, inset slightly so buttons placed side
-     * by side keep a visible gap instead of merging into one block.
+     * The app's button look: a raised fill with a hairline outline and the shared accent ripple, inset
+     * slightly so buttons placed side by side keep a visible gap instead of merging into one block.
      */
     static android.graphics.drawable.Drawable buttonBackground(Context c) {
-        GradientDrawable fill = rounded(c, dark() ? 0xff202b39 : 0xffedf2f6, 9);
-        fill.setStroke(dp(c, 1), dark() ? 0xff3a4d63 : 0xffc9d5df);
-        int inset = dp(c, 2);
-        return new RippleDrawable(ColorStateList.valueOf(0x3345e1ba), new android.graphics.drawable.InsetDrawable(fill, inset), null);
+        android.graphics.drawable.Drawable fill = SettingsUi.shape(c, SettingsUi.raised(), 9, SettingsUi.border());
+        return SettingsUi.ripple(new android.graphics.drawable.InsetDrawable(fill, dp(c, 2)));
     }
 
     /** Applies {@link #buttonBackground}; an inset background would otherwise replace the label's padding. */
@@ -62,26 +51,32 @@ final class MapTheme {
         view.setPadding(l, t, r, b);
     }
 
-    /** Recolours a panel: surface background, inked text, and the panel's buttons/checkboxes. */
+    /**
+     * Recolours a panel: surface background, inked text, and the panel's buttons, fields and choices.
+     * Only colours change; each dialog keeps the sizes and spacing it was laid out with.
+     */
     static void style(View root) {
         if (root == null) return;
         root.setBackgroundColor(surface());
-        styleTree(root);
+        recolor(root);
     }
-    private static void styleTree(View view) {
-        Context c = view.getContext();
-        if (view instanceof TextView) {
-            TextView t = (TextView)view;
-            t.setTextColor(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_enabled}, new int[]{}}, new int[]{muted(), ink()}));
+    private static void recolor(View view) {
+        if (view instanceof SettingsUi.RowButton) ((SettingsUi.RowButton) view).applyTheme();
+        else if (view instanceof TextView) {
+            TextView t = (TextView) view;
+            t.setTextColor(SettingsUi.textColors());
             t.setLinkTextColor(accent()); // keep the OpenStreetMap attribution link legible and tappable
+            if (view instanceof android.widget.EditText) t.setHintTextColor(SettingsUi.faint());
         }
-        if (view instanceof Button && !(view instanceof CompoundButton)) setButtonBackground(view);
-        if (view instanceof CompoundButton) {
-            ((CompoundButton)view).setButtonTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}}, new int[]{accent(), muted()}));
+        if (view instanceof Button && !(view instanceof CompoundButton) && !(view instanceof SettingsUi.RowButton)) setButtonBackground(view);
+        if (view instanceof CompoundButton) ((CompoundButton) view).setButtonTintList(SettingsUi.choiceTint());
+        if (view instanceof android.widget.Switch) {
+            android.widget.Switch s = (android.widget.Switch) view;
+            s.setThumbTintList(SettingsUi.switchThumb()); s.setTrackTintList(SettingsUi.switchTrack());
         }
         if (view instanceof ViewGroup) {
-            ViewGroup g = (ViewGroup)view;
-            for (int i = 0; i < g.getChildCount(); i++) styleTree(g.getChildAt(i));
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) recolor(group.getChildAt(i));
         }
     }
 
