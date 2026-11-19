@@ -977,6 +977,7 @@ public final class Control {
         loadState(app);
         loadSettings(app);
         Cooldown.init(app);
+        RootUpdates.onGameStart(app);
         app.registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
             public void onActivityResumed(Activity activity) { GoogleBrowserAuth.onHostResumed(activity); attach(activity); }
             public void onActivityPaused(Activity activity) {

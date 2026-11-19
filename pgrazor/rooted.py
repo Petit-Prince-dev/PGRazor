@@ -87,9 +87,10 @@ fi
 
 # Run as root by the root manager at each boot (late_start service). Starts PGRazor's root helper
 # (dev.pgrazor.RootDaemon, from the module's own DEX) and restarts it whenever it exits: it switches the
-# display panel off/on for the in-game "Éteindre l'écran" without putting the phone to sleep.
+# display panel off/on for the in-game "Éteindre l'écran" without putting the phone to sleep, and applies
+# module updates from the GitHub repository named in pgrazor/update-repo.
 SERVICE_SH = '''#!/system/bin/sh
-# PGRazor Root helper: screen off without sleep.
+# PGRazor Root helper: screen off without sleep, and automatic module updates.
 MODDIR=${0%/*}
 (
   until [ "$(getprop sys.boot_completed)" = "1" ]; do sleep 5; done
@@ -103,17 +104,31 @@ MODDIR=${0%/*}
 ) &
 '''
 
+# GitHub repository ("owner/name") whose latest release the root helper installs, from
+# PGRAZOR_UPDATE_REPO (or GITHUB_REPOSITORY on CI). Empty disables automatic updates.
+UPDATE_REPO_FILE = 'pgrazor/update-repo'
+
+
+def update_repo():
+    repo = os.environ.get('PGRAZOR_UPDATE_REPO') or os.environ.get('GITHUB_REPOSITORY') or ''
+    if repo and not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repo):
+        raise ValueError('Invalid update repository: ' + repo)
+    return repo
+
+
 def capability_module_entries():
     """Static module entries for the launch-time On/Off switch (the install-time preservation script
-    and the empty capability marker), plus the root helper's boot script.
+    and the empty capability marker), plus the root helper's boot script and its update source.
     Merged into the packaged module by `package()`."""
-    return {'customize.sh': CUSTOMIZE_SH, TOGGLE_CAPABILITY: b'', 'service.sh': SERVICE_SH}
+    return {'customize.sh': CUSTOMIZE_SH, TOGGLE_CAPABILITY: b'', 'service.sh': SERVICE_SH,
+            UPDATE_REPO_FILE: update_repo() + '\n'}
 
 
-def module_prop(version, game_version, name='PGRazor Root', code=None):
-    """module.prop, without updateJson: new versions are installed by hand."""
+def module_prop(version, game_version, repo, name='PGRazor Root', code=None):
+    """module.prop; with a repository, root managers also offer updates through its update.json."""
     lines = [f'id={MODULE_ID}', f'name={name}', f'version={version}', f'versionCode={code or version_code(version)}',
              'author=PGRazor', f'description=PGRazor for the official Pokémon GO app ({game_version}). Requires Zygisk.']
+    if repo: lines.append(f'updateJson=https://github.com/{repo}/releases/latest/download/update.json')
     return '\n'.join(lines + [''])
 
 
@@ -240,7 +255,7 @@ def package(source, download=False, installer=True):
     payload = write_zip(folder / 'payload.zip', assets, zipfile.ZIP_STORED)
 
     module = {
-        'module.prop': module_prop(version, target['versionName']),
+        'module.prop': module_prop(version, target['versionName'], update_repo()),
         'META-INF/com/google/android/update-binary': UPDATE_BINARY,
         'META-INF/com/google/android/updater-script': '#MAGISK\n',
         'pgrazor/classes.dex': Path(dex),

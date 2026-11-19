@@ -368,8 +368,15 @@ public final class Pad {
         if(dockDrag!=null)dockDrag.refreshBounds();
         if(encounterBerry!=null)encounterBerry.applyUiScale(scale);
     }
+    private long updateNoticeRead;
     private void refresh() {
         applyMapScale();
+        // An update the root helper installed while playing: say so once, it applies at the next game start.
+        if(android.os.SystemClock.uptimeMillis()-updateNoticeRead>5000){
+            updateNoticeRead=android.os.SystemClock.uptimeMillis();
+            String notice=RootUpdates.announcement(activity);
+            if(notice!=null)Toast.makeText(activity,notice,Toast.LENGTH_LONG).show();
+        }
         if(gymFeedOverlay!=null)gymFeedOverlay.refresh(!settings.isVisible()&&!(quickMenu!=null&&quickMenu.isShowing()));
         boolean black=ScreenPower.off();
         if(black)ScreenPower.pollWake(activity);

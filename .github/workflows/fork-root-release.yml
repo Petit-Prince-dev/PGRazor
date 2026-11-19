@@ -78,6 +78,6 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RELEASE_COMMIT: ${{ github.sha }}
         run: |
-          $notes = "Module PGRazor Root traduit en français, avec l'extinction de l'écran en jeu.`n`nInstallation ou mise à jour : PGRazor-Root-module.zip dans KernelSU / Magisk / APatch, puis redémarrage."
-          gh release create $env:RELEASE_TAG dist/fork/PGRazor-Root-module.zip dist/fork/PGRazor-Root.apk dist/fork/SHA256SUMS.txt dist/fork/root-build-info.json dist/fork/changelog.md --target $env:RELEASE_COMMIT --title "PGRazor Root FR $env:RELEASE_TAG" --latest --notes $notes
+          $notes = "Module PGRazor Root traduit en français, avec l'extinction de l'écran en jeu.`n`nLes téléphones qui ont déjà le module se mettent à jour tout seuls ; relance le jeu pour appliquer.`n`nInstallation manuelle : PGRazor-Root-module.zip dans KernelSU / Magisk / APatch, puis redémarrage."
+          gh release create $env:RELEASE_TAG dist/fork/PGRazor-Root-module.zip dist/fork/PGRazor-Root.apk dist/fork/SHA256SUMS.txt dist/fork/root-build-info.json dist/fork/update.json dist/fork/changelog.md --target $env:RELEASE_COMMIT --title "PGRazor Root FR $env:RELEASE_TAG" --latest --notes $notes
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

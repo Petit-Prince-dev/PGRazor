@@ -46,6 +46,7 @@ final class SettingsPanel {
     private TextView title, versionLabel, discord;
     private SettingsUi.Dot homeDot;
     private int lastContentWidth=-1;
+    private TextView rootUpdateStatus;private Switch rootUpdateAuto;private long rootUpdateRead;
     // Category navigation: one home row and one page per category; current is -1 on the home screen.
     private final java.util.List<LinearLayout> pages=new java.util.ArrayList<>(), homeRows=new java.util.ArrayList<>();
     private final java.util.List<RowList> rowLists=new java.util.ArrayList<>();
@@ -699,8 +700,32 @@ final class SettingsPanel {
         }
     }
 
+    /** The update status line, re-read at most every 1.5 s while the sheet refreshes. */
+    private void refreshRootUpdates(boolean now){
+        if(rootUpdateStatus==null)return;
+        long time=android.os.SystemClock.uptimeMillis();
+        if(!now&&time-rootUpdateRead<1500)return;
+        rootUpdateRead=time;
+        String status=RootUpdates.status(activity);
+        if(!status.contentEquals(rootUpdateStatus.getText()))rootUpdateStatus.setText(status);
+        if(rootUpdateAuto.isChecked()!=RootUpdates.automatic(activity))rootUpdateAuto.setChecked(RootUpdates.automatic(activity));
+    }
+
     private void buildAccountsPage() {
         LinearLayout page = page(MenuIcon.ACCOUNTS, "Données", "Données & diagnostic");
+        if(PgAssets.rooted()){
+            // The root helper downloads new releases of this fork and swaps them into the module: no reinstall, no reboot.
+            LinearLayout updates = group(page, "Mises à jour");
+            rootUpdateAuto = switchRow(updates, "Mise à jour automatique", "Installe toute seule chaque nouvelle version. Relance le jeu pour l'utiliser.");
+            rootUpdateAuto.setChecked(RootUpdates.automatic(activity));
+            rootUpdateAuto.setOnCheckedChangeListener((v,checked) -> { if(checked==RootUpdates.automatic(activity))return; RootUpdates.setAutomatic(activity,checked); refreshRootUpdates(true); });
+            launch(updates, "Vérifier maintenant", () -> {
+                RootUpdates.requestCheck(activity);
+                android.widget.Toast.makeText(activity, "Recherche de mise à jour lancée…", android.widget.Toast.LENGTH_SHORT).show();
+                handler.postDelayed(() -> refreshRootUpdates(true), 1500);
+            });
+            rootUpdateStatus = caption(updates, RootUpdates.status(activity));
+        }
         LinearLayout data = group(page, "Sauvegarde");
         launch(data, "Exporter / importer les réglages", () -> {
             if(PgAssets.rooted())new SettingsBackup(activity).show();
@@ -879,6 +904,7 @@ final class SettingsPanel {
 
     void refresh() {
         refreshHome();
+        refreshRootUpdates(false);
         refreshLocationStatus();
         refreshDiagnostics();
         refreshSummaryVisibility();
