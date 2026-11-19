@@ -729,7 +729,7 @@ public final class Control {
                 return; // the accidental tap never becomes a walk or teleport
             }
             boolean wantsTeleport=mode==2 || (mode==3 && mapTapSequence.doubleTap(latitude,longitude,sampledAt,epoch,android.view.ViewConfiguration.getDoubleTapTimeout()));
-            if(wantsTeleport){if(pad!=null)pad.confirmMapTeleport(latitude,longitude,mode,epoch);return;}
+            if(wantsTeleport){if(pad!=null)pad.mapTeleport(latitude,longitude,mode,epoch);return;}
             if(mode==1||mode==3)walkTo(latitude,longitude);else return;
             event("map-tap-applied",String.format(Locale.US,"mode=%d lat=%.7f lon=%.7f",mode,latitude,longitude));
         });

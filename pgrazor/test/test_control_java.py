@@ -125,7 +125,7 @@ public class AccountProfiles {
  public static void logoutFailed(){} static void signInResetComplete(){} static void sessionSaved(){}
 }""",
     'dev/pgrazor/Pad.java': '''package dev.pgrazor;
-public class Pad {public final android.app.Activity activity; public Pad(android.app.Activity a){activity=a;} public void close(){} public void confirmStopRoute(){} public void confirmMapTeleport(double lat,double lon,int mode,int epoch){}}''',
+public class Pad {public final android.app.Activity activity; public Pad(android.app.Activity a){activity=a;} public void close(){} public void confirmStopRoute(){} public void mapTeleport(double lat,double lon,int mode,int epoch){}}''',
     'dev/pgrazor/LogActivity.java': 'package dev.pgrazor; public class LogActivity extends android.app.Activity {}',
     'dev/pgrazor/BatchEvolutionSettings.java': 'package dev.pgrazor; public final class BatchEvolutionSettings { public static String config(){return "1|0|0|Evolve";} public static boolean enabled(){return false;} public static void reset(){} public static void publish(String s){} }',
     'dev/pgrazor/OneShotAutomation.java': '''package dev.pgrazor;

@@ -465,18 +465,16 @@ public final class Pad {
         EditText speed = input(Double.toString(Control.engine.speedKmh), "Vitesse (0,5–30 km/h)");
         for (EditText field : new EditText[]{lat, lon, speed}) form.addView(field);
         AlertDialog dialog = new AlertDialog.Builder(dialogContext()).setTitle("Coordonnées & vitesse").setView(form).setNegativeButton("Annuler",null).setPositiveButton("Appliquer",null).create();
-        final AlertDialog[] confirmation = {null};
-        DialogLifecycle.bind(activity,dialog,()->{if(confirmation[0]!=null)confirmation[0].dismiss();});
+        DialogLifecycle.bind(activity,dialog,null);
         dialog.setOnShowListener(d -> dialog.getButton(-1).setOnClickListener(v -> {
             try {
                 // Validate all fields before committing any state.
                 MotionEngine check = new MotionEngine(); check.position(Double.parseDouble(lat.getText().toString().trim()), Double.parseDouble(lon.getText().toString().trim())); check.speed(Double.parseDouble(speed.getText().toString().trim()));
-                confirmation[0]=TeleportDialog.confirm(activity,check.latitude,check.longitude,(latitude,longitude)->{
-                    if(!quickTeleport(latitude,longitude))return false;
-                    Control.engine.speed(check.speedKmh); Control.saveState();
-                    Control.event("coordinates-set", latitude + "," + longitude + " speed=" + check.speedKmh);
-                    refresh(); dialog.dismiss(); return true;
-                });
+                double latitude = check.latitude, longitude = check.longitude;
+                if(!quickTeleport(latitude,longitude))return;
+                Control.engine.speed(check.speedKmh); Control.saveState();
+                Control.event("coordinates-set", latitude + "," + longitude + " speed=" + check.speedKmh);
+                refresh(); dialog.dismiss();
             } catch (IllegalArgumentException error) { speed.setError("Entre des coordonnées et une vitesse valides (0,5–30)."); }
         })); dialog.show();styleTree(form);
     }
@@ -545,14 +543,13 @@ public final class Pad {
             refresh(); return true;
         } catch (IllegalArgumentException error) { Toast.makeText(activity,"Entre des coordonnées valides",Toast.LENGTH_SHORT).show(); return false; }
     }
-    void confirmMapTeleport(double latitude,double longitude,int mode,int epoch) {
-        TeleportDialog.confirm(activity,latitude,longitude,(lat,lon)->{
-            if(closed||!Control.mapTapAllowed()||mode!=Control.mapTapMode()||epoch!=Control.mapTapEpoch()||Control.engine.activeRouteToken()!=0) {
-                Toast.makeText(activity,"Réglages du tap sur la carte modifiés ; touche à nouveau la carte.",Toast.LENGTH_SHORT).show();return true;
-            }
-            if(!quickTeleport(lat,lon))return false;
-            Control.event("map-tap-applied",String.format(Locale.US,"mode=%d lat=%.7f lon=%.7f",mode,lat,lon));return true;
-        });
+    /** A teleport asked by a tap on the game's map: applied at once, if the tap settings did not change meanwhile. */
+    void mapTeleport(double lat,double lon,int mode,int epoch) {
+        if(closed||!Control.mapTapAllowed()||mode!=Control.mapTapMode()||epoch!=Control.mapTapEpoch()||Control.engine.activeRouteToken()!=0) {
+            Toast.makeText(activity,"Réglages du tap sur la carte modifiés ; touche à nouveau la carte.",Toast.LENGTH_SHORT).show();return;
+        }
+        if(!quickTeleport(lat,lon))return;
+        Control.event("map-tap-applied",String.format(Locale.US,"mode=%d lat=%.7f lon=%.7f",mode,lat,lon));
     }
     public void close() {
         if (closed) return;

@@ -25,9 +25,9 @@ import java.util.concurrent.Executors;
  * The map's "Lieux" tab: every place and walk in one list. Favourites (saved from the map), the
  * hotspots, the walks saved or imported as GPX, and the ready-made walks ({@link PresetRoutes}).
  *
- * <p>A row unfolds its actions in place: show it on the map, walk there, teleport there (after the
- * cooldown confirmation), or start a walk. A long press deletes a favourite or a saved walk. Storage
- * is read and written off the main thread; the list re-reads each time the tab is shown.
+ * <p>A row unfolds its actions in place: show it on the map, walk there, teleport there, or start
+ * a walk. A long press deletes a favourite or a saved walk. Storage
+ * is read and written off the main thread; the list re-reads each time the panel is shown.
  */
 final class PlacesPanel {
     /** What the map dialog does for the panel. Each move returns false when it was refused. */
@@ -159,10 +159,7 @@ final class PlacesPanel {
             if (!host.walk(latitude, longitude)) return;
             Toast.makeText(activity, "Marche vers " + name, Toast.LENGTH_SHORT).show(); host.done();
         });
-        jump.setOnClickListener(v -> track(TeleportDialog.confirm(activity, latitude, longitude, (lat, lon) -> {
-            if (!host.teleport(lat, lon)) return false;
-            host.done(); return true;
-        })));
+        jump.setOnClickListener(v -> { if (host.teleport(latitude, longitude)) host.done(); });
         return HubUi.actions(ui, see, walk, jump);
     }
 
@@ -208,13 +205,10 @@ final class PlacesPanel {
         track(choose); choose.show();
     }
 
-    /** Teleports to the first stop (after the cooldown confirmation), then walks the whole route. */
+    /** Teleports to the first stop, then walks the whole route. */
     private void teleportThenWalk(GpxRoute route, boolean loop) {
         double[][] stops = route.points();
-        track(TeleportDialog.confirm(activity, stops[0][0], stops[0][1], (lat, lon) -> {
-            if (!host.teleport(lat, lon)) return false;
-            walk(route, stops, loop, 0); return true;
-        }));
+        if (host.teleport(stops[0][0], stops[0][1])) walk(route, stops, loop, 0);
     }
 
     private void walk(GpxRoute route, double[][] stops, boolean loop, int first) {

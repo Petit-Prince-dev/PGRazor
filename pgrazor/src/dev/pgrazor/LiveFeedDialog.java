@@ -691,10 +691,7 @@ public final class LiveFeedDialog {
                     if(closed)return;
                     if(e.expired(System.currentTimeMillis())){toast("Ce résultat vient d'expirer.");return;}
                     if(!CooldownState.valid(e.lat,e.lon)){toast("Ce résultat n'a pas de position valide.");return;}
-                    AlertDialog confirmation=TeleportDialog.confirm(activity,e.lat,e.lon,(lat,lon)->{
-                        applyMove(e,true,detail);return true;
-                    });
-                    if(confirmation!=null&&!children.contains(confirmation))children.add(confirmation);
+                    applyMove(e,true,detail);
                 });
             });
             detail.show();

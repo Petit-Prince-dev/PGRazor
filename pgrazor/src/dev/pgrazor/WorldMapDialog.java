@@ -81,7 +81,7 @@ public final class WorldMapDialog {
             throw new IllegalArgumentException("Coordonnées de carte invalides");
         Context ui = MapTheme.wrap(activity); // themed chrome; the map view itself keeps the real Activity
         final boolean hub = walk != null && route != null;
-        final AlertDialog[] self = {null}, cooldownDialog = {null};
+        final AlertDialog[] self = {null};
 
         FullRoot root = new FullRoot(activity);
         TextView status = label(ui, "", 12);
@@ -274,18 +274,11 @@ public final class WorldMapDialog {
             return true;
         });
         bubble.saved = places == null ? null : places::reload;
-        bubble.teleport.setOnClickListener(v -> {
-            if (cooldownDialog[0] != null && cooldownDialog[0].isShowing()) return;
-            cooldownDialog[0] = TeleportDialog.confirm(activity, bubble.latitude, bubble.longitude, (lat, lon) -> {
-                if (!listener.onDestination(lat, lon)) return false;
-                dialog.dismiss(); return true;
-            });
-        });
+        bubble.teleport.setOnClickListener(v -> { if (listener.onDestination(bubble.latitude, bubble.longitude)) dialog.dismiss(); });
         if (walk != null) bubble.walk.setOnClickListener(v -> { if (walk.onDestination(bubble.latitude, bubble.longitude)) dialog.dismiss(); });
         // Opened just to look at a spot (not the hub), its bubble is up from the start.
         if (!hub) bubble.show(latitude, longitude, null);
         DialogLifecycle.bind(activity, dialog, () -> {
-            if (cooldownDialog[0] != null) cooldownDialog[0].dismiss();
             searchBar.close();
             bubble.close();
             if (draft != null) draft.close();
@@ -409,6 +402,15 @@ public final class WorldMapDialog {
         final Button favorite, walk, teleport, cancel, save;
         final EditText name;
         final Handler main = new Handler(Looper.getMainLooper());
+        /** Keeps Téléporter's cooldown current while the bubble is open. */
+        private final Runnable cooldown = new Runnable() {
+            public void run() {
+                main.removeCallbacks(this);
+                if (!shown || closed) return;
+                teleport.setText(teleportLabel(Cooldown.remainingAt(latitude, longitude)));
+                main.postDelayed(this, 1000);
+            }
+        };
         final int tail;
         double latitude, longitude;
         /** Runs after a favourite is saved, so Lieux lists it. */
@@ -481,13 +483,14 @@ public final class WorldMapDialog {
             if (kind == null) map.pin(latitude, longitude); else map.unpin();
             browse();
             shown = true; view.setVisibility(View.VISIBLE);
+            cooldown.run();
             position();
         }
 
         void hide() {
             if (!shown) return;
             keyboard(false);
-            shown = false; view.setVisibility(View.GONE); map.unpin();
+            shown = false; view.setVisibility(View.GONE); map.unpin(); main.removeCallbacks(cooldown);
         }
 
         /** Keeps the tail on the point: above it, or under it when there is no room above; hidden while off screen. */
@@ -563,6 +566,15 @@ public final class WorldMapDialog {
         }
 
         void close() { closed = true; main.removeCallbacksAndMessages(null); }
+
+        /** "Téléporter" when it is free, else with the cooldown it would start: "Téléporter · 12m05", "· 1h04". */
+        static String teleportLabel(long millis) {
+            long seconds = (Math.max(0, millis) + 999) / 1000;
+            if (seconds == 0) return "Téléporter";
+            String wait = seconds >= 3600 ? String.format(Locale.US, "%dh%02d", seconds / 3600, seconds / 60 % 60)
+                : seconds >= 60 ? String.format(Locale.US, "%dm%02d", seconds / 60, seconds % 60) : seconds + "s";
+            return "Téléporter · " + wait;
+        }
     }
 
     /** A rounded card with a small tail pointing at {@link #tipX}: under the card, or above it when {@link #flipped}. */
