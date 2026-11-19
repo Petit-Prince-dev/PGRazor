@@ -84,7 +84,7 @@ public final class Pad {
             if(pill!=null){pill.setBackground(SettingsUi.pillBackground(activity));pill.setTextColor(ink());}
         }
         for(TextView line:new TextView[]{gymAutomationStatus,buddyEmotionStatus,automationStatus,vgpActivity,encounterBadge,transferLabel}){
-            if(line!=null){line.setBackground(null);line.setTextColor(ink());}
+            if(line!=null){line.setBackground(null);line.setTextColor(line==encounterBadge?muted():ink());}
         }
         if(transferToggle!=null)transferToggle.invalidate();
         if(gameRoutesOverlay!=null)gameRoutesOverlay.invalidate();
@@ -102,19 +102,19 @@ public final class Pad {
                 return true;}
         });
     }
-    /** A status line inside the card: small monospace text, no pill of its own. */
-    private TextView dockText(String label,int lines){
+    /** Fixed card width: long texts wrap onto more lines instead of widening the card. */
+    private static final int DOCK_WIDTH_DP=210;
+    /** A status line inside the card: small monospace text, no pill of its own, never cut (it wraps). */
+    private TextView dockText(String label){
         TextView t=text(label,11,ink());t.setTypeface(SettingsUi.mono());t.setGravity(Gravity.CENTER_VERTICAL);
-        t.setMaxWidth(dp(200));t.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        if(lines<=1)t.setSingleLine(true);else t.setMaxLines(lines);
         return t;
     }
-    /** One line of the card: an optional square icon, then its text. */
+    /** One line of the card: an optional square icon, then its text filling the rest of the fixed width. */
     private LinearLayout dockRow(View icon,int iconDp,View label){
         LinearLayout row=new LinearLayout(activity);row.setOrientation(LinearLayout.HORIZONTAL);row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(0,dp(4),0,dp(4));
         if(icon!=null)row.addView(icon,new LinearLayout.LayoutParams(dp(iconDp),dp(iconDp)));
-        if(label!=null){LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,-2);lp.leftMargin=icon!=null?dp(8):0;row.addView(label,lp);}
+        if(label!=null){LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);lp.leftMargin=icon!=null?dp(8):0;row.addView(label,lp);}
         dock.addView(row,new LinearLayout.LayoutParams(-1,-2));
         return row;
     }
@@ -196,7 +196,7 @@ public final class Pad {
         encounterBerry=new BerryOverlay(activity,this::refresh);
         FrameLayout.LayoutParams berryLayout=new FrameLayout.LayoutParams(dp(90),dp(50),Gravity.RIGHT|Gravity.CENTER_VERTICAL);berryLayout.rightMargin=dp(10);overlays.addView(encounterBerry,berryLayout);encounterBerry.setVisibility(View.GONE);
 
-        cooldownTimer=text("Historique  --:--",12,accent());cooldownTimer.setTypeface(SettingsUi.mono());cooldownTimer.setSingleLine(true);cooldownTimer.setGravity(Gravity.CENTER_VERTICAL);cooldownTimer.setClickable(true);cooldownTimer.setOnClickListener(v->Cooldown.show(activity));
+        cooldownTimer=text("Historique  --:--",12,accent());cooldownTimer.setTypeface(SettingsUi.mono());cooldownTimer.setGravity(Gravity.CENTER_VERTICAL);cooldownTimer.setClickable(true);cooldownTimer.setOnClickListener(v->Cooldown.show(activity));
         cooldownTimer.setContentDescription("Historique des actions et temps d'attente. Touche pour ouvrir.");
 
         // Small local-time line: the wall-clock time at the spoofed coordinates, formatted offline by the view.
@@ -208,12 +208,12 @@ public final class Pad {
         panelView.requestApplyInsets();
 
         vgpToggle=new VgpToggle(host);vgpToggle.setOnClickListener(v->{Control.setVgpEnabled(!Control.vgpEnabled());refresh();});
-        vgpActivity=dockText("VGP",2);vgpActivity.setVisibility(View.GONE);vgpActivity.setOnClickListener(v->vgpToggle.performClick());
-        buddyEmotionStatus=dockText("EP : en attente",3);buddyEmotionStatus.setVisibility(View.GONE);
+        vgpActivity=dockText("VGP");vgpActivity.setVisibility(View.GONE);vgpActivity.setOnClickListener(v->vgpToggle.performClick());
+        buddyEmotionStatus=dockText("EP : en attente");buddyEmotionStatus.setVisibility(View.GONE);
         buddyEmotionStatus.setOnClickListener(v->BuddyEmotionSettings.show(activity));
         gymFeedOverlay=new GymFeedOverlay(activity);
-        gymAutomationStatus=dockText("Off",2);gymAutomationStatus.setOnClickListener(v->gymFeedOverlay.performClick());
-        automationStatus=dockText("",3);automationStatus.setVisibility(View.GONE);
+        gymAutomationStatus=dockText("Off");gymAutomationStatus.setOnClickListener(v->gymFeedOverlay.performClick());
+        automationStatus=dockText("");automationStatus.setVisibility(View.GONE);
         automationStatus.setOnClickListener(v->AutomationPanel.show(activity));
         // Catch chance for the open encounter, under the game's nameplate; drag to move it.
         catchChance=text("",12,ink());catchChance.setPadding(dp(10),dp(6),dp(10),dp(6));catchChance.setMaxLines(2);catchChance.setGravity(Gravity.CENTER);
@@ -224,14 +224,14 @@ public final class Pad {
         // Shundo Sniper card: status, counts and Start/Stop; drag to move it.
         shundoOverlay=new ShundoOverlay(activity);FrameLayout.LayoutParams shundoLayout=new FrameLayout.LayoutParams(dp(290),-2,Gravity.TOP|Gravity.CENTER_HORIZONTAL);shundoLayout.topMargin=dp(96);
         overlays.addView(shundoOverlay,shundoLayout);shundoOverlay.setVisibility(View.GONE);shundoDrag=OverlayDrag.attach(overlays,shundoOverlay,"shundo");
-        EncounterCounter.prepare(activity);encounterBadge=dockText("",1);encounterBadge.setVisibility(View.GONE);
+        EncounterCounter.prepare(activity);encounterBadge=dockText("");encounterBadge.setSingleLine(true);encounterBadge.setTextColor(muted());encounterBadge.setVisibility(View.GONE);
         shinyMark=text("✨",19,Color.WHITE);shinyMark.setGravity(Gravity.CENTER);shinyMark.setShadowLayer(dp(4),0,0,Color.BLACK);shinyMark.setClickable(false);shinyMark.setFocusable(false);
         shinyMark.setContentDescription("Pokémon shiny ici");overlays.addView(shinyMark,new FrameLayout.LayoutParams(dp(32),dp(32)));shinyMark.setVisibility(View.GONE);
         ShinyScanner.prepare(activity);shinyBadge=text("",13,ink());shinyBadge.setPadding(dp(12),dp(8),dp(12),dp(8));shinyBadge.setMaxLines(2);shinyBadge.setBackground(rounded(surface(),10));
         FrameLayout.LayoutParams shinyLayout=new FrameLayout.LayoutParams(dp(250),-2,Gravity.TOP|Gravity.CENTER_HORIZONTAL);shinyLayout.topMargin=dp(150);
         overlays.addView(shinyBadge,shinyLayout);shinyBadge.setVisibility(View.GONE);shinyBadge.setOnClickListener(v->{ShinyScanner.showFound();refresh();});shinyDrag=OverlayDrag.attach(overlays,shinyBadge,"shiny");
         transferToggle=new TransferToggle(host);transferToggle.setOnClickListener(v->{Control.setTransferKeepAll(!Control.transferKeepAll());refresh();});
-        transferToggle.setVisibility(View.GONE);transferLabel=dockText("",1);transferLabel.setOnClickListener(v->transferToggle.performClick());
+        transferToggle.setVisibility(View.GONE);transferLabel=dockText("");transferLabel.setOnClickListener(v->transferToggle.performClick());
         gameRoutesOverlay=new GameRoutesOverlay(activity);gameRoutesOverlay.setVisibility(View.GONE);
         launcher=new RazorIcon(host);
         launcher.setContentDescription("Ouvrir le menu rapide PGRazor. Glisse pour déplacer. Appui long : éteindre l'écran.");
@@ -239,16 +239,17 @@ public final class Pad {
         // The card: header (launcher, history timer, game routes), then one line per active feature.
         dock=new HudDock(host);dock.setPadding(dp(8),dp(4),dp(8),dp(4));
         dock.setShowDividers(LinearLayout.SHOW_DIVIDER_MIDDLE);
-        dockHeader=dockRow(launcher,32,cooldownTimer);
-        LinearLayout.LayoutParams routesSlot=new LinearLayout.LayoutParams(dp(26),dp(26));routesSlot.leftMargin=dp(6);dockHeader.addView(gameRoutesOverlay,routesSlot);
-        dockRow(null,0,encounterBadge);
+        // Header: logo, history timer and the 24 h encounter count on one line (the count keeps its width, the timer wraps if it must).
+        dockHeader=dockRow(launcher,30,cooldownTimer);
+        LinearLayout.LayoutParams countSlot=new LinearLayout.LayoutParams(-2,-2);countSlot.leftMargin=dp(6);dockHeader.addView(encounterBadge,countSlot);
+        LinearLayout.LayoutParams routesSlot=new LinearLayout.LayoutParams(dp(24),dp(24));routesSlot.leftMargin=dp(4);dockHeader.addView(gameRoutesOverlay,routesSlot);
         dockRow(null,0,localTime);
         dockRow(vgpToggle,30,vgpActivity);
         dockRow(gymFeedOverlay,30,gymAutomationStatus);
         dockRow(transferToggle,30,transferLabel);
         dockRow(null,0,buddyEmotionStatus);
         dockRow(null,0,automationStatus);
-        FrameLayout.LayoutParams dockLayout=new FrameLayout.LayoutParams(-2,-2,Gravity.TOP|Gravity.LEFT);dockLayout.leftMargin=dp(12);dockLayout.topMargin=dp(100);
+        FrameLayout.LayoutParams dockLayout=new FrameLayout.LayoutParams(dp(DOCK_WIDTH_DP),-2,Gravity.TOP|Gravity.LEFT);dockLayout.leftMargin=dp(12);dockLayout.topMargin=dp(100);
         overlays.addView(dock,dockLayout);dockDrag=OverlayDrag.attach(overlays,dock,"hud");dock.setDrag(dockDrag);
         // The R launcher now toggles the compact quick menu; Settings there opens this panel full screen.
         quickMenu=new QuickMenu(host,parent,launcher,new QuickMenu.Listener(){
@@ -379,9 +380,9 @@ public final class Pad {
             blackHint.setText(blackIssue.isEmpty()?BLACK_HINT:BLACK_HINT+"\n\n"+blackIssue);
             if(!blackIssue.isEmpty()){blackHint.setVisibility(View.VISIBLE);handler.postDelayed(()->{if(blackHint!=null)blackHint.setVisibility(View.GONE);},8000);}
         }
-        if(encounterBadge!=null){String count=!Control.encounterOverlay()||settings.isVisible()||(quickMenu!=null&&quickMenu.isShowing())?"":EncounterCounter.label();
+        if(encounterBadge!=null){String count=!Control.encounterOverlay()||settings.isVisible()||(quickMenu!=null&&quickMenu.isShowing())?"":EncounterCounter.shortLabel();
             encounterBadge.setVisibility(count.isEmpty()?View.GONE:View.VISIBLE);
-            if(!count.isEmpty())setTextIfChanged(encounterBadge,count);}
+            if(!count.isEmpty()){setTextIfChanged(encounterBadge,count);encounterBadge.setContentDescription(EncounterCounter.label());}}
         if(shinyMark!=null){boolean mark=ShinyScanner.targetVisible()&&!settings.isVisible();shinyMark.setVisibility(mark?View.VISIBLE:View.GONE);
             if(mark){// The point is the top of the Pokémon; the symbol sits just above it.
             shinyMark.setX(ShinyScanner.targetX()*parent.getWidth()-dp(16));shinyMark.setY(ShinyScanner.targetY()*parent.getHeight()-dp(34));}}

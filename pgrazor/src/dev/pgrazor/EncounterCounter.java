@@ -70,6 +70,10 @@ public final class EncounterCounter {
     static String label() {
         return Control.encounterCounter() ? String.format(Locale.FRANCE, "%,d rencontres / 24 h", total()) : "";
     }
+    /** "1 240/24h" for the overlay card's header line, or empty while the counter is off. */
+    static String shortLabel() {
+        return Control.encounterCounter() ? String.format(Locale.FRANCE, "%,d/24h", total()) : "";
+    }
     /** The settings title: "PGRazor · 1,240 / 24 h". */
     static String title() {
         return Control.encounterCounter() ? String.format(Locale.US, "PGRazor · %,d / 24 h", total()) : "PGRazor";
