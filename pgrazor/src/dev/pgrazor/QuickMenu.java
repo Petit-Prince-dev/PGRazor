@@ -14,9 +14,9 @@ import java.util.List;
  * launcher's line stays on top and the menu unfolds right under it, so the same R button closes it
  * (nothing else does: no outside-tap dismissal).
  *
- * <p>Layout: the walking speed (tap to cycle), then one grid holding everything: Carte (the travel hub:
- * map, places and autowalk) and the feeds, followed by one tile per settings category, each opening
- * that category as a floating sheet. Every option of the mod is reachable from here.
+ * <p>Layout: the walking speed (tap to cycle), then one line per option: Carte (the travel hub: map,
+ * places and autowalk), the feeds, then one line per settings category, each opening that category as
+ * a floating sheet. Every option of the mod is reachable from here.
  */
 public final class QuickMenu {
     public interface Listener {
@@ -29,11 +29,9 @@ public final class QuickMenu {
         void onSettingsPage(int index);
     }
 
-    private static final int COLUMNS = 3;
-
     private final Activity activity;
     private final Listener listener;
-    private final LinearLayout card, grid, walk;
+    private final LinearLayout card, list, walk;
     private final TextView walkSpeed, walkName;
     private final MenuIcon walkIcon;
     private final List<View> tiles = new ArrayList<>();
@@ -63,47 +61,34 @@ public final class QuickMenu {
         LinearLayout.LayoutParams walkParams = new LinearLayout.LayoutParams(-1, dp(36)); walkParams.bottomMargin = dp(6);
         card.addView(walk, walkParams);
 
-        // Everything else in one grid: moving around first, then the settings categories.
-        grid = new LinearLayout(activity); grid.setOrientation(LinearLayout.VERTICAL);
-        card.addView(grid, new LinearLayout.LayoutParams(-1, -2));
-        tile(MenuIcon.MAP, "Carte", listener::onMap);
-        tile(MenuIcon.FEEDS, "Flux", listener::onFeeds);
+        // Everything else, one option per line: moving around first, then the settings categories.
+        list = new LinearLayout(activity); list.setOrientation(LinearLayout.VERTICAL);
+        card.addView(list, new LinearLayout.LayoutParams(-1, -2));
+        line(MenuIcon.MAP, "Carte", listener::onMap);
+        line(MenuIcon.FEEDS, "Flux", listener::onFeeds);
         for (int i = 0; i < pageNames.length; i++) {
             final int index = i;
-            tile(pageIcons[i], pageNames[i], () -> listener.onSettingsPage(index));
+            line(pageIcons[i], pageNames[i], () -> listener.onSettingsPage(index));
         }
-        flow();
 
         card.setVisibility(View.GONE);
         applyTheme();
     }
 
-    /** One grid tile: a centred icon above a short label; the whole tile is the hit target. */
-    private void tile(int kind, String label, Runnable action) {
-        LinearLayout t = new LinearLayout(activity); t.setOrientation(LinearLayout.VERTICAL); t.setGravity(Gravity.CENTER);
-        t.setMinimumHeight(dp(52)); t.setPadding(0, dp(6), 0, dp(5)); t.setClickable(true); t.setFocusable(true);
+    /** One option: its icon, then its name in large type to the right; the whole line is the hit target. */
+    private void line(int kind, String label, Runnable action) {
+        LinearLayout t = new LinearLayout(activity); t.setOrientation(LinearLayout.HORIZONTAL); t.setGravity(Gravity.CENTER_VERTICAL);
+        t.setPadding(dp(10), 0, dp(10), 0); t.setClickable(true); t.setFocusable(true);
         t.setContentDescription(label);
         MenuIcon icon = new MenuIcon(activity, kind);
-        t.addView(icon, new LinearLayout.LayoutParams(dp(21), dp(21)));
-        TextView name = new TextView(activity); name.setText(label); name.setTextSize(10.5f); name.setGravity(Gravity.CENTER);
-        name.setMaxLines(2); name.setEllipsize(TextUtils.TruncateAt.END); name.setPadding(0, dp(4), 0, 0);
-        t.addView(name, new LinearLayout.LayoutParams(-1, -2));
+        t.addView(icon, new LinearLayout.LayoutParams(dp(22), dp(22)));
+        TextView name = new TextView(activity); name.setText(label); name.setTextSize(15); name.setTypeface(SettingsUi.medium());
+        name.setSingleLine(true); name.setEllipsize(TextUtils.TruncateAt.END); name.setPadding(dp(14), 0, 0, 0);
+        t.addView(name, new LinearLayout.LayoutParams(0, -2, 1f));
         t.setOnClickListener(v -> action.run()); // the menu stays open: only the R button closes it
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(42)); lp.topMargin = dp(1);
+        list.addView(t, lp);
         tiles.add(t); tileLabels.add(name); tileIcons.add(icon);
-    }
-
-    /** Lays the tiles out in rows of three; the last row keeps the same tile width. */
-    private void flow() {
-        LinearLayout row = null; int inRow = 0;
-        for (View tile : tiles) {
-            if (row == null || inRow == COLUMNS) {
-                row = new LinearLayout(activity); row.setOrientation(LinearLayout.HORIZONTAL);
-                grid.addView(row, new LinearLayout.LayoutParams(-1, -2)); inRow = 0;
-            }
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1f); lp.setMargins(dp(1), dp(1), dp(1), dp(1));
-            row.addView(tile, lp); inRow++;
-        }
-        if (row != null) for (; inRow < COLUMNS; inRow++) row.addView(new View(activity), new LinearLayout.LayoutParams(0, 1, 1f));
     }
 
     private void updateWalk() {
