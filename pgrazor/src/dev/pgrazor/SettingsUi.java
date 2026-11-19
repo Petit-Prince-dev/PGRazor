@@ -46,22 +46,12 @@ final class SettingsUi {
     // ---------------------------------------------------------------- palette
     static boolean dark() { return Control.darkTheme(); }
 
-    /** Colour themes offered in Affichage; the index is persisted as {@code uiTheme}. */
-    static final String[] THEME_NAMES = {"Améthyste", "Océan", "Menthe", "Corail"};
-    /** Per theme: bg, surface, raised, border, ink, muted, faint, accent, accentFill. All dark. */
-    private static final int[][] THEMES = {
-        // Améthyste: soft violet on a deep plum black.
-        {0xff0e0c14, 0xff17141f, 0xff211d2c, 0xff2e2940, 0xffeeebf7, 0xffa9a3c0, 0xff77718f, 0xffb69cff, 0xff6c4fd6},
-        // Océan: sky blue on deep navy.
-        {0xff0a1018, 0xff111a26, 0xff182434, 0xff243347, 0xffe8f0f8, 0xff9db0c4, 0xff6d8196, 0xff5cb8ff, 0xff1f6fc0},
-        // Menthe: the original PGRazor look.
-        {0xff0d131a, 0xff121a23, 0xff19222d, 0xff25303c, 0xffe9eff5, 0xff9aabbc, 0xff71828f, 0xff45e1ba, 0xff0b6e58},
-        // Corail: warm coral on charcoal.
-        {0xff121010, 0xff1b1717, 0xff252020, 0xff352d2c, 0xfff6eeec, 0xffbba9a5, 0xff8a7a76, 0xffff8a6b, 0xffc4492c},
-    };
-    private static int[] theme() { int i = Control.uiTheme(); return THEMES[i >= 0 && i < THEMES.length ? i : 0]; }
-    /** The accent of a theme, for the theme picker's swatches. */
-    static int themeAccent(int index) { return THEMES[Math.max(0, Math.min(THEMES.length - 1, index))][7]; }
+    /**
+     * The one PGRazor palette, Améthyste (soft violet on a deep plum black):
+     * bg, surface, raised, border, ink, muted, faint, accent, accentFill.
+     */
+    private static final int[] PALETTE = {0xff0e0c14, 0xff17141f, 0xff211d2c, 0xff2e2940, 0xffeeebf7, 0xffa9a3c0, 0xff77718f, 0xffb69cff, 0xff6c4fd6};
+    private static int[] theme() { return PALETTE; }
 
     /** Full-screen backdrop behind cards. */
     static int bg()      { return theme()[0]; }
