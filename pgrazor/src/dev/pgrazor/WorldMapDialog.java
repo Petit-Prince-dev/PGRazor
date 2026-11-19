@@ -250,7 +250,7 @@ public final class WorldMapDialog {
 
         AlertDialog dialog = new AlertDialog.Builder(ui).setView(root).create();
         self[0] = dialog;
-        if (draft != null) { draft.parent = dialog; draft.saved = places == null ? null : places::reload; }
+        if (draft != null) { draft.parent = dialog; draft.saved = places == null ? null : places::reload; draft.finished = () -> { routing[0] = false; applyMode.run(); }; }
         close.setOnClickListener(v -> dialog.dismiss());
         // Back closes a panel first, then the map.
         dialog.setOnKeyListener((d, keyCode, event) -> {
@@ -583,6 +583,8 @@ public final class WorldMapDialog {
         AlertDialog parent, saveDialog;
         /** Runs after a save, so Lieux shows the new walk. */
         Runnable saved;
+        /** Runs after a save, to leave route mode. */
+        Runnable finished;
         /** Name of the walk opened from Lieux, offered again when saving. */
         String name;
         /** Something to save: false right after a saved walk is opened or this one is saved. */
@@ -626,9 +628,11 @@ public final class WorldMapDialog {
         }
         void save() {
             if (points.isEmpty() || (saveDialog != null && saveDialog.isShowing())) return;
+            // Once saved, the route leaves the map: it is now in Lieux, Mes trajets.
             saveDialog = PlacesPanel.promptSaveRoute(activity, ui, toArray(), name, savedName -> {
-                name = savedName; changed = false; refresh();
+                clear();
                 if (saved != null) saved.run();
+                if (finished != null) finished.run();
             });
         }
         void start() {

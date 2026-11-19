@@ -309,7 +309,7 @@ final class PlacesPanel {
                         if (!dialog.isShowing()) return;
                         if (failed != null) { dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true); name.setError(failed); return; }
                         dialog.dismiss();
-                        Toast.makeText(activity, "Trajet enregistré : " + route.name + " (Lieux › Mes trajets)", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(activity, "Trajet enregistré : " + route.name, Toast.LENGTH_SHORT).show();
                         if (after != null) after.saved(route.name);
                     });
                 }, "pgrazor-route-save").start();
