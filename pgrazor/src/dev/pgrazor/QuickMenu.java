@@ -152,8 +152,12 @@ public final class QuickMenu {
         ViewGroup.LayoutParams lp=viewport.getLayoutParams();
         if(lp.width!=width||lp.height!=height){lp.width=width;lp.height=height;viewport.setLayoutParams(lp);}
         int cw=Math.round(width*scale),ch=Math.round(height*scale),gap=dp(8);
-        float x=anchor.getX(),y=anchor.getY()+OverlayDrag.visualHeight(anchor)+gap;
-        if(y+ch>safe.bottom)y=anchor.getY()-ch-gap;
+        // The anchor may sit inside a scaled card: measure it in window coordinates, relative to this menu's layer.
+        int[] at=new int[2],origin=new int[2];anchor.getLocationInWindow(at);root.getLocationInWindow(origin);
+        float anchorScale=1f;for(View v=anchor;v!=null;v=v.getParent() instanceof View?(View)v.getParent():null)anchorScale*=v.getScaleY();
+        float ax=at[0]-origin[0],ay=at[1]-origin[1],ah=anchor.getHeight()*anchorScale;
+        float x=ax,y=ay+ah+gap;
+        if(y+ch>safe.bottom)y=ay-ch-gap;
         viewport.setX(UiViewportPolicy.clamp(x,safe.left,safe.right,cw));
         viewport.setY(UiViewportPolicy.clamp(y,safe.top,safe.bottom,ch));
     }
