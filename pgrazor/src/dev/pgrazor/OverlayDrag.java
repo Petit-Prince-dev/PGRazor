@@ -56,6 +56,7 @@ public final class OverlayDrag implements View.OnTouchListener {
         if (follower != null && beside) {
             follower.setElevation(7 * density);  // just under the handle, which covers the follower's left end
             follower.setOnClickListener(v -> view.performClick());  // the whole card acts like the handle
+            follower.setOnTouchListener(this);  // and drags like it: grabbing the text moves the card
         }
     }
 
@@ -74,7 +75,7 @@ public final class OverlayDrag implements View.OnTouchListener {
             case MotionEvent.ACTION_UP:
                 Control.event("overlay-touch", key + " up moved=" + moved + " x=" + view.getX() + " y=" + view.getY());
                 dragging = false; view.setPressed(false);
-                if (moved) save(); else v.performClick(); // tap below the threshold still opens history / toggles VGP
+                if (moved) save(); else view.performClick(); // tap below the threshold (icon or its text) still opens history / toggles VGP
                 return true;
             case MotionEvent.ACTION_CANCEL:
                 dragging = false; view.setPressed(false); if (moved) save(); return true;
@@ -149,6 +150,6 @@ public final class OverlayDrag implements View.OnTouchListener {
         parent.removeOnLayoutChangeListener(parentLayout);
         view.removeOnLayoutChangeListener(viewLayout);
         view.setOnTouchListener(null);
-        if (follower != null) { follower.removeOnLayoutChangeListener(followerLayout); if (beside) follower.setOnClickListener(null); }
+        if (follower != null) { follower.removeOnLayoutChangeListener(followerLayout); if (beside) { follower.setOnClickListener(null); follower.setOnTouchListener(null); } }
     }
 }
