@@ -58,7 +58,11 @@ final class SettingsPanel {
     // Category navigation: one home row and one page per category; current is -1 on the home screen.
     private final java.util.List<LinearLayout> pages=new java.util.ArrayList<>(), homeRows=new java.util.ArrayList<>();
     private final java.util.List<RowList> rowLists=new java.util.ArrayList<>();
-    private final java.util.List<String> pageTitles=new java.util.ArrayList<>();
+    private final java.util.List<String> pageTitles=new java.util.ArrayList<>(), pageShorts=new java.util.ArrayList<>();
+    private final java.util.List<Integer> pageIcons=new java.util.ArrayList<>();
+    /** A page opened from a search hit shows a back arrow to the results; opened from the menu it does not. */
+    private boolean fromSearch;
+    private LinearLayout telemetry;
     private final java.util.List<TextView> pageSummaries=new java.util.ArrayList<>(), homeNames=new java.util.ArrayList<>();
     private final java.util.List<MenuIcon> homeIcons=new java.util.ArrayList<>();
     private int current=-1, homeScroll;
@@ -233,7 +237,7 @@ final class SettingsPanel {
         tile.addView(summary,new LinearLayout.LayoutParams(-1,-2));
         tile.setOnClickListener(v->open(index));
         LinearLayout content=new LinearLayout(activity);content.setOrientation(LinearLayout.VERTICAL);content.setVisibility(View.GONE);content.setPadding(0,0,0,dp(24));body.addView(content);
-        pages.add(content);pageTitles.add(pageTitle);homeRows.add(tile);homeNames.add(name);homeIcons.add(glyph);pageSummaries.add(summary);
+        pages.add(content);pageTitles.add(pageTitle);pageShorts.add(shortName);pageIcons.add(icon);homeRows.add(tile);homeNames.add(name);homeIcons.add(glyph);pageSummaries.add(summary);
         captions.add(summary);
         return content;
     }
@@ -264,22 +268,23 @@ final class SettingsPanel {
         home.setVisibility(index<0?View.VISIBLE:View.GONE);
         for(int i=0;i<pages.size();i++)pages.get(i).setVisibility(i==index?View.VISIBLE:View.GONE);
         searchBar.setVisibility(index<0?View.VISIBLE:View.GONE);
-        set(title,index<0?"PGRazor":pageTitles.get(index));
-        backIcon.setVisibility(index<0?View.GONE:View.VISIBLE);
-        versionLabel.setVisibility(index<0?View.VISIBLE:View.GONE);
+        set(title,index<0?"Rechercher":pageTitles.get(index));
+        backIcon.setVisibility(index>=0&&fromSearch?View.VISIBLE:View.GONE);
+        versionLabel.setVisibility(View.GONE);
         final int y=index<0?homeScroll:0;bodyScroll.post(()->bodyScroll.scrollTo(0,y));
     }
 
     SettingsPanel(Activity activity, Host host) {
         this.activity = activity; this.host = host;
         panel = new LinearLayout(activity); panel.setOrientation(LinearLayout.VERTICAL); panel.setPadding(dp(12), dp(8), dp(12), dp(12));
-        panel.setBackgroundColor(SettingsUi.bg());
+        panel.setBackgroundColor(scrim());
         content = new LinearLayout(activity); content.setOrientation(LinearLayout.VERTICAL);
+        content.setBackground(SettingsUi.cardBackground(activity)); content.setPadding(dp(10),dp(4),dp(10),dp(10));
         panel.addView(content,new LinearLayout.LayoutParams(-1,-1));
         // Header: back (on a category page), title, version (home only) and close.
         LinearLayout header = new LinearLayout(activity); header.setOrientation(LinearLayout.HORIZONTAL); header.setGravity(Gravity.CENTER_VERTICAL);
         backIcon = new BackIcon(activity); backIcon.setVisibility(View.GONE); header.addView(backIcon, new LinearLayout.LayoutParams(dp(44), dp(44)));
-        backIcon.setOnClickListener(v -> open(-1));
+        backIcon.setOnClickListener(v -> { fromSearch=false; open(-1); });
         title = text("PGRazor", 18, ink()); title.setTypeface(SettingsUi.medium()); title.setPadding(dp(4), 0, 0, 0);
         title.setSingleLine(true); title.setEllipsize(android.text.TextUtils.TruncateAt.END); title.setGravity(Gravity.CENTER_VERTICAL);
         header.addView(title, new LinearLayout.LayoutParams(0, dp(44), 1f));
@@ -324,8 +329,8 @@ final class SettingsPanel {
 
         // Home: the live status card, then the category grid; the community link closes the home screen.
         home = new LinearLayout(activity); home.setOrientation(LinearLayout.VERTICAL); body.addView(home);
-        buildTelemetryCard();
         buildLocationPage();
+        buildTelemetryCard();
         buildCatchingPage();
         buildPokemonPage();
         buildGoPlusPage();
@@ -334,24 +339,13 @@ final class SettingsPanel {
         buildAutomationPage();
         buildDisplayPage();
         buildAccountsPage();   // last: its Diagnostics group collects status lines created by the pages above
-        layoutHomeGrid();
-        discord = text("Rejoindre le Discord PGRazor", 12, accent());
-        discord.setGravity(Gravity.CENTER);
-        discord.setContentDescription("Rejoindre la communauté Discord de PGRazor");
-        discord.setClickable(true); discord.setFocusable(true);
-        discord.setBackground(SettingsUi.pressable(activity));
-        LinearLayout.LayoutParams discordParams=new LinearLayout.LayoutParams(-1,dp(40));discordParams.topMargin=dp(14);
-        home.addView(discord, discordParams);
-        discord.setOnClickListener(v -> {
-            try { activity.startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://discord.gg/9QqfkDSQX3"))); }
-            catch (android.content.ActivityNotFoundException unavailable) {
-                android.widget.Toast.makeText(activity, "Aucune appli pour ouvrir les liens Discord", android.widget.Toast.LENGTH_SHORT).show();
-            }
-        });
+        // The categories live in the R menu; the sheet's own start screen is only the search.
+        caption(home,"Tape le nom d'un réglage ou un mot-clé : Ball auto, cooldown, IV, œufs…");
         results = new LinearLayout(activity); results.setOrientation(LinearLayout.VERTICAL); results.setVisibility(View.GONE); body.addView(results);
 
         // Closing the full-screen settings panel simply returns to the game (or the quick menu on the next tap).
         closeIcon.setOnClickListener(v -> { hideKeyboard(); hide(); });
+        // Taps on the dimmed backdrop do nothing: the sheet closes with its X only.
         // The settings panel is a full-screen modal; it consumes taps so the game behind it stays inert.
         panel.setClickable(true);
         // The column stops growing on tablets and stays centred instead of stretching rows across the screen.
@@ -364,7 +358,8 @@ final class SettingsPanel {
         if(width<=0)return;
         int extra=Math.max(0,(width-dp(SettingsUi.CONTENT_MAX_DP))/2);
         if(extra==lastContentWidth)return;
-        lastContentWidth=extra;content.setPadding(extra,0,extra,0);
+        lastContentWidth=extra;
+        LinearLayout.LayoutParams lp=(LinearLayout.LayoutParams)content.getLayoutParams();lp.leftMargin=extra;lp.rightMargin=extra;content.setLayoutParams(lp);
     }
 
     private void hideKeyboard(){
@@ -389,11 +384,13 @@ final class SettingsPanel {
         LinearLayout.LayoutParams coordsParams=new LinearLayout.LayoutParams(-1,-2);coordsParams.topMargin=dp(6);card.addView(coords,coordsParams);
         homeCounts=text("",12,muted());homeCounts.setSingleLine(true);homeCounts.setEllipsize(android.text.TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams countsParams=new LinearLayout.LayoutParams(-1,-2);countsParams.topMargin=dp(2);card.addView(homeCounts,countsParams);captions.add(homeCounts);
-        home.addView(card);
+        telemetry=card;
+        LinearLayout.LayoutParams cardParams=new LinearLayout.LayoutParams(-1,-2);cardParams.topMargin=dp(6);
+        pages.get(0).addView(card,0,cardParams);
     }
 
     private void buildLocationPage() {
-        LinearLayout loc = page(MenuIcon.TELEPORT, "Position", "Position & déplacement");
+        LinearLayout loc = page(MenuIcon.PIN, "Position", "Position & déplacement");
         LinearLayout core = group(loc, "Spoof");
         locationSwitch=switchRow(core,"Spoof de position");locationSwitch.setChecked(Control.desiredEnabled());
         locationSwitch.setOnCheckedChangeListener((v,checked)->{if(checked==Control.desiredEnabled())return;host.releaseJoystick(true);Control.setLocationSpoofing(checked);host.refresh();});
@@ -734,8 +731,8 @@ final class SettingsPanel {
         batteryQualitySwitch = switchRow(battery, "Graphismes bas", "Sans ombres, brouillard, reflets, herbe, HDR ni anticrénelage."); batteryQualitySwitch.setChecked(Control.batteryLowQuality());
         batteryQualitySwitch.setOnCheckedChangeListener((v,checked) -> { if(checked!=Control.batteryLowQuality())Control.setBatteryLowQuality(checked); });
 
-        LinearLayout menu = section(page,"Entrées du menu rapide",false);
-        caption(menu,"Choisis les tuiles du menu rapide (sous le R). Ça n'active ni ne coupe aucune fonction.");
+        LinearLayout menu = section(page,"Raccourcis affichés",false);
+        caption(menu,"Choisis les raccourcis du menu R. Les catégories de réglages restent toujours affichées.");
         for(int i=0;i<QuickMenu.CUSTOMIZABLE.length;i++){
             if(QuickMenu.CUSTOMIZABLE[i]==null)continue; // retired entry keeps its bit
             final int bit=1<<i;
@@ -796,7 +793,21 @@ final class SettingsPanel {
     View view(){return panel;}
     boolean isVisible(){return panel.getVisibility()==View.VISIBLE;}
     /** Bring the full-screen panel up; Pad applies current insets immediately after. */
-    void show(){homeScroll=0;open(-1);panel.setVisibility(View.VISIBLE);panel.bringToFront();panel.requestApplyInsets();syncSystemBars();}
+    void show(){showPage(-1);}
+    /** Opens the sheet on one category (or the search screen for -1), over the game. */
+    void showPage(int index){
+        fromSearch=false;homeScroll=0;open(index);panel.setVisibility(View.VISIBLE);panel.bringToFront();panel.requestApplyInsets();syncSystemBars();
+        if(index<0)searchField.post(()->{
+            searchField.requestFocus();
+            android.view.inputmethod.InputMethodManager keyboard=(android.view.inputmethod.InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+            if(keyboard!=null)keyboard.showSoftInput(searchField,0);
+        });
+    }
+    int pageCount(){return pages.size();}
+    String[] pageNames(){return pageShorts.toArray(new String[0]);}
+    int[] pageIcons(){int[] icons=new int[pageIcons.size()];for(int i=0;i<icons.length;i++)icons[i]=pageIcons.get(i);return icons;}
+    /** A dimmed, theme-tinted backdrop: the game stays faintly visible around the sheet. */
+    private static int scrim(){return (SettingsUi.bg()&0x00ffffff)|0xcc000000;}
     /**
      * Applies the bar glyphs now and once more after layout. Unity re-applies its own window
      * appearance while it is starting up, so a single call during show() can be undone before the
@@ -941,7 +952,7 @@ final class SettingsPanel {
 
     /** Opens the owning page, scrolls the target row to the top of the body and flashes an accent wash. */
     private void jumpTo(int pageIndex,View target){
-        open(pageIndex);
+        fromSearch=true;open(pageIndex);
         if(target==null)return;
         bodyScroll.post(()->{
             // A match can live in a collapsed group: open it, then measure once layout has settled.
@@ -987,7 +998,7 @@ final class SettingsPanel {
     }
 
     void applyTheme(){
-        panel.setBackgroundColor(SettingsUi.bg());styleTree(panel);
+        panel.setBackgroundColor(scrim());content.setBackground(SettingsUi.cardBackground(activity));styleTree(panel);
         if(panel.getVisibility()==View.VISIBLE)syncSystemBars();
         for(TextView head:groupHeads){head.setTextColor(SettingsUi.faint());head.setTypeface(SettingsUi.medium());}
         for(TextView c:captions)c.setTextColor(muted());

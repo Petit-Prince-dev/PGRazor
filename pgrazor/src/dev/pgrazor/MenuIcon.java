@@ -11,7 +11,8 @@ import android.view.View;
  */
 final class MenuIcon extends View {
     static final int MAP = 0, WALK = 1, AUTOWALK = 2, FEEDS = 3, FAVORITES = 4, TELEPORT = 5, ACCOUNTS = 6, SETTINGS = 7,
-        EVENTS = 8, AUTOMATION = 9, HIDE = 10, ROUTES = 11, CATCH = 12, BOX = 13, BAG = 14, BATTLE = 15, HEART = 16, RESEARCH = 17, POWER = 18;
+        EVENTS = 8, AUTOMATION = 9, HIDE = 10, ROUTES = 11, CATCH = 12, BOX = 13, BAG = 14, BATTLE = 15, HEART = 16, RESEARCH = 17, POWER = 18,
+        PIN = 19, HOTSPOT = 20, SEARCH = 21;
 
     private final int kind;
     /** Draws in the muted colour instead of ink. */
@@ -185,6 +186,27 @@ final class MenuIcon extends View {
                 heart.cubicTo(3, 14, 2.5f, 8, 7, 5.5f); heart.cubicTo(9.5f, 4.3f, 12, 6, 12, 8.5f);
                 heart.cubicTo(12, 6, 14.5f, 4.3f, 17, 5.5f); heart.cubicTo(21.5f, 8, 21, 14, 12, 20.5f); heart.close();
                 canvas.drawPath(heart, paint);
+                break;
+            }
+            case PIN: {
+                // A location pin with a hollow centre.
+                paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(1.8f);
+                Path pin = new Path(); pin.moveTo(12, 21);
+                pin.cubicTo(7, 15.5f, 5, 12.5f, 5, 9.5f); pin.cubicTo(5, 5.4f, 8.1f, 2.5f, 12, 2.5f);
+                pin.cubicTo(15.9f, 2.5f, 19, 5.4f, 19, 9.5f); pin.cubicTo(19, 12.5f, 17, 15.5f, 12, 21); pin.close();
+                canvas.drawPath(pin, paint); canvas.drawCircle(12, 9.5f, 2.6f, paint);
+                break;
+            }
+            case HOTSPOT: {
+                // A target: two rings and a centre dot.
+                paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(1.8f);
+                canvas.drawCircle(12, 12, 8.5f, paint); canvas.drawCircle(12, 12, 4.8f, paint);
+                paint.setStyle(Paint.Style.FILL); canvas.drawCircle(12, 12, 1.8f, paint);
+                break;
+            }
+            case SEARCH: {
+                paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(2f);
+                canvas.drawCircle(10.5f, 10.5f, 6, paint); canvas.drawLine(15, 15, 20, 20, paint);
                 break;
             }
             case POWER: {

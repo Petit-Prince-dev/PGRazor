@@ -262,10 +262,11 @@ public final class Pad {
             public void onFavorites(){QuickLocationDialogs.showFavorites(activity,Pad.this::quickTeleport);}
             public void onTeleport(){stick.release(true);QuickLocationDialogs.showTeleport(activity,Pad.this::quickTeleport,Pad.this::quickWalk);}
             public void onHotspots(){stick.release(true);HotspotsDialog.showQuick(activity,Pad.this::quickTeleport,Pad.this::quickWalk);}
-            public void onSettings(){openSettings();}
+            public void onSettingsPage(int index){openSettings(index);}
+            public void onSearch(){openSettings(-1);}
             public void onHideOverlays(){confirmHideOverlays();}
             public void onScreenOff(){turnScreenOff();}
-        });
+        },settings.pageNames(),settings.pageIcons());
         // The menu unfolds inside the card, right under the launcher line, so the R button stays visible to close it.
         dock.addView(quickMenu.view(),1,new LinearLayout.LayoutParams(-1,-2));
         quickMenu.setOnToggle(this::refresh);
@@ -591,10 +592,9 @@ public final class Pad {
         });
     }
     /** Opens the existing settings panel full screen; the game runtime is left untouched. */
-    private void openSettings() {
-        if(quickMenu!=null)quickMenu.hide();
+    private void openSettings(int page) {
         stick.release(true);
-        settings.show(); settings.applyInsets(parent.getRootWindowInsets());
+        settings.showPage(page); settings.applyInsets(parent.getRootWindowInsets());
         Control.event("settings-open", "Full-screen panel; runtime unaffected");
         refresh();
     }
