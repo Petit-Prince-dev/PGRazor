@@ -107,23 +107,37 @@ public final class WorldMapDialog {
         LinearLayout layersButton = pill(ui, MenuIcon.MAP, "Calques");
         side.addView(layersButton, pillParams(ui, 0));
         LinearLayout layersCard = new LinearLayout(ui); layersCard.setOrientation(LinearLayout.VERTICAL); layersCard.setTag(DialogStyle.KEEP);
-        layersCard.setPadding(dp(activity, 6), dp(activity, 6), dp(activity, 6), dp(activity, 6)); layersCard.setClickable(true); layersCard.setVisibility(View.GONE);
-        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(dp(activity, 190), -2); cardParams.topMargin = dp(activity, 8);
+        layersCard.setPadding(dp(activity, 6), dp(activity, 12), dp(activity, 6), dp(activity, 6)); layersCard.setClickable(true); layersCard.setVisibility(View.GONE);
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(dp(activity, 230), -2); cardParams.topMargin = dp(activity, 8);
         side.addView(layersCard, cardParams);
+        TextView layersHead = label(ui, "AFFICHER SUR LA CARTE", 11); layersHead.setTypeface(SettingsUi.medium()); layersHead.setLetterSpacing(0.08f);
+        layersHead.setPadding(dp(activity, 12), 0, dp(activity, 12), dp(activity, 6));
+        layersCard.addView(layersHead);
+        // One row per layer: the game's own marker, its name, and a switch.
         SharedPreferences preferences = AccountProfiles.preferences(activity, "pgrazor-map");
         String[] layerKeys = {"Stops", "Gyms", "Raids"}, layerNames = {"PokéStops", "Arènes", "Raids"};
-        TextView[] layerRows = new TextView[layerKeys.length];
+        String[] layerIcons = {"stop.png", "gym.png", "raid-legendary.png"};
         for (int i = 0; i < layerKeys.length; i++) {
             final int bit = 1 << i; final String key = layerKeys[i];
-            TextView row = label(ui, layerNames[i], 14); row.setTypeface(SettingsUi.medium()); row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(dp(activity, 12), 0, dp(activity, 12), 0); row.setClickable(true); row.setFocusable(true);
-            row.setSelected(preferences.getBoolean(key, false)); if (row.isSelected()) map.setPoiLayer(bit, true);
+            LinearLayout row = new LinearLayout(ui); row.setGravity(Gravity.CENTER_VERTICAL); row.setClickable(true); row.setFocusable(true);
+            row.setPadding(dp(activity, 10), 0, dp(activity, 12), 0);
+            row.setBackground(SettingsUi.ripple(SettingsUi.rounded(ui, 0x00000000, 12)));
+            android.widget.ImageView icon = new android.widget.ImageView(ui); icon.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+            try (java.io.InputStream in = PgAssets.open(activity, "pgrazor/map-icons/" + layerIcons[i])) { icon.setImageBitmap(android.graphics.BitmapFactory.decodeStream(in)); }
+            catch (IOException | RuntimeException missing) { icon.setVisibility(View.INVISIBLE); }
+            row.addView(icon, new LinearLayout.LayoutParams(dp(activity, 26), dp(activity, 26)));
+            TextView name = label(ui, layerNames[i], 15); name.setTypeface(SettingsUi.medium()); name.setTextColor(SettingsUi.ink());
+            name.setPadding(dp(activity, 12), 0, dp(activity, 8), 0);
+            row.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
+            Switch toggle = new Switch(ui, preferences.getBoolean(key, false));
+            row.addView(toggle, new LinearLayout.LayoutParams(dp(activity, 38), dp(activity, 22)));
+            if (toggle.on) map.setPoiLayer(bit, true);
+            row.setContentDescription(layerNames[i]);
             row.setOnClickListener(v -> {
-                boolean on = !v.isSelected(); v.setSelected(on); paintLayer(ui, (TextView) v);
+                boolean on = !toggle.on; toggle.set(on);
                 map.setPoiLayer(bit, on); preferences.edit().putBoolean(key, on).apply(); map.refreshPois();
             });
-            layersCard.addView(row, new LinearLayout.LayoutParams(-1, dp(activity, 42)));
-            layerRows[i] = row;
+            layersCard.addView(row, new LinearLayout.LayoutParams(-1, dp(activity, 48)));
         }
         LinearLayout placesButton = pill(ui, MenuIcon.FAVORITES, "Lieux"), walkButton = pill(ui, MenuIcon.AUTOWALK, "Autowalk");
         if (hub) { side.addView(placesButton, pillParams(ui, 8)); side.addView(walkButton, pillParams(ui, 8)); }
@@ -287,7 +301,7 @@ public final class WorldMapDialog {
             paintFloating(ui, close, false); paintFloating(ui, current, false);
             paintFloating(ui, layersButton, false); paintFloating(ui, placesButton, false); paintFloating(ui, walkButton, false);
             layersCard.setBackground(SettingsUi.cardBackground(ui)); layersCard.setElevation(dp(activity, 4));
-            for (TextView row : layerRows) paintLayer(ui, row);
+            layersHead.setTextColor(SettingsUi.faint());
             status.setTextColor(SettingsUi.ink()); status.setBackground(SettingsUi.shape(ui, SettingsUi.surface(), 16, SettingsUi.border()));
             status.setElevation(dp(activity, 3));
             bubble.paint();
@@ -339,12 +353,45 @@ public final class WorldMapDialog {
     private static LinearLayout.LayoutParams pillParams(Context c, int top) {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(c, 40)); lp.topMargin = dp(c, top); lp.gravity = Gravity.END; return lp;
     }
-    /** A layer row: ✓ and the accent when shown. */
-    private static void paintLayer(Context c, TextView row) {
-        boolean on = row.isSelected();
-        row.setText((on ? "✓  " : "      ") + row.getText().toString().replace("✓  ", "").trim());
-        row.setTextColor(on ? SettingsUi.accent() : SettingsUi.muted());
-        row.setBackground(SettingsUi.ripple(SettingsUi.rounded(c, on ? SettingsUi.accentSoft() : 0x00000000, 10)));
+    /** A small on/off switch: an accent track with the knob on the right when on, a quiet track otherwise. */
+    private static final class Switch extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF track = new RectF();
+        boolean on;
+        /** Where the knob is, 0 (off) to 1 (on); it slides between the two. */
+        private float knob;
+        Switch(Context c, boolean on) {
+            super(c); this.on = on; knob = on ? 1 : 0;
+            setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        }
+        void set(boolean value) {
+            on = value;
+            android.animation.ValueAnimator slide = android.animation.ValueAnimator.ofFloat(knob, value ? 1 : 0).setDuration(140);
+            slide.addUpdateListener(a -> { knob = (float) a.getAnimatedValue(); invalidate(); });
+            slide.start();
+        }
+        @Override protected void onDraw(Canvas canvas) {
+            float h = getHeight(), w = getWidth(), r = h / 2, inset = Math.max(2, h * .14f);
+            track.set(0, 0, w, h);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(blend(SettingsUi.raised(), SettingsUi.accentFill(), knob));
+            canvas.drawRoundRect(track, r, r, paint);
+            if (knob < 1) {
+                float stroke = Math.max(1, h / 20);
+                track.inset(stroke / 2, stroke / 2);
+                paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(stroke); paint.setColor(SettingsUi.border());
+                paint.setAlpha(Math.round(255 * (1 - knob))); canvas.drawRoundRect(track, r, r, paint); paint.setAlpha(255);
+                paint.setStyle(Paint.Style.FILL);
+            }
+            paint.setColor(blend(SettingsUi.muted(), 0xffffffff, knob));
+            canvas.drawCircle(r + (w - 2 * r) * knob, r, r - inset, paint);
+        }
+        private static int blend(int from, int to, float t) {
+            return Color.argb(Math.round(Color.alpha(from) + (Color.alpha(to) - Color.alpha(from)) * t),
+                Math.round(Color.red(from) + (Color.red(to) - Color.red(from)) * t),
+                Math.round(Color.green(from) + (Color.green(to) - Color.green(from)) * t),
+                Math.round(Color.blue(from) + (Color.blue(to) - Color.blue(from)) * t));
+        }
     }
 
     /**
