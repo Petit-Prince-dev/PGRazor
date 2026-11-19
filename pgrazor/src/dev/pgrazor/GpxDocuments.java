@@ -13,7 +13,7 @@ import android.os.Bundle;
  * result back to a one-shot callback, without editing the host Activity or the manifest.
  *
  * <p>SAF needs no permissions: {@link Intent#ACTION_OPEN_DOCUMENT} returns a readable content URI
- * for import and {@link Intent#ACTION_CREATE_DOCUMENT} a writable one for export. The picker is a
+ * for import. The picker is a
  * separate Activity, so opening it pauses the host (and any PGRazor dialog bound to it dismisses);
  * this fragment lives on the Activity rather than on a dialog, so it survives that round-trip and
  * still delivers the chosen URI when the host resumes. Reading or writing the stream is the
@@ -35,14 +35,6 @@ public final class GpxDocuments extends Fragment {
     public static void open(Activity activity, Callback callback) {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT)
             .addCategory(Intent.CATEGORY_OPENABLE).setType("*/*");
-        launch(activity, intent, callback);
-    }
-
-    /** Opens the system picker to create a writable document (export) with a suggested file name. */
-    public static void create(Activity activity, String suggestedName, Callback callback) {
-        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT)
-            .addCategory(Intent.CATEGORY_OPENABLE).setType("application/gpx+xml")
-            .putExtra(Intent.EXTRA_TITLE, suggestedName);
         launch(activity, intent, callback);
     }
 

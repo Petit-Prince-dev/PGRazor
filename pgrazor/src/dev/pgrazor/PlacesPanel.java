@@ -33,7 +33,8 @@ final class PlacesPanel {
     /** What the map dialog does for the panel. Each move returns false when it was refused. */
     interface Host {
         void showOnMap(double latitude, double longitude);
-        void openRoute(GpxRoute route);
+        /** Shows a walk on the map; {@code stored} when it already is one of Mes trajets. */
+        void openRoute(GpxRoute route, boolean stored);
         boolean teleport(double latitude, double longitude);
         boolean walk(double latitude, double longitude);
         boolean walkRoute(double[][] stops, boolean loop);
@@ -113,12 +114,12 @@ final class PlacesPanel {
         if (loading) HubUi.empty(body, MenuIcon.AUTOWALK, "Chargement…", "Lecture de tes trajets enregistrés.");
         else if (walks == null) HubUi.empty(body, MenuIcon.AUTOWALK, "Trajets illisibles", "Impossible de lire les trajets enregistrés.");
         else if (walks.isEmpty())
-            HubUi.empty(body, MenuIcon.AUTOWALK, "Aucun trajet", "Crée une route sur la carte et enregistre-la (GPX), ou importe un fichier .gpx.");
+            HubUi.empty(body, MenuIcon.AUTOWALK, "Aucun trajet", "Sur la carte, reste appuyé pour poser des points, puis Enregistrer. Ou importe un fichier .gpx.");
         else {
             LinearLayout card = HubUi.card(body);
             for (GpxStore.Entry entry : walks) {
                 Button see = HubUi.button(ui, "Voir", false), jump = HubUi.button(ui, "Téléporter", false), go = HubUi.button(ui, "Démarrer", true);
-                see.setOnClickListener(v -> loadWalk(entry, host::openRoute));
+                see.setOnClickListener(v -> loadWalk(entry, route -> host.openRoute(route, true)));
                 jump.setOnClickListener(v -> loadWalk(entry, route -> teleportThenWalk(route, false)));
                 go.setOnClickListener(v -> loadWalk(entry, route -> startWalk(route, false)));
                 View line = HubUi.row(card, "GPX", entry.name, entry.count + (entry.count == 1 ? " arrêt" : " arrêts"), HubUi.actions(ui, see, jump, go), null, unfolded);
@@ -136,7 +137,7 @@ final class PlacesPanel {
                 double[][] stops = preset.route.points();
                 String detail = preset.place + " · " + stops.length + " arrêts" + (preset.loop ? " · boucle" : "") + " · " + HubUi.away(stops[0][0], stops[0][1]);
                 Button see = HubUi.button(ui, "Voir", false), jump = HubUi.button(ui, "Téléporter", false), go = HubUi.button(ui, "Démarrer", true);
-                see.setOnClickListener(v -> host.openRoute(preset.route));
+                see.setOnClickListener(v -> host.openRoute(preset.route, false));
                 jump.setOnClickListener(v -> teleportThenWalk(preset.route, preset.loop));
                 go.setOnClickListener(v -> startWalk(preset.route, preset.loop));
                 HubUi.row(card, preset.loop ? "Boucle" : "Trajet", preset.route.name, detail, HubUi.actions(ui, see, jump, go), null, unfolded);
@@ -225,7 +226,7 @@ final class PlacesPanel {
 
     /** Imports a .gpx and keeps it in "Mes trajets". The file picker closes the map, which then reopens here. */
     private void importGpx() {
-        GpxRouteDialog.importGpx(activity, "Mes trajets", route -> {
+        GpxImport.pick(activity, route -> {
             if (route == null) return;
             // Its own thread: the picker usually closed this panel (and its executor) meanwhile.
             new Thread(() -> {
@@ -234,7 +235,7 @@ final class PlacesPanel {
                 final String failed = error;
                 main.post(() -> {
                     Toast.makeText(activity, failed == null ? "Trajet ajouté : " + route.name : "Impossible d'enregistrer ce trajet : " + failed, Toast.LENGTH_LONG).show();
-                    if (!closed) reload(); else if (reopen != null) GpxRouteDialog.whenResumed(activity, reopen);
+                    if (!closed) reload(); else if (reopen != null) GpxImport.whenResumed(activity, reopen);
                 });
             }, "pgrazor-gpx-import").start();
         });
@@ -308,6 +309,51 @@ final class PlacesPanel {
                         if (after != null) after.run();
                     });
                 }, "pgrazor-favorite-save").start();
+            });
+        });
+        if (dialog.getWindow() != null) dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
+        dialog.show();
+        return dialog;
+    }
+
+    /** Receives the name a route was saved under. */
+    interface RouteSaved { void saved(String name); }
+
+    /** Names a route drawn on the map and keeps it in Mes trajets. */
+    static AlertDialog promptSaveRoute(Activity activity, Context ui, double[][] points, String suggested, RouteSaved after) {
+        if (activity.isFinishing() || activity.isDestroyed()) return null;
+        LinearLayout form = new LinearLayout(ui); form.setOrientation(LinearLayout.VERTICAL);
+        int pad = HubUi.dp(ui, 22); form.setPadding(pad, HubUi.dp(ui, 4), pad, 0);
+        form.addView(SettingsUi.text(ui, points.length + (points.length == 1 ? " point" : " points"), 13, SettingsUi.muted()));
+        EditText name = new EditText(ui); name.setHint("Nom du trajet"); name.setSingleLine(true);
+        name.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        name.setFilters(new InputFilter[]{new InputFilter.LengthFilter(GpxRoute.NAME_LIMIT)});
+        if (suggested != null) { name.setText(suggested); name.setSelection(name.length()); }
+        form.addView(name);
+        AlertDialog dialog = new AlertDialog.Builder(ui).setTitle("Enregistrer le trajet").setView(form)
+            .setNegativeButton("Annuler", null).setPositiveButton("Enregistrer", null).create();
+        Handler main = new Handler(Looper.getMainLooper());
+        DialogLifecycle.bind(activity, dialog, null);
+        dialog.setOnShowListener(d -> {
+            name.requestFocus();
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                final GpxRoute route;
+                try { route = new GpxRoute(name.getText().toString(), points); }
+                catch (IllegalArgumentException e) { name.setError(e.getMessage()); return; }
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+                new Thread(() -> {
+                    String error = null;
+                    try { new GpxStore(activity).save(route); }
+                    catch (IOException | RuntimeException e) { error = e.getMessage() == null ? "Impossible d'enregistrer ce trajet." : e.getMessage(); }
+                    final String failed = error;
+                    main.post(() -> {
+                        if (!dialog.isShowing()) return;
+                        if (failed != null) { dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true); name.setError(failed); return; }
+                        dialog.dismiss();
+                        Toast.makeText(activity, "Trajet enregistré : " + route.name + " (Lieux › Mes trajets)", Toast.LENGTH_SHORT).show();
+                        if (after != null) after.saved(route.name);
+                    });
+                }, "pgrazor-route-save").start();
             });
         });
         if (dialog.getWindow() != null) dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);

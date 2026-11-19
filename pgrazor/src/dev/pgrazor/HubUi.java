@@ -144,10 +144,14 @@ final class HubUi {
     /** "à 85 m" / "à 1,2 km" / "à 9 540 km" from the player's current position. */
     static String away(double latitude, double longitude) {
         double meters = RouteStart.meters(Control.engine.latitude, Control.engine.longitude, latitude, longitude);
-        if (!Double.isFinite(meters)) return "";
-        if (meters < 1000) return "à " + Math.round(meters) + " m";
-        if (meters < 100000) return String.format(Locale.FRANCE, "à %.1f km", meters / 1000);
-        return String.format(Locale.FRANCE, "à %,d km", Math.round(meters / 1000));
+        return Double.isFinite(meters) ? "à " + length(meters) : "";
+    }
+
+    /** "85 m" / "1,2 km" / "9 540 km". */
+    static String length(double meters) {
+        if (meters < 1000) return Math.round(meters) + " m";
+        if (meters < 100000) return String.format(Locale.FRANCE, "%.1f km", meters / 1000);
+        return String.format(Locale.FRANCE, "%,d km", Math.round(meters / 1000));
     }
 
     static int dp(Context c, float value) { return SettingsUi.dp(c, value); }

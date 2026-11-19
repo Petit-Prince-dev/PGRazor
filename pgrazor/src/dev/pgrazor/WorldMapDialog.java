@@ -42,17 +42,11 @@ import java.util.concurrent.TimeUnit;
  * never changes the location: every move is an explicit Teleport, Walk or Start.
  */
 public final class WorldMapDialog {
-    /**
-     * A GPX route imported or picked for the route builder. The system file picker pauses the host
-     * and dismisses this dialog, so the choice is stashed here and restored as the draft when the
-     * route builder is reopened. Cleared when the route is started or the draft is cleared.
-     */
-    static volatile GpxRoute pendingRoute;
-
     public interface DestinationListener {
         /** Return true after applying the destination, or false to keep the picker open. */
         boolean onDestination(double latitude, double longitude);
     }
+    interface LongPress { void at(double latitude, double longitude); }
     public interface RouteListener {
         /** Coordinates are copied in visit order; loop repeats from the first stop. Return true only after accepting the route. */
         boolean onRoute(double[][] waypoints, boolean loop);
@@ -76,7 +70,7 @@ public final class WorldMapDialog {
 
     /**
      * With walking and routes available this is the travel hub: one full-screen window with three tabs,
-     * Carte (the map and the route builder), Lieux (favourites, hotspots, saved and ready-made walks)
+     * Carte (the map; a long press adds a route point), Lieux (favourites, hotspots, saved and ready-made walks)
      * and Autowalk. Opened from elsewhere just to look at a spot, it is the map alone.
      */
     public static AlertDialog show(Activity activity, double latitude, double longitude, DestinationListener listener, DestinationListener walk, RouteListener route, int tab) {
@@ -135,10 +129,17 @@ public final class WorldMapDialog {
         // The map fills the space left by the controls (see ResponsiveLayout); this is only a baseline height.
         layout.addView(map, new LinearLayout.LayoutParams(-1, dp(activity, 240)));
 
-        // Pin coordinates (tap: centre on the pin and copy them), then the hint (route progress in route mode).
-        selected.setTypeface(SettingsUi.mono()); selected.setPadding(0, dp(activity, 6), 0, dp(activity, 2));
+        // The pin line: its coordinates (tap: centre on the pin and copy them), then Favori and Moi.
+        LinearLayout pinRow = new LinearLayout(ui); pinRow.setGravity(Gravity.CENTER_VERTICAL); pinRow.setTag(DialogStyle.KEEP);
+        pinRow.setPadding(0, dp(activity, 4), 0, 0);
+        selected.setTypeface(SettingsUi.mono()); selected.setSingleLine(true); selected.setPadding(dp(activity, 2), dp(activity, 6), dp(activity, 2), dp(activity, 6));
         selected.setClickable(true); selected.setFocusable(true); selected.setContentDescription("Centrer sur l'épingle et copier ses coordonnées");
-        layout.addView(selected);
+        pinRow.addView(selected, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView favorite = chip(ui, "☆ Favori"), current = chip(ui, "◎ Moi");
+        favorite.setContentDescription("Ajouter l'épingle à tes favoris");
+        current.setContentDescription("Centrer la carte sur ta position en jeu");
+        pinRow.addView(favorite); pinRow.addView(current);
+        layout.addView(pinRow);
         TextView hint = label(ui, "", 11);
         layout.addView(hint);
 
@@ -155,31 +156,22 @@ public final class WorldMapDialog {
         }
         layout.addView(layers);
 
-        // Tools: back to my position, keep the pin as a favourite, build a route.
-        LinearLayout tools = new LinearLayout(ui);
-        Button current = toolButton(ui, "Ma position"), save = toolButton(ui, "Enregistrer"), routeMode = toolButton(ui, "Créer une route");
-        current.setContentDescription("Centrer la carte sur ta position en jeu");
-        save.setContentDescription("Ajouter l'épingle à tes favoris");
-        tools.addView(current, toolParams(activity)); tools.addView(save, toolParams(activity));
-        if (route != null) tools.addView(routeMode, toolParams(activity));
-        layout.addView(tools);
-        // Route builder tools, shown only while a route is being built: stops, GPX, loop and clear.
-        LinearLayout routePanel = new LinearLayout(ui); routePanel.setOrientation(LinearLayout.VERTICAL); routePanel.setVisibility(View.GONE);
-        LinearLayout routeButtons = new LinearLayout(ui);
-        Button add = toolButton(ui, "Ajouter un arrêt"), undo = toolButton(ui, "Annuler"), stops = toolButton(ui, "Arrêts"), gpx = toolButton(ui, "GPX");
-        add.setContentDescription("Ajouter l'épingle comme prochain arrêt"); undo.setContentDescription("Annuler le dernier arrêt");
-        stops.setContentDescription("Voir les arrêts dans l'ordre"); gpx.setContentDescription("Enregistrer, importer ou exporter une route GPX");
-        for (Button b : new Button[]{add, undo, stops, gpx}) routeButtons.addView(b, toolParams(activity));
-        routePanel.addView(routeButtons);
-        LinearLayout routeTools = new LinearLayout(ui); routeTools.setGravity(Gravity.CENTER_VERTICAL);
-        CheckBox loop = new CheckBox(ui); loop.setText("Route en boucle"); loop.setTextSize(12);
-        loop.setContentDescription("Répéter la route depuis le premier arrêt après le dernier");
-        routeTools.addView(loop, new LinearLayout.LayoutParams(0, dp(activity, 40), 1));
-        Button clearRoute = toolButton(ui, "Effacer la route");
-        clearRoute.setContentDescription("Effacer tous les arrêts du brouillon de route");
-        routeTools.addView(clearRoute, new LinearLayout.LayoutParams(dp(activity, 120), dp(activity, 36)));
-        routePanel.addView(routeTools);
-        layout.addView(routePanel);
+        // The route drawn with long presses: what it is, then undo, save and walk it.
+        LinearLayout routeBar = new LinearLayout(ui); routeBar.setOrientation(LinearLayout.VERTICAL); routeBar.setTag(DialogStyle.KEEP);
+        routeBar.setPadding(dp(activity, 12), dp(activity, 8), dp(activity, 10), dp(activity, 10)); routeBar.setVisibility(View.GONE);
+        LinearLayout routeHead = new LinearLayout(ui); routeHead.setGravity(Gravity.CENTER_VERTICAL);
+        TextView routeSummary = label(ui, "", 13); routeSummary.setTypeface(SettingsUi.medium()); routeSummary.setSingleLine(true);
+        routeSummary.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        routeHead.addView(routeSummary, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView clearRoute = chip(ui, "Effacer"); clearRoute.setContentDescription("Effacer tous les points de la route");
+        routeHead.addView(clearRoute);
+        routeBar.addView(routeHead);
+        Button undo = HubUi.button(ui, "↶ Annuler", false), saveRoute = HubUi.button(ui, "Enregistrer", false), startRoute = HubUi.button(ui, "Démarrer", true);
+        undo.setContentDescription("Retirer le dernier point");
+        LinearLayout routeButtons = HubUi.actions(ui, undo, saveRoute, startRoute); routeButtons.setPadding(0, dp(activity, 6), 0, 0);
+        routeBar.addView(routeButtons);
+        LinearLayout.LayoutParams routeBarParams = new LinearLayout.LayoutParams(-1, -2); routeBarParams.topMargin = dp(activity, 4); routeBarParams.bottomMargin = dp(activity, 4);
+        layout.addView(routeBar, routeBarParams);
 
         // Status and the tile attribution share one small line (failed tiles are retried on their own).
         LinearLayout foot = new LinearLayout(ui); foot.setGravity(Gravity.CENTER_VERTICAL); foot.setPadding(0, dp(activity, 2), 0, dp(activity, 6));
@@ -214,15 +206,15 @@ public final class WorldMapDialog {
         current.setOnClickListener(v -> map.centerCurrentLocation());
         selected.setOnClickListener(v -> { map.centerSelection(); CoordinateClipboard.copy(activity, map.latitude, map.longitude, "Coordonnées de l'épingle copiées"); });
 
-        RouteUi routes = route == null ? null : new RouteUi(activity, ui, map, routeMode, hint, routePanel, add, undo, stops, gpx, clearRoute, loop, route, walk != null);
-        if (routes != null) { routes.reopen = () -> WorldMapDialog.show(activity, Control.engine.latitude, Control.engine.longitude, listener, walk, route, TAB_MAP); routes.action = teleport; routes.walkAction = walkHere; }
-        else hint.setText(MAP_HINT);
+        RouteDraft draft = route == null ? null : new RouteDraft(activity, ui, map, routeBar, routeSummary, undo, saveRoute, startRoute, clearRoute, route);
+        if (draft != null) map.onLongPress = draft::add;
+        hint.setText(draft == null ? MAP_HINT : ROUTE_HINT);
 
         // ----- Pages Lieux and Autowalk (hub only).
         final Tabs pager = hub ? new Tabs(ui, tabs, new View[3]) : null;
         final PlacesPanel places = !hub ? null : new PlacesPanel(activity, ui, new PlacesPanel.Host() {
             public void showOnMap(double lat, double lon) { pager.select(TAB_MAP); map.select(lat, lon); }
-            public void openRoute(GpxRoute chosen) { pager.select(TAB_MAP); routes.load(chosen); }
+            public void openRoute(GpxRoute chosen, boolean stored) { pager.select(TAB_MAP); draft.load(chosen, stored); }
             public boolean teleport(double lat, double lon) { return listener.onDestination(lat, lon); }
             public boolean walk(double lat, double lon) { return walk.onDestination(lat, lon); }
             public boolean walkRoute(double[][] points, boolean looping) { return route.onRoute(points, looping); }
@@ -236,13 +228,14 @@ public final class WorldMapDialog {
             pager.onSelect = index -> { if (index == TAB_PLACES) places.reload(); if (index == TAB_WALK) walker.resume(); else walker.pause(); };
             for (int i = 0; i < tabs.length; i++) { final int index = i; tabs[i].setOnClickListener(v -> pager.select(index)); }
         }
-        save.setOnClickListener(v -> {
+        favorite.setOnClickListener(v -> {
             if (favoriteDialog[0] != null && favoriteDialog[0].isShowing()) return;
             favoriteDialog[0] = PlacesPanel.promptSave(activity, ui, map.latitude, map.longitude, places == null ? null : places::reload);
         });
 
         AlertDialog dialog = new AlertDialog.Builder(ui).setView(root).create();
         self[0] = dialog;
+        if (draft != null) { draft.parent = dialog; draft.saved = places == null ? null : places::reload; }
         close.setOnClickListener(v -> dialog.dismiss());
         map.poiLayer.setDestinationActions(walk == null ? null : (lat, lon) -> {
             if (!walk.onDestination(lat, lon)) return false;
@@ -256,7 +249,6 @@ public final class WorldMapDialog {
             return false; // Keep details visible if the cooldown confirmation is cancelled.
         });
         teleport.setOnClickListener(v -> {
-            if (routes != null && routes.editing) { routes.start(); return; }
             if (cooldownDialog[0] != null && cooldownDialog[0].isShowing()) return;
             cooldownDialog[0] = TeleportDialog.confirm(activity, map.latitude, map.longitude, (lat, lon) -> {
                 if (!listener.onDestination(lat, lon)) return false;
@@ -266,7 +258,7 @@ public final class WorldMapDialog {
         if (walk != null) walkHere.setOnClickListener(v -> { if (walk.onDestination(map.latitude, map.longitude)) dialog.dismiss(); });
         DialogLifecycle.bind(activity, dialog, () -> {
             for (AlertDialog child : new AlertDialog[]{cooldownDialog[0], searchDialog[0], favoriteDialog[0]}) if (child != null) child.dismiss();
-            if (routes != null) routes.close();
+            if (draft != null) draft.close();
             if (places != null) places.close();
             if (walker != null) walker.close();
             map.close();
@@ -282,12 +274,10 @@ public final class WorldMapDialog {
             search.setTextColor(SettingsUi.faint()); search.setBackground(SettingsUi.ripple(SettingsUi.fieldBackground(ui)));
             teleport.setTextColor(SettingsUi.accentInk()); teleport.setBackground(SettingsUi.ripple(SettingsUi.rounded(ui, SettingsUi.accentFill(), 12)));
             walkHere.setTextColor(SettingsUi.ink()); walkHere.setBackground(SettingsUi.ripple(SettingsUi.shape(ui, SettingsUi.raised(), 12, SettingsUi.border())));
-            if (routes != null) routes.attach(dialog);
-            if (pager != null) {
-                // A route being built (GPX picked, or reopened after the file picker) always shows the map.
-                boolean building = routes != null && routes.editing;
-                pager.select(building ? TAB_MAP : tab >= 0 ? tab : lastTab);
-            }
+            for (TextView link : new TextView[]{favorite, current, clearRoute}) paintChip(ui, link);
+            routeBar.setBackground(SettingsUi.cardBackground(ui)); routeSummary.setTextColor(SettingsUi.ink());
+            HubUi.paint(undo, false); HubUi.paint(saveRoute, false); HubUi.paint(startRoute, true);
+            if (pager != null) pager.select(tab >= 0 ? tab : lastTab);
         });
         dialog.show();
         return dialog;
@@ -324,6 +314,17 @@ public final class WorldMapDialog {
     }
 
     static final String MAP_HINT = "Touche la carte pour placer l'épingle · glisse pour bouger · pince pour zoomer.";
+    static final String ROUTE_HINT = "Touche : épingle · appui long : point de route · pince : zoom";
+
+    /** A small accent text button on the map page (Favori, Moi, Effacer). */
+    private static TextView chip(Context c, String text) {
+        TextView t = label(c, text, 12); t.setTypeface(SettingsUi.medium()); t.setSingleLine(true); t.setGravity(Gravity.CENTER);
+        t.setClickable(true); t.setFocusable(true); t.setPadding(dp(c, 10), dp(c, 6), dp(c, 10), dp(c, 6));
+        return t;
+    }
+    private static void paintChip(Context c, TextView chip) {
+        chip.setTextColor(SettingsUi.accent()); chip.setBackground(SettingsUi.ripple(SettingsUi.rounded(c, 0x00000000, 8)));
+    }
 
     private static LinearLayout.LayoutParams toolParams(Context c) {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(c, 36), 1); lp.setMargins(dp(c, 2), dp(c, 2), dp(c, 2), dp(c, 2)); return lp;
@@ -339,136 +340,79 @@ public final class WorldMapDialog {
     private static int dp(Context c, float value) { return Math.round(value * c.getResources().getDisplayMetrics().density); }
     private static TextView label(Context c, String text, int size) { TextView v = new TextView(c); v.setText(text); v.setTextSize(size); return v; }
 
-    /** Route mode reuses the map toolbar and dialog action rather than consuming another row. */
-    private static final class RouteUi {
-        /** Manual builder cap; imported GPX routes may be larger, up to {@link #MAX}. */
-        static final int LIMIT=50;
-        static final int MAX=GpxCodec.MAX_POINTS;
+    /**
+     * The route drawn on the map: each long press adds a point. The bar under the map takes the last
+     * point back, saves the route (it then shows in Lieux, Mes trajets) or walks it in order.
+     */
+    private static final class RouteDraft {
         final Activity activity;
         final Context ui;
         final MapView map;
-        final Button mode,add,undo,stops,gpx,clearRoute;
-        final View panel;
-        final TextView hint;
-        final CheckBox loop;
+        final View bar;
+        final TextView summary;
+        final Button undo, save, start;
         final RouteListener listener;
-        final boolean hasWalk;
-        final List<double[]> draft=new ArrayList<>();
-        final List<AlertDialog> dialogs=new ArrayList<>();
-        AlertDialog parent;
-        /** The map's own title and action buttons (the dialog has no built-in title or button bar). */
-        TextView title;
-        Button action, walkAction;
-        boolean editing;
-        /** The current draft came from a GPX import/selection, so it may exceed the manual LIMIT. */
-        boolean imported;
-        String routeName="Route";
-        Runnable reopen;
-        boolean closed;
-        RouteUi(Activity activity,Context ui,MapView map,Button mode,TextView hint,View panel,Button add,Button undo,Button stops,Button gpx,Button clearRoute,CheckBox loop,RouteListener listener,boolean hasWalk) {
-            this.activity=activity;this.ui=ui;this.map=map;this.mode=mode;this.hint=hint;this.loop=loop;this.panel=panel;
-            this.add=add;this.undo=undo;this.stops=stops;this.gpx=gpx;this.clearRoute=clearRoute;this.listener=listener;this.hasWalk=hasWalk;
-            clearRoute.setOnClickListener(v -> clearDraft());
-            mode.setOnClickListener(v -> {editing=!editing;if(editing)maybeLoadPending();refresh();});
-            add.setOnClickListener(v -> addStop());
+        final List<double[]> points = new ArrayList<>();
+        AlertDialog parent, saveDialog;
+        /** Runs after a save, so Lieux shows the new walk. */
+        Runnable saved;
+        /** Name of the walk opened from Lieux, offered again when saving. */
+        String name;
+        /** Something to save: false right after a saved walk is opened or this one is saved. */
+        boolean changed;
+        RouteDraft(Activity activity, Context ui, MapView map, View bar, TextView summary, Button undo, Button save, Button start, TextView clear, RouteListener listener) {
+            this.activity = activity; this.ui = ui; this.map = map; this.bar = bar; this.summary = summary;
+            this.undo = undo; this.save = save; this.start = start; this.listener = listener;
             undo.setOnClickListener(v -> undo());
-            stops.setOnClickListener(v -> showStops());
-            gpx.setOnClickListener(v -> {if(editing)GpxRouteDialog.menu(activity,this::sourceRoute,this::onGpxChosen);});
+            clear.setOnClickListener(v -> { points.clear(); name = null; changed = false; refresh(); });
+            save.setOnClickListener(v -> save());
+            start.setOnClickListener(v -> start());
+            refresh();
         }
-        void attach(AlertDialog parent) {this.parent=parent;if(pendingRoute!=null){editing=true;maybeLoadPending();}refresh();}
+        void add(double latitude, double longitude) {
+            if (points.size() >= GpxCodec.MAX_POINTS) { Toast.makeText(activity, "Une route peut avoir au plus " + GpxCodec.MAX_POINTS + " points.", Toast.LENGTH_SHORT).show(); return; }
+            points.add(new double[]{latitude, longitude}); changed = true; refresh();
+        }
+        void undo() {
+            if (points.isEmpty()) return;
+            points.remove(points.size() - 1); changed = true;
+            if (points.isEmpty()) { name = null; changed = false; }
+            refresh();
+        }
+        /** Shows a walk from Lieux on the map, framed whole; {@code stored} when it is already one of Mes trajets. */
+        void load(GpxRoute route, boolean stored) {
+            points.clear();
+            for (double[] point : route.points()) points.add(point);
+            name = route.name; changed = !stored; refresh();
+            if (!points.isEmpty()) { map.pin(points.get(0)[0], points.get(0)[1]); map.fit(points); }
+        }
         void refresh() {
-            if(draft.isEmpty())imported=false;
-            boolean big=draft.size()>LIMIT;
-            mode.setText(editing ? "Quitter la route" : "Créer une route");
-            mode.setContentDescription(editing ? "Quitter le créateur de route sans démarrer" : "Ouvrir le créateur de route");
-            hint.setText(!editing ? MAP_HINT
-                : big ? "Route GPX : "+draft.size()+" arrêts. Touche Démarrer pour la parcourir dans l'ordre."
-                : "Route : "+draft.size()+"/"+LIMIT+" arrêts. Touche la carte, puis Ajouter un arrêt.");
-            panel.setVisibility(editing ? View.VISIBLE : View.GONE); // the loop toggle defaults to stopping at the last stop
-            stops.setText("Arrêts ("+draft.size()+")");
-            clearRoute.setEnabled(!draft.isEmpty());
-            add.setEnabled(draft.size()<LIMIT);undo.setEnabled(!draft.isEmpty());
-            if(title!=null)title.setText(editing ? "Créer une route" : "Carte du monde");
-            if(action!=null) {
-                action.setText(editing ? "Démarrer la route" : "Téléporter");
-                action.setContentDescription(editing ? "Démarrer la route dans l'ordre des arrêts" : "Se téléporter à la destination choisie");
-                action.setEnabled(!editing || (draft.size()>=(imported?1:2) && draft.size()<=MAX));
-                if(walkAction!=null && hasWalk)walkAction.setVisibility(editing ? View.GONE : View.VISIBLE);
-            }
-            map.setRoute(draft);
+            bar.setVisibility(points.isEmpty() ? View.GONE : View.VISIBLE);
+            double meters = 0;
+            for (int i = 1; i < points.size(); i++) meters += RouteStart.meters(points.get(i - 1)[0], points.get(i - 1)[1], points.get(i)[0], points.get(i)[1]);
+            summary.setText((name == null ? "Route" : name) + " · " + points.size() + (points.size() == 1 ? " point" : " points")
+                + (points.size() > 1 ? " · " + HubUi.length(meters) : ""));
+            save.setEnabled(changed); save.setAlpha(changed ? 1f : .5f); save.setText(changed ? "Enregistrer" : "Enregistrée");
+            map.setRoute(points);
         }
-        void addStop() {
-            if(draft.size()>=LIMIT)return;
-            double lat=map.latitude,lon=map.longitude;
-            if(!Double.isFinite(lat) || !Double.isFinite(lon) || Math.abs(lat)>90 || Math.abs(lon)>180) {
-                Toast.makeText(activity,"Choisis des coordonnées valides pour cet arrêt.",Toast.LENGTH_SHORT).show();return;
-            }
-            draft.add(new double[]{lat,lon});refresh();
-        }
-        void undo() {if(!draft.isEmpty())draft.remove(draft.size()-1);refresh();}
-        void clearDraft() {draft.clear();imported=false;routeName="Route";WorldMapDialog.pendingRoute=null;refresh();}
-        void showStops() {
-            AlertDialog.Builder builder=new AlertDialog.Builder(ui).setTitle("Arrêts de la route ("+draft.size()+(draft.size()>LIMIT?"":"/"+LIMIT)+")")
-                .setNegativeButton("Fermer",null).setPositiveButton("Effacer la route",null);
-            if(draft.isEmpty())builder.setMessage("Choisis une destination sur la carte et touche Ajouter un arrêt. Ajoute au moins deux arrêts avant de démarrer.");
-            AlertDialog dialog=builder.create();dialogs.add(dialog);
-            if(!draft.isEmpty()){
-                String[] rows=new String[draft.size()];
-                for(int i=0;i<rows.length;i++)rows[i]=String.format(Locale.US,"Stop %d\n%.6f, %.6f",i+1,draft.get(i)[0],draft.get(i)[1]);
-                ChoiceList.attach(dialog,rows,index -> {double[] stop=draft.get(index);map.select(stop[0],stop[1]);});
-            }
-            dialog.setOnDismissListener(d -> dialogs.remove(dialog));
-            dialog.setOnShowListener(d -> {
-                Button clear=dialog.getButton(AlertDialog.BUTTON_POSITIVE);clear.setEnabled(!draft.isEmpty());
-                clear.setOnClickListener(v -> {clearDraft();dialog.dismiss();});
+        void save() {
+            if (points.isEmpty() || (saveDialog != null && saveDialog.isShowing())) return;
+            saveDialog = PlacesPanel.promptSaveRoute(activity, ui, toArray(), name, savedName -> {
+                name = savedName; changed = false; refresh();
+                if (saved != null) saved.run();
             });
-            dialog.show();
-        }
-        /** Load a chosen GPX route as the current draft; it stays an explicit Start, never auto-walks. */
-        void onGpxChosen(GpxRoute route) {
-            WorldMapDialog.pendingRoute=route; // survive the picker round-trip / dialog dismissal
-            if(route==null)return;
-            if(closed){if(reopen!=null)GpxRouteDialog.whenResumed(activity,reopen);return;}
-            routeName=route.name;
-            if(!editing)editing=true;
-            apply(route.points());
-            refresh();
-            if(!draft.isEmpty())map.select(draft.get(0)[0],draft.get(0)[1]); // bring the route into view
-        }
-        /** Opens a walk in the builder to look at or change it; nothing starts until Démarrer la route. */
-        void load(GpxRoute route) {
-            if(closed||route==null)return;
-            routeName=route.name;editing=true;
-            apply(route.points());
-            refresh();
-            if(!draft.isEmpty()){map.pin(draft.get(0)[0],draft.get(0)[1]);map.fit(draft);}
-        }
-        /** Restore an imported/selected route when the builder is reopened, without clobbering a manual draft. */
-        void maybeLoadPending() {
-            GpxRoute pending=WorldMapDialog.pendingRoute;
-            if(pending!=null && draft.isEmpty()){routeName=pending.name;apply(pending.points());if(!draft.isEmpty())map.select(draft.get(0)[0],draft.get(0)[1]);}
-        }
-        private void apply(double[][] points) {
-            draft.clear();
-            for(double[] p:points)draft.add(new double[]{p[0],p[1]});
-            imported=true;
-        }
-        /** The current draft offered to the GPX menu for Save/Export; a placeholder name is renamed on Save. */
-        GpxRoute sourceRoute() {
-            if(draft.isEmpty())return null;
-            try {GpxRoute current=new GpxRoute(routeName,toArray());WorldMapDialog.pendingRoute=current;return current;}
-            catch(IllegalArgumentException invalid){return null;}
-        }
-        private double[][] toArray() {
-            double[][] points=new double[draft.size()][2];
-            for(int i=0;i<points.length;i++) {points[i][0]=draft.get(i)[0];points[i][1]=draft.get(i)[1];}
-            return points;
         }
         void start() {
-            if(draft.size()<(imported?1:2) || draft.size()>MAX)return;
-            if(listener.onRoute(toArray(),loop.isChecked())){WorldMapDialog.pendingRoute=null;parent.dismiss();}
+            if (points.isEmpty() || !listener.onRoute(toArray(), false)) return;
+            Toast.makeText(activity, "En route : " + points.size() + (points.size() == 1 ? " point" : " points"), Toast.LENGTH_SHORT).show();
+            if (parent != null) parent.dismiss();
         }
-        void close() {closed=true;for(AlertDialog dialog:new ArrayList<>(dialogs))dialog.dismiss();draft.clear();}
+        private double[][] toArray() {
+            double[][] copy = new double[points.size()][];
+            for (int i = 0; i < copy.length; i++) copy[i] = new double[]{points.get(i)[0], points.get(i)[1]};
+            return copy;
+        }
+        void close() { if (saveDialog != null) saveDialog.dismiss(); }
     }
 
     /** Give the map the space left after controls, rather than guessing from physical screen orientation. */
@@ -513,7 +457,20 @@ public final class WorldMapDialog {
         private double zoomScale=1;
         /** Gesture state: where the touch began, and the fingers' midpoint and spread on the last event. */
         private float downX, downY, focusX, focusY, spread;
-        private boolean dragged, multiTouch;
+        private boolean dragged, multiTouch, longPressed;
+        /** Set by the hub: a finger held still on the map adds a route point there. */
+        LongPress onLongPress;
+        private final Runnable longPress = new Runnable() {
+            public void run() {
+                if (closed || dragged || multiTouch || onLongPress == null) return;
+                boolean insideWorld = zoom != 0 || (Math.abs(downX - getWidth() / 2.0) <= world() / 2 && Math.abs(downY - getHeight() / 2.0) <= world() / 2);
+                if (!insideWorld) return;
+                longPressed = true;
+                performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+                onLongPress.at(MapProjection.latitude(MapProjection.offsetY(centerY, downY - getHeight() / 2.0, world())),
+                    MapProjection.longitude(MapProjection.offsetX(centerX, downX - getWidth() / 2.0, world())));
+            }
+        };
         private final Runnable locationRefresh = new Runnable() {
             public void run() {
                 if(closed) return;
@@ -708,19 +665,24 @@ public final class WorldMapDialog {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     getParent().requestDisallowInterceptTouchEvent(true);
-                    track(event, -1); downX = focusX; downY = focusY; dragged = false; multiTouch = false; return true;
-                case MotionEvent.ACTION_POINTER_DOWN: multiTouch = true; track(event, -1); return true;
+                    track(event, -1); downX = focusX; downY = focusY; dragged = false; multiTouch = false; longPressed = false;
+                    removeCallbacks(longPress);
+                    if (onLongPress != null) postDelayed(longPress, ViewConfiguration.getLongPressTimeout());
+                    return true;
+                case MotionEvent.ACTION_POINTER_DOWN: multiTouch = true; removeCallbacks(longPress); track(event, -1); return true;
                 case MotionEvent.ACTION_POINTER_UP: track(event, event.getActionIndex()); return true;
                 case MotionEvent.ACTION_MOVE: {
                     float lastX = focusX, lastY = focusY, lastSpread = spread;
                     track(event, -1);
-                    if (!dragged && (multiTouch || Math.hypot(focusX - downX, focusY - downY) > slop)) dragged = true;
+                    if (!dragged && (multiTouch || Math.hypot(focusX - downX, focusY - downY) > slop)) { dragged = true; removeCallbacks(longPress); }
                     if (!dragged) return true;
                     if (event.getPointerCount() > 1 && lastSpread > 0 && spread > 0) moveAndZoom(lastX, lastY, focusX, focusY, spread / lastSpread);
                     else if (zoom != 0 || zoomScale > 1) moveAndZoom(lastX, lastY, focusX, focusY, 1);
                     return true;
                 }
                 case MotionEvent.ACTION_UP:
+                    removeCallbacks(longPress);
+                    if (longPressed) { getParent().requestDisallowInterceptTouchEvent(false); return true; }
                     boolean insideWorld = zoom != 0 || (Math.abs(event.getX() - getWidth() / 2.0) <= world() / 2 && Math.abs(event.getY() - getHeight() / 2.0) <= world() / 2);
                     if (!dragged && !multiTouch) {
                         // Browsing marker details never moves the destination; movement needs an explicit action.
@@ -733,7 +695,7 @@ public final class WorldMapDialog {
                         }
                     }
                     getParent().requestDisallowInterceptTouchEvent(false); return true;
-                case MotionEvent.ACTION_CANCEL: getParent().requestDisallowInterceptTouchEvent(false); return true;
+                case MotionEvent.ACTION_CANCEL: removeCallbacks(longPress); getParent().requestDisallowInterceptTouchEvent(false); return true;
                 default: return true;
             }
         }
@@ -764,7 +726,7 @@ public final class WorldMapDialog {
         public boolean performClick() { super.performClick(); return true; }
 
         void close() {
-            removeCallbacks(locationRefresh);
+            removeCallbacks(locationRefresh); removeCallbacks(longPress);
             if (closed) return;
             closed = true;
             poiLayer.close();
