@@ -81,7 +81,7 @@ public final class WorldMapDialog {
             throw new IllegalArgumentException("Coordonnées de carte invalides");
         Context ui = MapTheme.wrap(activity); // themed chrome; the map view itself keeps the real Activity
         final boolean hub = walk != null && route != null;
-        final AlertDialog[] self = {null}, cooldownDialog = {null}, searchDialog = {null};
+        final AlertDialog[] self = {null}, cooldownDialog = {null};
 
         FullRoot root = new FullRoot(activity);
         TextView status = label(ui, "", 12);
@@ -93,9 +93,7 @@ public final class WorldMapDialog {
         root.controls = controls; root.safe(0, 0, 0, 0);
         root.addView(controls, new android.widget.FrameLayout.LayoutParams(-1, -1));
         LinearLayout topRow = new LinearLayout(ui); topRow.setGravity(Gravity.CENTER_VERTICAL);
-        TextView search = floating(ui, "Chercher un lieu ou des coordonnées", 14);
-        search.setGravity(Gravity.CENTER_VERTICAL); search.setPadding(dp(activity, 18), 0, dp(activity, 18), 0);
-        topRow.addView(search, new LinearLayout.LayoutParams(0, dp(activity, 44), 1));
+        // The search field takes the start of this row once it exists (see MapSearchBar below).
         TextView close = floating(ui, "✕", 17); close.setContentDescription("Fermer la carte");
         LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(dp(activity, 44), dp(activity, 44)); closeParams.leftMargin = dp(activity, 8);
         topRow.addView(close, closeParams);
@@ -180,21 +178,24 @@ public final class WorldMapDialog {
             if (routing[0]) bubble.hide();
         };
         exitRoute.setOnClickListener(v -> { routing[0] = false; if (draft != null) draft.clear(); applyMode.run(); });
+        // The search: suggestions unfold under the bar as you type; a choice centres the map and opens its bubble.
+        MapSearchBar searchBar = new MapSearchBar(activity, ui, () -> new double[]{MapProjection.latitude(map.centerY), MapProjection.longitude(map.centerX)},
+            (lat, lon) -> { map.centerOn(lat, lon); if (!routing[0]) bubble.show(lat, lon, null); });
+        topRow.addView(searchBar.input, 0, new LinearLayout.LayoutParams(0, dp(activity, 44), 1));
+        android.widget.FrameLayout.LayoutParams suggestionParams = new android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.TOP);
+        suggestionParams.topMargin = dp(activity, 52);
+        controls.addView(searchBar.suggestions, suggestionParams);
         if (draft != null) map.onLongPress = (lat, lon) -> {
-            closeLayers.run();
+            closeLayers.run(); searchBar.dismiss();
             if (!routing[0]) { routing[0] = true; applyMode.run(); }
             draft.add(lat, lon);
         };
         map.onPick = (lat, lon, kind) -> {
             if (layersCard.getVisibility() == View.VISIBLE) { closeLayers.run(); return; }
+            if (searchBar.dismiss()) return;
             if (routing[0] && draft != null) draft.add(lat, lon); else bubble.show(lat, lon, kind);
         };
         map.refreshPois();
-        search.setOnClickListener(v -> {
-            if (searchDialog[0] != null && searchDialog[0].isShowing()) return;
-            searchDialog[0] = MapSearchDialog.show(activity, MapProjection.latitude(map.centerY),
-                MapProjection.longitude(map.centerX), (lat, lon) -> { map.centerOn(lat, lon); if (!routing[0]) bubble.show(lat, lon, null); });
-        });
         current.setOnClickListener(v -> map.centerCurrentLocation());
 
         // ----- Lieux and Autowalk: panels over the map (hub only); ‹ or Back returns to the map.
@@ -239,7 +240,7 @@ public final class WorldMapDialog {
                 panelViews[index] = page; panelHeads[index] = title;
                 final int which = index;
                 openPanel[index] = () -> {
-                    closeLayers.run(); closePanel.run();
+                    closeLayers.run(); searchBar.dismiss(); closePanel.run();
                     panel[0] = panelViews[which]; panel[0].setVisibility(View.VISIBLE);
                     if (which == TAB_PLACES) places.reload(); else walker.resume();
                 };
@@ -270,7 +271,8 @@ public final class WorldMapDialog {
         // Opened just to look at a spot (not the hub), its bubble is up from the start.
         if (!hub) bubble.show(latitude, longitude, null);
         DialogLifecycle.bind(activity, dialog, () -> {
-            for (AlertDialog child : new AlertDialog[]{cooldownDialog[0], searchDialog[0]}) if (child != null) child.dismiss();
+            if (cooldownDialog[0] != null) cooldownDialog[0].dismiss();
+            searchBar.close();
             bubble.close();
             if (draft != null) draft.close();
             if (places != null) places.close();
@@ -281,7 +283,7 @@ public final class WorldMapDialog {
             MapTheme.fullScreen(dialog);
             MapTheme.immersive(dialog, root::safe);
             root.setBackgroundColor(SettingsUi.surface());
-            paintFloating(ui, search, false); search.setTextColor(SettingsUi.muted());
+            paintFloating(ui, searchBar.input, false); searchBar.paint();
             paintFloating(ui, close, false); paintFloating(ui, current, false);
             paintFloating(ui, layersButton, false); paintFloating(ui, placesButton, false); paintFloating(ui, walkButton, false);
             layersCard.setBackground(SettingsUi.cardBackground(ui)); layersCard.setElevation(dp(activity, 4));
