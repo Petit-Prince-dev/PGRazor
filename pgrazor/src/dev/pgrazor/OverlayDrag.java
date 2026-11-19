@@ -14,8 +14,9 @@ import android.view.ViewGroup;
  * The resting place is stored as a fraction of the free track (parent size minus view
  * size) in an app-private {@code SharedPreferences}; fractions survive restarts and
  * keep the overlay on-screen after a rotation or any other relayout. An optional
- * follower (the VGP status pill) rides directly below the handle, clamped to the parent
- * and flipped above when there is no room, so the button and its pill stay coherent.
+ * follower (a status pill) rides with the handle: below it, or beside it as one card (the
+ * pill tucks under the handle's right half and shows its text next to it, flipped to the
+ * left side when there is no room on the right).
  */
 public final class OverlayDrag implements View.OnTouchListener {
     private static final String PREFS = "pgrazor-overlays";
@@ -24,19 +25,22 @@ public final class OverlayDrag implements View.OnTouchListener {
     private final View follower;
     private final SharedPreferences prefs;
     private final String key;
-    private final int threshold, gap;
+    private final int threshold, gap, inner;
+    private final boolean beside;
     private final View.OnLayoutChangeListener parentLayout, viewLayout, followerLayout;
     private float downX, downY, originX, originY;
     private boolean moved, dragging;
 
-    static OverlayDrag attach(ViewGroup parent, View view, String key) { return new OverlayDrag(parent, view, null, key); }
-    static OverlayDrag attach(ViewGroup parent, View view, View follower, String key) { return new OverlayDrag(parent, view, follower, key); }
+    static OverlayDrag attach(ViewGroup parent, View view, String key) { return new OverlayDrag(parent, view, null, key, false); }
+    static OverlayDrag attach(ViewGroup parent, View view, View follower, String key) { return new OverlayDrag(parent, view, follower, key, false); }
+    /** The follower and the handle read as one card: the follower sits beside the handle, partly under it. */
+    static OverlayDrag attachBeside(ViewGroup parent, View view, View follower, String key) { return new OverlayDrag(parent, view, follower, key, true); }
 
-    private OverlayDrag(ViewGroup parent, View view, View follower, String key) {
-        this.parent = parent; this.view = view; this.follower = follower; this.key = key;
+    private OverlayDrag(ViewGroup parent, View view, View follower, String key, boolean beside) {
+        this.parent = parent; this.view = view; this.follower = follower; this.key = key; this.beside = beside;
         prefs = AccountProfiles.preferences(view.getContext().getApplicationContext(),PREFS);
         float density = view.getResources().getDisplayMetrics().density;
-        threshold = android.view.ViewConfiguration.get(view.getContext()).getScaledTouchSlop(); gap = Math.round(6 * density);
+        threshold = android.view.ViewConfiguration.get(view.getContext()).getScaledTouchSlop(); gap = Math.round(6 * density); inner = Math.round(10 * density);
         view.setOnTouchListener(this);
         view.setEnabled(true);
         view.setElevation(8 * density);
@@ -49,6 +53,10 @@ public final class OverlayDrag implements View.OnTouchListener {
         parent.addOnLayoutChangeListener(parentLayout);
         if (follower != null) { followerLayout = (v, l, t, r, b, ol, ot, or, ob) -> positionFollower(); follower.addOnLayoutChangeListener(followerLayout); }
         else followerLayout = null;
+        if (follower != null && beside) {
+            follower.setElevation(7 * density);  // just under the handle, which covers the follower's left end
+            follower.setOnClickListener(v -> view.performClick());  // the whole card acts like the handle
+        }
     }
 
     public boolean onTouch(View v, MotionEvent e) {
@@ -98,11 +106,29 @@ public final class OverlayDrag implements View.OnTouchListener {
         if (follower == null) return;
         int fw = visualWidth(follower), fh = visualHeight(follower);
         if (fw == 0 || fh == 0) return; // hidden or not yet measured; its own layout listener will catch up
+        if (beside) { positionBeside(fw, fh); return; }
         float x = view.getX(), y = view.getY() + visualHeight(view) + gap * view.getScaleY();
         android.graphics.Rect safe=UiViewport.bounds(parent);
         if(y+fh>safe.bottom)y=view.getY()-gap-fh;
         follower.setX(UiViewportPolicy.clamp(x,safe.left,safe.right,fw));
         follower.setY(UiViewportPolicy.clamp(y,safe.top,safe.bottom,fh));
+    }
+
+    /** One card: the follower starts under the handle's centre and shows its text past the handle's edge. */
+    private void positionBeside(int fw, int fh) {
+        android.graphics.Rect safe=UiViewport.bounds(parent);
+        int vw = visualWidth(view), vh = visualHeight(view);
+        float centre = view.getX() + vw / 2f, scale = follower.getScaleX() > 0 ? follower.getScaleX() : 1f;
+        boolean right = centre + fw <= safe.right || centre - fw < safe.left;
+        int under = Math.round((vw / 2f) / scale) + inner;
+        int left = right ? under : inner, end = right ? inner : under;
+        if (follower.getPaddingLeft() != left || follower.getPaddingRight() != end) {
+            follower.setPadding(left, follower.getPaddingTop(), end, follower.getPaddingBottom());
+            return;  // relayout; the follower's layout listener places it with its new width
+        }
+        float x = right ? centre : centre - fw;
+        follower.setX(UiViewportPolicy.clamp(x,safe.left,safe.right,fw));
+        follower.setY(UiViewportPolicy.clamp(view.getY() + (vh - fh) / 2f,safe.top,safe.bottom,fh));
     }
 
     private float clampX(float x){
@@ -123,6 +149,6 @@ public final class OverlayDrag implements View.OnTouchListener {
         parent.removeOnLayoutChangeListener(parentLayout);
         view.removeOnLayoutChangeListener(viewLayout);
         view.setOnTouchListener(null);
-        if (follower != null) follower.removeOnLayoutChangeListener(followerLayout);
+        if (follower != null) { follower.removeOnLayoutChangeListener(followerLayout); if (beside) follower.setOnClickListener(null); }
     }
 }
