@@ -51,34 +51,33 @@ public final class AutoWalkDialog {
     /** Bound to one dialog lifetime; all timers and the snapshot request stop on dismiss/destroy. */
     public static AlertDialog show(Activity activity) {
         if(activity.isFinishing()||activity.isDestroyed())return null;
-        Context ctx = new ContextThemeWrapper(activity, Control.darkTheme()
-            ? android.R.style.Theme_Material_Dialog_Alert : android.R.style.Theme_Material_Light_Dialog_Alert);
+        Context ctx = MapTheme.wrap(activity);
 
         LinearLayout layout = new LinearLayout(ctx);
         layout.setOrientation(LinearLayout.VERTICAL);
         int pad = dp(activity, 18);
         layout.setPadding(pad, dp(activity, 8), pad, 0);
 
-        TextView descr = label(ctx, "Visite les PokéStops et Arènes proches, du plus proche au plus loin.", 13);
+        TextView descr = label(ctx, "Visite les PokéStops et Arènes proches, du plus proche au plus loin.", 12);
         layout.addView(descr);
 
         LinearLayout gpxRow = new LinearLayout(ctx);
         gpxRow.setOrientation(LinearLayout.HORIZONTAL);
         gpxRow.setPadding(0, dp(activity, 8), 0, 0);
-        Button importBtn = button(ctx, "Importer un GPX");
-        Button savedBtn = button(ctx, "Routes enregistrées");
+        Button importBtn = button(ctx, "Importer GPX");
+        Button savedBtn = button(ctx, "Mes routes");
         Button nearbyBtn = button(ctx, "À proximité"); nearbyBtn.setVisibility(View.GONE);
         nearbyBtn.setContentDescription("Revenir au plan des lieux proches");
-        gpxRow.addView(importBtn, new LinearLayout.LayoutParams(0, dp(activity, 46), 1));
-        gpxRow.addView(savedBtn, new LinearLayout.LayoutParams(0, dp(activity, 46), 1));
-        gpxRow.addView(nearbyBtn, new LinearLayout.LayoutParams(0, dp(activity, 46), 1));
+        gpxRow.addView(importBtn, new LinearLayout.LayoutParams(0, dp(activity, 40), 1));
+        gpxRow.addView(savedBtn, new LinearLayout.LayoutParams(0, dp(activity, 40), 1));
+        gpxRow.addView(nearbyBtn, new LinearLayout.LayoutParams(0, dp(activity, 40), 1));
         layout.addView(gpxRow);
 
         LinearLayout countRow = new LinearLayout(ctx);
         countRow.setOrientation(LinearLayout.HORIZONTAL);
         countRow.setGravity(Gravity.CENTER_VERTICAL);
         countRow.setPadding(0, dp(activity, 10), 0, 0);
-        TextView countLabel = label(ctx, "Arrêts (chargement) :", 15);
+        TextView countLabel = label(ctx, "Arrêts (chargement) :", 14);
         countRow.addView(countLabel,
             new LinearLayout.LayoutParams(0, -2, 1));
         EditText countField = new EditText(ctx);
@@ -92,7 +91,7 @@ public final class AutoWalkDialog {
 
         CheckBox loop = new CheckBox(ctx);
         loop.setText("Route en boucle");
-        loop.setTextSize(14);
+        loop.setTextSize(13);
         loop.setChecked(false);
         layout.addView(loop);
 
@@ -112,14 +111,14 @@ public final class AutoWalkDialog {
             .setTitle("Autowalk")
             .setView(layout)
             .setNegativeButton("Fermer", null)
-            .setNeutralButton("Arrêter l'autowalk", null)
+            .setNeutralButton("Arrêter", null)
             .setPositiveButton("Démarrer", null)
             .create();
 
         Controller controller = new Controller(activity, dialog, descr, countLabel, countRow, countField, loop,
             status, gpxInfo, running, importBtn, savedBtn, nearbyBtn, saveGpx);
         DialogLifecycle.bind(activity,dialog,controller::close);
-        dialog.setOnShowListener(d -> controller.attach());
+        dialog.setOnShowListener(d -> { MapTheme.style(layout); descr.setTextColor(SettingsUi.muted()); status.setTextColor(SettingsUi.muted()); controller.attach(); });
         dialog.show();
         return dialog;
     }
@@ -212,8 +211,8 @@ public final class AutoWalkDialog {
             Button start = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
             if (start == null) return;
             if (selectedGpx != null) {
-                gpxInfo.setText(String.format(Locale.US, "Route GPX : %s (%d %s). Démarrer la parcourt dans l'ordre.",
-                    selectedGpx.name, selectedCount, selectedCount == 1 ? "stop" : "stops"));
+                gpxInfo.setText(String.format(Locale.US, "Route GPX : %s (%d %s). Démarrer pour la suivre dans l'ordre.",
+                    selectedGpx.name, selectedCount, selectedCount == 1 ? "arrêt" : "arrêts"));
                 start.setEnabled(true);
                 return;
             }

@@ -1137,6 +1137,10 @@ public final class Control {
     private static volatile int uiScalePercent=100;
     public static int uiScalePercent(){return uiScalePercent;}
     public static void setUiScalePercent(int value){if(value!=25&&value!=50&&value!=75&&value!=100)return;uiScalePercent=value;saveSettings();}
+    /** Colour theme index (see SettingsUi.THEME_NAMES): 0 Améthyste, 1 Océan, 2 Menthe, 3 Corail. */
+    private static volatile int uiTheme=0;
+    public static int uiTheme(){return uiTheme;}
+    public static void setUiTheme(int value){if(value<0||value>3)return;uiTheme=value;saveSettings();}
     /** The light theme is removed: PGRazor is always dark. */
     public static boolean darkTheme(){return true;}
     private static volatile boolean idleWalking;
@@ -1195,6 +1199,7 @@ public final class Control {
                 quickMenuHidden=boundedSetting(p,"quickMenuHidden",16383);
                 try{uiScalePercent=Integer.parseInt(p.getProperty("uiScalePercent","100"));}catch(NumberFormatException invalid){uiScalePercent=100;}
                 if(uiScalePercent!=25&&uiScalePercent!=50&&uiScalePercent!=75&&uiScalePercent!=100)uiScalePercent=100;
+                uiTheme=boundedSetting(p,"uiTheme",3);
                 joystickVisible=Boolean.parseBoolean(p.getProperty("joystickVisible","true"));
                 idleWalking=Boolean.parseBoolean(p.getProperty("idleWalking","false"));engine.setIdleWalking(idleWalking);
                 cooldownOverlay=Boolean.parseBoolean(p.getProperty("cooldownOverlay","false"));
@@ -1348,7 +1353,7 @@ public final class Control {
         ShundoSniper.write(p);
         ShinyScanner.write(p);
         p.setProperty("locationSpoofing",String.valueOf(desiredEnabled));
-        p.setProperty("darkTheme","true");p.setProperty("uiScalePercent",String.valueOf(uiScalePercent));
+        p.setProperty("darkTheme","true");p.setProperty("uiScalePercent",String.valueOf(uiScalePercent));p.setProperty("uiTheme",String.valueOf(uiTheme));
         p.setProperty("joystickVisible",String.valueOf(joystickVisible));
         p.setProperty("quickMenuHidden",String.valueOf(quickMenuHidden));
         p.setProperty("idleWalking",String.valueOf(idleWalking));

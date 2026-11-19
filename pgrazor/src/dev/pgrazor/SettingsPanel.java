@@ -65,6 +65,7 @@ final class SettingsPanel {
     private Switch incubatorSwitch;
     private Button incubatorPriority;
     private Button uiScale;
+    private final java.util.List<TextView> themeChips=new java.util.ArrayList<>();
     private TextView incubatorStatus;
     // Primary action and cycle/dialog rows.
     private Button mapTap, throwGrade, throwVariety, storageIv, ivCatchMode, ivOwnedMode, itemSettings, cameraSample, interactionCapture, transferKeepList;
@@ -703,9 +704,24 @@ final class SettingsPanel {
         transferOverlaySwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.transferOverlayEnabled())return; Control.setTransferOverlayEnabled(transferOverlaySwitch.isChecked()); host.refresh(); });
 
         LinearLayout look = group(page, "Interface");
+        LinearLayout themeRow=new LinearLayout(activity);themeRow.setOrientation(LinearLayout.VERTICAL);themeRow.setPadding(dp(12),dp(10),dp(12),dp(10));
+        themeRow.addView(text("Thème de couleurs",14,ink()));
+        LinearLayout chips=new LinearLayout(activity);chips.setOrientation(LinearLayout.HORIZONTAL);chips.setPadding(0,dp(8),0,0);
+        for(int i=0;i<SettingsUi.THEME_NAMES.length;i++){
+            final int index=i;
+            TextView chip=text(SettingsUi.THEME_NAMES[i],11,ink());chip.setGravity(Gravity.CENTER);chip.setSingleLine(true);
+            chip.setClickable(true);chip.setFocusable(true);chip.setContentDescription("Thème "+SettingsUi.THEME_NAMES[i]);
+            GradientDrawable dot=new GradientDrawable();dot.setShape(GradientDrawable.OVAL);dot.setColor(SettingsUi.themeAccent(i));dot.setSize(dp(16),dp(16));
+            chip.setCompoundDrawablesWithIntrinsicBounds(null,dot,null,null);chip.setCompoundDrawablePadding(dp(5));chip.setPadding(dp(2),dp(8),dp(2),dp(6));
+            chip.setOnClickListener(v->{if(Control.uiTheme()==index)return;Control.setUiTheme(index);host.applyTheme();host.refresh();});
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);lp.leftMargin=i==0?0:dp(3);lp.rightMargin=i==SettingsUi.THEME_NAMES.length-1?0:dp(3);
+            chips.addView(chip,lp);themeChips.add(chip);
+        }
+        themeRow.addView(chips);look.addView(themeRow);styleThemeChips();
         uiScale=button("Taille des overlays : "+Control.uiScalePercent()+" %");look.addView(uiScale);
         uiScale.setOnClickListener(v->{final int[] values={100,75,50,25};String[] labels={"100 %","75 %","50 %","25 %"};int selected=0;for(int i=0;i<values.length;i++)if(values[i]==Control.uiScalePercent())selected=i;
-            new AlertDialog.Builder(dialogContext()).setTitle("Taille des overlays").setSingleChoiceItems(labels,selected,(dialog,which)->{host.releaseJoystick(true);Control.setUiScalePercent(values[which]);host.refresh();dialog.dismiss();}).setNegativeButton("Annuler",null).show();});
+            AlertDialog scaleDialog=new AlertDialog.Builder(dialogContext()).setTitle("Taille des overlays").setSingleChoiceItems(labels,selected,(dialog,which)->{host.releaseJoystick(true);Control.setUiScalePercent(values[which]);host.refresh();dialog.dismiss();}).setNegativeButton("Annuler",null).create();
+            DialogStyle.attach(scaleDialog);scaleDialog.show();});
         skipCutscenesSwitch = switchRow(look, "Passer les cinématiques"); skipCutscenesSwitch.setChecked(Control.skipCutscenes());
         skipCutscenesSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.skipCutscenes())return; Control.setSkipCutscenes(checked); });
         cutsceneStatus = caption(look, "");  // shown only when the native module reports an error
@@ -988,9 +1004,19 @@ final class SettingsPanel {
         if(searchBar!=null)searchBar.setBackground(SettingsUi.fieldBackground(activity));
         if(searchField!=null){searchField.setTextColor(ink());searchField.setHintTextColor(SettingsUi.faint());}
         if(homeDot!=null)homeDot.setColor(telemetryColor());
-        for(MenuIcon icon:homeIcons)icon.invalidate();
+        for(MenuIcon icon:homeIcons){icon.invalidate();if(icon.getParent() instanceof View)((View)icon.getParent()).setBackground(SettingsUi.rounded(activity,SettingsUi.accentSoft(),12));}
+        styleThemeChips();
         if(backIcon!=null)backIcon.invalidate();
         if(closeIcon!=null)closeIcon.invalidate();
+    }
+
+    /** The selected theme gets an accent outline on a soft accent fill; the others stay quiet. */
+    private void styleThemeChips(){
+        for(int i=0;i<themeChips.size();i++){
+            boolean on=i==Control.uiTheme();TextView chip=themeChips.get(i);
+            chip.setBackground(SettingsUi.ripple(SettingsUi.shape(activity,on?SettingsUi.accentSoft():SettingsUi.raised(),10,on?SettingsUi.accent():SettingsUi.border())));
+            chip.setTextColor(on?ink():muted());chip.setTypeface(on?SettingsUi.medium():Typeface.DEFAULT);
+        }
     }
 
     private static String distance(double meters){
@@ -1028,7 +1054,7 @@ final class SettingsPanel {
         final boolean[] recommended={false};
         final Runnable[] poll=new Runnable[1];poll[0]=()->{if(!dialog.isShowing())return;Control.requestItemCatalog();populate.run();dependencies.run();status.setText(Control.itemStatus());handler.postDelayed(poll[0],1000);};
         itemDialogs.add(dialog);
-        dialog.setOnDismissListener(d->{handler.removeCallbacks(poll[0]);itemDialogs.remove(dialog);});dialog.show();styleTree(form);handler.post(poll[0]);
+        dialog.setOnDismissListener(d->{handler.removeCallbacks(poll[0]);itemDialogs.remove(dialog);});DialogStyle.attach(dialog);dialog.show();styleTree(form);handler.post(poll[0]);
         // "Recommandés": only the listed items are sorted, with these maximums; every other item is kept.
         dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v->{
             recommended[0]=true;enabled.setChecked(true);selected.clear();

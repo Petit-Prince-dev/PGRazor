@@ -40,14 +40,14 @@ public final class GameRoutesDialog {
         int pad = MapTheme.dp(ctx, 18);
         layout.setPadding(pad, MapTheme.dp(ctx, 8), pad, 0);
 
-        layout.addView(label(ctx, "Parcourt automatiquement les Routes éligibles du jeu, la plus courte d'abord. Chaque Route est "
-            + "démarrée, parcourue une fois et validée dans le jeu avant la suivante.", 13));
+        TextView intro = label(ctx, "Lance, parcourt et valide les Routes du jeu une par une, la plus courte d'abord.", 12);
+        layout.addView(intro);
 
         LinearLayout countRow = new LinearLayout(ctx);
         countRow.setOrientation(LinearLayout.HORIZONTAL);
         countRow.setGravity(Gravity.CENTER_VERTICAL);
         countRow.setPadding(0, MapTheme.dp(ctx, 10), 0, 0);
-        countRow.addView(label(ctx, "Validations max (1–" + MAX_COMPLETIONS + "):", 15), new LinearLayout.LayoutParams(0, -2, 1));
+        countRow.addView(label(ctx, "Routes à valider (1–" + MAX_COMPLETIONS + ") :", 14), new LinearLayout.LayoutParams(0, -2, 1));
         EditText countField = new EditText(ctx);
         countField.setInputType(InputType.TYPE_CLASS_NUMBER);
         countField.setFilters(new InputFilter[]{new InputFilter.LengthFilter(2)});
@@ -68,12 +68,12 @@ public final class GameRoutesDialog {
             .setView(layout)
             .setNegativeButton("Fermer", null)
             .setNeutralButton("Arrêter", null)
-            .setPositiveButton("Lancer le parcours des Routes", null)
+            .setPositiveButton("Lancer", null)
             .create();
 
         Controller controller = new Controller(activity, dialog, countField, status, nearby);
         DialogLifecycle.bind(activity, dialog, controller::close);
-        dialog.setOnShowListener(d -> { MapTheme.style(layout); MapTheme.styleButtons(dialog); controller.attach(); });
+        dialog.setOnShowListener(d -> { MapTheme.style(layout); MapTheme.styleButtons(dialog); intro.setTextColor(SettingsUi.muted()); status.setTextColor(SettingsUi.muted()); controller.attach(); });
         dialog.show();
         return dialog;
     }

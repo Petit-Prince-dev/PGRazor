@@ -72,20 +72,21 @@ public final class WorldMapDialog {
         layout.setOrientation(LinearLayout.VERTICAL);
         int pad = dp(activity, 12);
         layout.setPadding(pad, pad, pad, pad);
-        TextView hint = label(ui, "Point bleu : toi. Épingle rouge : destination. Glisse pour te déplacer ; pince pour zoomer.", 13);
+        TextView hint = label(ui, "Touche la carte pour placer l'épingle · glisse pour bouger · pince pour zoomer.", 12);
         layout.addView(hint);
-        TextView selected = label(ui, "", 15);
-        selected.setPadding(0, dp(activity, 8), 0, dp(activity, 8));
+        TextView selected = label(ui, "", 13);
+        selected.setTypeface(SettingsUi.medium());
+        selected.setPadding(0, dp(activity, 4), 0, dp(activity, 6));
         LinearLayout selectionRow = new LinearLayout(ui);
         selectionRow.setGravity(Gravity.CENTER_VERTICAL);
         layout.addView(selected);
-        Button saved = button(ui, "Lieux enregistrés");
-        selectionRow.addView(saved, new LinearLayout.LayoutParams(0, dp(activity, 48), 1));
+        Button saved = button(ui, "Mes lieux");
+        selectionRow.addView(saved, new LinearLayout.LayoutParams(0, dp(activity, 40), 1));
         Button hotspots = button(ui, "Hotspots");
-        selectionRow.addView(hotspots, new LinearLayout.LayoutParams(0, dp(activity, 48), 1));
+        selectionRow.addView(hotspots, new LinearLayout.LayoutParams(0, dp(activity, 40), 1));
         Button routeMode = button(ui, "Route"); routeMode.setContentDescription("Ouvrir le créateur de route");
         routeMode.setVisibility(route == null ? View.GONE : View.VISIBLE);
-        selectionRow.addView(routeMode,new LinearLayout.LayoutParams(dp(activity, 64),dp(activity, 48)));
+        selectionRow.addView(routeMode,new LinearLayout.LayoutParams(dp(activity, 64),dp(activity, 40)));
         layout.addView(selectionRow);
         TextView attribution = label(ui, "", 12);
         attribution.setGravity(Gravity.RIGHT);
@@ -100,8 +101,8 @@ public final class WorldMapDialog {
             if(hotspotsDialog[0]!=null && hotspotsDialog[0].isShowing())return;
             hotspotsDialog[0]=HotspotsDialog.show(activity,spot->{map.select(spot.latitude,spot.longitude);});
         });
-        Button search = button(ui, "Chercher des lieux, adresses ou coordonnées");
-        layout.addView(search, new LinearLayout.LayoutParams(-1, dp(activity, 48)));
+        Button search = button(ui, "Chercher un lieu ou des coordonnées");
+        layout.addView(search, new LinearLayout.LayoutParams(-1, dp(activity, 40)));
         final AlertDialog[] searchDialog = {null};
         search.setOnClickListener(v -> {
             if(searchDialog[0]!=null && searchDialog[0].isShowing()) return;
@@ -112,13 +113,13 @@ public final class WorldMapDialog {
         SharedPreferences preferences=AccountProfiles.preferences(activity,"pgrazor-map");
         String[] names={"Stops","Gyms","Raids"},labels={"PokéStops","Arènes","Raids"};
         for(int i=0;i<names.length;i++){
-            final int bit=1<<i;CheckBox toggle=new CheckBox(ui);toggle.setText(labels[i]);toggle.setTextSize(13);
+            final int bit=1<<i;CheckBox toggle=new CheckBox(ui);toggle.setText(labels[i]);toggle.setTextSize(12);
             boolean enabled=preferences.getBoolean(names[i],false);if(enabled)map.setPoiLayer(bit,true);toggle.setChecked(enabled);
             final String key=names[i];toggle.setOnCheckedChangeListener((b,on)->{map.setPoiLayer(bit,on);preferences.edit().putBoolean(key,on).apply();map.refreshPois();});
             layers.addView(toggle,new LinearLayout.LayoutParams(0,-2,1));
         }
         layout.addView(layers);
-        TextView coverage=label(ui,"Lieux proches chargés par le jeu",12);layout.addView(coverage);map.setPoiStatus(coverage);
+        TextView coverage=label(ui,"Lieux proches chargés par le jeu",11);layout.addView(coverage);map.setPoiStatus(coverage);
         map.refreshPois();
         PlaceUi places = new PlaceUi(activity, ui, map, saved);
         saved.setOnClickListener(v -> places.openLibrary());
@@ -129,15 +130,15 @@ public final class WorldMapDialog {
         loop.setContentDescription("Répéter la route depuis le premier arrêt après le dernier"); loop.setVisibility(View.GONE);
         LinearLayout routeTools = new LinearLayout(ui);
         routeTools.setGravity(Gravity.CENTER_VERTICAL);
-        routeTools.addView(loop,new LinearLayout.LayoutParams(0,dp(activity,48),1));
+        routeTools.addView(loop,new LinearLayout.LayoutParams(0,dp(activity,40),1));
         Button clearRoute=button(ui,"Effacer la route");
         clearRoute.setContentDescription("Effacer tous les arrêts du brouillon de route");
         clearRoute.setVisibility(View.GONE);
-        routeTools.addView(clearRoute,new LinearLayout.LayoutParams(dp(activity,112),dp(activity,48)));
+        routeTools.addView(clearRoute,new LinearLayout.LayoutParams(dp(activity,112),dp(activity,40)));
         layout.addView(routeTools);
         // Each centers the map on its location and copies the coordinates.
         LinearLayout copyRow = new LinearLayout(ui);
-        Button current=button(ui,"Copier ma position"), pin=button(ui,"Copier la position de l'épingle");
+        Button current=button(ui,"Copier ma position"), pin=button(ui,"Copier l'épingle");
         current.setContentDescription("Centrer la carte sur ta position en jeu et copier ses coordonnées");
         pin.setContentDescription("Centrer la carte sur l'épingle rouge et copier ses coordonnées");
         current.setOnClickListener(v -> {
@@ -145,16 +146,16 @@ public final class WorldMapDialog {
             CoordinateClipboard.copy(activity, Control.engine.latitude, Control.engine.longitude, "Ta position est copiée");
         });
         pin.setOnClickListener(v -> { map.centerSelection(); CoordinateClipboard.copy(activity, map.latitude, map.longitude, "Position de l'épingle copiée"); });
-        copyRow.addView(current, new LinearLayout.LayoutParams(0, dp(activity, 48), 1));
-        copyRow.addView(pin, new LinearLayout.LayoutParams(0, dp(activity, 48), 1));
+        copyRow.addView(current, new LinearLayout.LayoutParams(0, dp(activity, 40), 1));
+        copyRow.addView(pin, new LinearLayout.LayoutParams(0, dp(activity, 40), 1));
         layout.addView(copyRow);
         LinearLayout actions = new LinearLayout(ui);
-        Button globe = button(ui, "Monde"), center = button(ui, "Sélectionnés"), retry = button(ui, "Réessayer");
+        Button globe = button(ui, "Monde"), center = button(ui, "Centrer"), retry = button(ui, "Réessayer");
         // The GPX menu button only exists when the route builder is available, and stays hidden until route mode.
         Button gpx = route == null ? null : button(ui, "GPX");
         if (gpx != null) { gpx.setContentDescription("Enregistrer, importer ou exporter une route GPX"); gpx.setVisibility(View.GONE); }
         Button[] row = gpx == null ? new Button[] {globe, center, retry} : new Button[] {globe, center, retry, gpx};
-        for (Button b : row) actions.addView(b, new LinearLayout.LayoutParams(0, dp(activity, 48), 1));
+        for (Button b : row) actions.addView(b, new LinearLayout.LayoutParams(0, dp(activity, 40), 1));
         globe.setOnClickListener(v -> map.worldView());
         center.setOnClickListener(v -> map.centerSelection()); retry.setOnClickListener(v -> map.retry());
         layout.addView(actions);
@@ -179,6 +180,7 @@ public final class WorldMapDialog {
         DialogLifecycle.bind(activity, dialog, () -> { if(hotspotsDialog[0]!=null)hotspotsDialog[0].dismiss(); if(cooldownDialog[0]!=null)cooldownDialog[0].dismiss(); if(searchDialog[0]!=null)searchDialog[0].dismiss(); if(routes!=null)routes.close(); places.close(); map.close(); });
         dialog.setOnShowListener(d -> {
             MapTheme.fullScreen(dialog); MapTheme.style(layout); MapTheme.styleButtons(dialog);
+            hint.setTextColor(SettingsUi.muted()); coverage.setTextColor(SettingsUi.faint()); status.setTextColor(SettingsUi.faint()); selected.setTextColor(SettingsUi.accent());
             if(routes!=null)routes.attach(dialog);
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
                 if(routes!=null && routes.editing) { routes.start(); return; }
@@ -198,7 +200,7 @@ public final class WorldMapDialog {
 
     private static int dp(Context c, float value) { return Math.round(value * c.getResources().getDisplayMetrics().density); }
     private static TextView label(Context c, String text, int size) { TextView v = new TextView(c); v.setText(text); v.setTextSize(size); return v; }
-    private static Button button(Context c, String text) { Button b = new Button(c); b.setText(text); b.setAllCaps(false); b.setTextSize(13); b.setPadding(0, 0, 0, 0); return b; }
+    private static Button button(Context c, String text) { Button b = new Button(c); b.setText(text); b.setAllCaps(false); b.setTextSize(12); b.setPadding(0, 0, 0, 0); return b; }
 
     /** Route mode reuses the map toolbar and dialog action rather than consuming another row. */
     private static final class RouteUi {
@@ -238,11 +240,11 @@ public final class WorldMapDialog {
             boolean big=draft.size()>LIMIT;
             mode.setText(editing ? "Carte" : "Route");
             mode.setContentDescription(editing ? "Quitter le créateur de route sans démarrer" : "Ouvrir le créateur de route");
-            hint.setText(!editing ? "Point bleu : toi. Épingle rouge : destination. Touche pour sélectionner ; glisse pour te déplacer."
+            hint.setText(!editing ? "Touche la carte pour placer l'épingle · glisse pour bouger · pince pour zoomer."
                 : big ? "Route GPX : "+draft.size()+" arrêts. Touche Démarrer pour la parcourir dans l'ordre."
                 : "Route : "+draft.size()+"/"+LIMIT+" arrêts. Touche la carte, puis Ajouter un arrêt.");
             add.setText(editing ? "Ajouter un arrêt" : "Monde"); add.setContentDescription(editing ? "Ajouter la destination choisie comme prochain arrêt" : "Afficher la carte du monde");
-            undo.setText(editing ? "Annuler" : "Sélectionnés"); undo.setContentDescription(editing ? "Annuler le dernier arrêt" : "Centrer sur la destination choisie");
+            undo.setText(editing ? "Annuler" : "Centrer"); undo.setContentDescription(editing ? "Annuler le dernier arrêt" : "Centrer sur la destination choisie");
             stops.setText(editing ? "Arrêts ("+draft.size()+")" : "Réessayer"); stops.setContentDescription(editing ? "Voir les arrêts dans l'ordre et effacer la route" : "Recharger les tuiles de la carte");
             gpx.setText("GPX"); gpx.setVisibility(editing ? View.VISIBLE : View.GONE);
             clearRoute.setVisibility(editing ? View.VISIBLE : View.GONE);clearRoute.setEnabled(!draft.isEmpty());
@@ -537,7 +539,7 @@ public final class WorldMapDialog {
         void refreshPois() { poiLayer.refresh(); }
 
         private void updateSelection() {
-            selectionLabel.setText(String.format(Locale.US, "Selected: %.6f, %.6f", latitude, longitude));
+            selectionLabel.setText(String.format(Locale.US, "Épingle : %.6f, %.6f", latitude, longitude));
         }
         private double displayedTileSize() { return (zoom == 0 ? Math.max(1, Math.min(getWidth(), getHeight())) : tileSize)*zoomScale; }
         private double world() { return MapProjection.worldPixels(zoom, displayedTileSize()); }

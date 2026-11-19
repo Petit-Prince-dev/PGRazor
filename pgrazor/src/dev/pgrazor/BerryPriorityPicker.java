@@ -56,7 +56,7 @@ final class BerryPriorityPicker {
         ScrollView scroll=new ScrollView(ui);scroll.addView(body);
         picker=new AlertDialog.Builder(ui).setTitle("Priorité des baies").setView(scroll).setPositiveButton("OK",null).create();
         picker.setOnDismissListener(d->{picker=null;rows=null;labels=null;ranks=null;pickerContext=null;});
-        picker.show();
+        DialogStyle.attach(picker);picker.show();
         int baseWidth=Math.min(dp(400),activity.getResources().getDisplayMetrics().widthPixels-dp(48));
         if(picker.getWindow()!=null)picker.getWindow().setLayout(Math.max(1,Math.round(baseWidth*scale)),android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
         MapTheme.styleButtons(picker);refresh();

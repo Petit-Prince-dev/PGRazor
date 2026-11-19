@@ -283,7 +283,7 @@ final class MapPoiLayer {
             main.postDelayed(refresh[0], 1000);
         };
         dialog.setOnDismissListener(d -> { poiDialogs.remove(dialog); main.removeCallbacks(refresh[0]); });
-        poiDialogs.add(dialog); dialog.show(); refresh[0].run();
+        poiDialogs.add(dialog); DialogStyle.attach(dialog); dialog.show(); refresh[0].run();
     }
     private JSONObject findPoi(String id) {
         for (int i = 0; i < pois.length(); i++) { JSONObject point = pois.optJSONObject(i); if (point != null && id.equals(point.optString("id"))) return point; }

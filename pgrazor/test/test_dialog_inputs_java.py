@@ -27,6 +27,8 @@ class DialogInputTests(unittest.TestCase):
                 public boolean showing=true;public interface Listener{void dismiss(Dialog d);}private Listener listener;
                 public boolean isShowing(){return showing;}public void setOnDismissListener(Listener l){listener=l;}
                 public void dismiss(){if(showing){showing=false;listener.dismiss(this);}}}''',
+            # The real styler needs the Android view tree; the lifecycle only has to hand it the dialog.
+            'dev/pgrazor/DialogStyle.java': 'package dev.pgrazor; final class DialogStyle { static void attach(android.app.Dialog d){} }',
             'dev/pgrazor/DialogInputsTest.java': '''package dev.pgrazor;
                 import android.app.*;
                 public class DialogInputsTest {

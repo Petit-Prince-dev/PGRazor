@@ -149,6 +149,7 @@ public final class EventPanel {
     }
 
     private static void bind(Activity owner, AlertDialog dialog, Runnable cleanup) {
+        dev.pgrazor.DialogStyle.attach(dialog);
         Application application = owner.getApplication();
         Application.ActivityLifecycleCallbacks lifecycle = new Application.ActivityLifecycleCallbacks() {
             public void onActivityPaused(Activity activity) { if (activity == owner) dialog.dismiss(); }

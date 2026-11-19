@@ -14,6 +14,7 @@ final class DialogLifecycle {
     /** A login form may survive a password-manager activity; its work still pauses. */
     static void bind(Activity owner, Dialog dialog, Runnable cleanup,
                      java.util.function.BooleanSupplier retainOnPause, Runnable pause, Runnable resume) {
+        DialogStyle.attach(dialog);
         Application app=owner.getApplication();
         Application.ActivityLifecycleCallbacks callbacks=new Application.ActivityLifecycleCallbacks(){
             public void onActivityPaused(Activity a){if(a==owner){if(retainOnPause.getAsBoolean())pause.run();else dialog.dismiss();}}

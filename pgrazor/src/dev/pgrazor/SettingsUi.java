@@ -45,22 +45,40 @@ final class SettingsUi {
 
     // ---------------------------------------------------------------- palette
     static boolean dark() { return Control.darkTheme(); }
+
+    /** Colour themes offered in Affichage; the index is persisted as {@code uiTheme}. */
+    static final String[] THEME_NAMES = {"Améthyste", "Océan", "Menthe", "Corail"};
+    /** Per theme: bg, surface, raised, border, ink, muted, faint, accent, accentFill. All dark. */
+    private static final int[][] THEMES = {
+        // Améthyste: soft violet on a deep plum black.
+        {0xff0e0c14, 0xff17141f, 0xff211d2c, 0xff2e2940, 0xffeeebf7, 0xffa9a3c0, 0xff77718f, 0xffb69cff, 0xff6c4fd6},
+        // Océan: sky blue on deep navy.
+        {0xff0a1018, 0xff111a26, 0xff182434, 0xff243347, 0xffe8f0f8, 0xff9db0c4, 0xff6d8196, 0xff5cb8ff, 0xff1f6fc0},
+        // Menthe: the original PGRazor look.
+        {0xff0d131a, 0xff121a23, 0xff19222d, 0xff25303c, 0xffe9eff5, 0xff9aabbc, 0xff71828f, 0xff45e1ba, 0xff0b6e58},
+        // Corail: warm coral on charcoal.
+        {0xff121010, 0xff1b1717, 0xff252020, 0xff352d2c, 0xfff6eeec, 0xffbba9a5, 0xff8a7a76, 0xffff8a6b, 0xffc4492c},
+    };
+    private static int[] theme() { int i = Control.uiTheme(); return THEMES[i >= 0 && i < THEMES.length ? i : 0]; }
+    /** The accent of a theme, for the theme picker's swatches. */
+    static int themeAccent(int index) { return THEMES[Math.max(0, Math.min(THEMES.length - 1, index))][7]; }
+
     /** Full-screen backdrop behind cards. */
-    static int bg()      { return dark() ? 0xff0d131a : 0xfff3f6f9; }
+    static int bg()      { return theme()[0]; }
     /** Cards, dialogs, menus, floating pills. */
-    static int surface() { return dark() ? 0xff121a23 : 0xffffffff; }
+    static int surface() { return theme()[1]; }
     /** Fields, action rows and the second surface step. */
-    static int raised()  { return dark() ? 0xff19222d : 0xfff7fafc; }
+    static int raised()  { return theme()[2]; }
     /** Hairline borders on cards, fields and pills. */
-    static int border()  { return dark() ? 0xff25303c : 0xffdce4ec; }
-    static int ink()     { return dark() ? 0xffe9eff5 : 0xff16212c; }
-    static int muted()   { return dark() ? 0xff9aabbc : 0xff5c6d7c; }
-    static int faint()   { return dark() ? 0xff71828f : 0xff7e8e9c; }
-    static int accent()  { return dark() ? 0xff45e1ba : 0xff00745c; }
-    /** A solid accent fill dark enough for white text in both themes (primary buttons, close discs). */
-    static int accentFill() { return dark() ? 0xff0b6e58 : 0xff00745c; }
+    static int border()  { return theme()[3]; }
+    static int ink()     { return theme()[4]; }
+    static int muted()   { return theme()[5]; }
+    static int faint()   { return theme()[6]; }
+    static int accent()  { return theme()[7]; }
+    /** A solid accent fill dark enough for white text (primary buttons, close discs). */
+    static int accentFill() { return theme()[8]; }
     /** Text drawn on an accent fill. */
-    static int accentInk() { return dark() ? 0xff06231d : 0xffffffff; }
+    static int accentInk() { return 0xffffffff; }
     static int accentSoft() { return (accent() & 0x00ffffff) | 0x1f000000; }
     static int success() { return dark() ? 0xff4ed8a0 : 0xff0f7b53; }
     static int warn()    { return dark() ? 0xfff2b75e : 0xff9a5b00; }
@@ -150,14 +168,12 @@ final class SettingsUi {
         return new ColorStateList(new int[][]{new int[]{-android.R.attr.state_enabled}, new int[]{}}, new int[]{faint(), ink()});
     }
     static ColorStateList switchThumb() {
-        int off = dark() ? 0xff4a5a6a : 0xffb4c2ce;
         return new ColorStateList(new int[][]{new int[]{-android.R.attr.state_enabled}, new int[]{android.R.attr.state_checked}, new int[]{}},
-            new int[]{dark() ? 0xff3a4652 : 0xffc7d2dc, accent(), off});
+            new int[]{border(), accent(), faint()});
     }
     static ColorStateList switchTrack() {
-        int off = dark() ? 0xff2c3742 : 0xffd7e0e7;
         return new ColorStateList(new int[][]{new int[]{-android.R.attr.state_enabled}, new int[]{android.R.attr.state_checked}, new int[]{}},
-            new int[]{dark() ? 0xff232c35 : 0xffeef2f5, (accent() & 0x00ffffff) | 0x66000000, off});
+            new int[]{raised(), (accent() & 0x00ffffff) | 0x66000000, border()});
     }
     static ColorStateList choiceTint() {
         return new ColorStateList(new int[][]{new int[]{-android.R.attr.state_enabled}, new int[]{android.R.attr.state_checked}, new int[]{}},

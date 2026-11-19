@@ -404,6 +404,7 @@ final class FeedTheme {
     static void styleButtons(AlertDialog dialog) {
         Window w = dialog.getWindow();
         Context c = dialog.getContext();
+        DialogStyle.keep(w);
         if (w != null) {
             boolean floating = FLOATING.containsKey(w);
             boolean full = w.getAttributes().width == ViewGroup.LayoutParams.MATCH_PARENT && !floating;

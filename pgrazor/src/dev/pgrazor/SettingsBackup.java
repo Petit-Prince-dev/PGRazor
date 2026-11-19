@@ -38,7 +38,7 @@ final class SettingsBackup {
         if(PgAssets.rooted()){
             detail.append("\n\nEn root, un fichier fixe est utilisé dans le dossier de fichiers externes du jeu. Copie-le ailleurs avant de désinstaller le jeu ; pour importer, place ta sauvegarde à cet emplacement :\n"+rootedFile());
             dialog=new android.app.AlertDialog.Builder(MapTheme.wrap(activity)).setView(scroll).create();
-            dialog.setCancelable(false);dialog.show();
+            dialog.setCancelable(false);DialogStyle.attach(dialog);dialog.show();
         }else activity.setContentView(scroll);
     }
     private File rootedFile(){File dir=activity.getExternalFilesDir(null);return dir==null?null:new File(dir,"PGRazor-settings.json");}
@@ -46,9 +46,10 @@ final class SettingsBackup {
         if(PgAssets.rooted()){
             File file=rootedFile();
             if(file==null){status.setText("Le stockage externe est indisponible.");return;}
-            new android.app.AlertDialog.Builder(MapTheme.wrap(activity))
+            android.app.AlertDialog confirm=new android.app.AlertDialog.Builder(MapTheme.wrap(activity))
                 .setMessage(code==EXPORT?"Remplacer la sauvegarde des réglages dans "+file+"?":"Remplacer les réglages par la sauvegarde de "+file+" ? Le VGP restera désactivé.")
-                .setNegativeButton("Annuler",null).setPositiveButton("Continuer",(d,w)->result(code,Activity.RESULT_OK,new Intent().setData(Uri.fromFile(file)))).show();
+                .setNegativeButton("Annuler",null).setPositiveButton("Continuer",(d,w)->result(code,Activity.RESULT_OK,new Intent().setData(Uri.fromFile(file)))).create();
+            DialogStyle.attach(confirm);confirm.show();
             return;
         }
         Intent i=new Intent(code==EXPORT?Intent.ACTION_CREATE_DOCUMENT:Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/json");

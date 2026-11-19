@@ -25,6 +25,7 @@ public final class ChoiceList {
     private ChoiceList() {}
 
     public static AlertDialog attach(AlertDialog dialog, String[] labels, IntConsumer pick) {
+        DialogStyle.attach(dialog);
         Context c = dialog.getContext();
         LinearLayout list = new LinearLayout(c); list.setOrientation(LinearLayout.VERTICAL);
         list.setPadding(dp(c, 20), dp(c, 8), dp(c, 20), dp(c, 4));

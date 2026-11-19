@@ -94,6 +94,7 @@ public final class LiveFeedFilterDialog {
                 .setNegativeButton("Annuler", null)   // default dismiss: no change applied
                 .create();
             if (sink != null) sink.track(dialog);
+            DialogStyle.attach(dialog);
             dialog.setOnShowListener(d -> {
                 MapTheme.style(scroll); MapTheme.styleButtons(dialog);
                 refreshSpeciesMode();
@@ -324,6 +325,7 @@ public final class LiveFeedFilterDialog {
                 .setNegativeButton("Fermer", null)
                 .create();
             if (sink != null) sink.track(manager);
+            DialogStyle.attach(manager);
 
             final Runnable[] rebuild = new Runnable[1];
             rebuild[0] = () -> {
