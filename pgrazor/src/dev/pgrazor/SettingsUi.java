@@ -41,7 +41,7 @@ final class SettingsUi {
     static final int CONTENT_MAX_DP = 620;
 
     // ---------------------------------------------------------------- type scale (sp)
-    static final float TYPE_TITLE = 20, TYPE_SECTION = 14, TYPE_BODY = 14, TYPE_META = 12, TYPE_MICRO = 11;
+    static final float TYPE_TITLE = 18, TYPE_SECTION = 12, TYPE_BODY = 14, TYPE_META = 12, TYPE_MICRO = 11;
 
     // ---------------------------------------------------------------- palette
     static boolean dark() { return Control.darkTheme(); }
@@ -197,8 +197,9 @@ final class SettingsUi {
             setAllCaps(false);
             setTextSize(TYPE_BODY);
             setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
-            setMinHeight(dp(context, 52)); setMinimumHeight(dp(context, 52));
-            setPadding(dp(context, 14), dp(context, 8), dp(context, 14), dp(context, 8));
+            setMinHeight(dp(context, 46)); setMinimumHeight(dp(context, 46));
+            setPadding(dp(context, 12), dp(context, 6), dp(context, 12), dp(context, 6));
+            setStateListAnimator(null);
             setTextColor(textColors());
             setBackground(rowBackground(context));
             setMaxLines(2);
@@ -254,8 +255,9 @@ final class SettingsUi {
         if (view instanceof Button && !(view instanceof CompoundButton) && !(view instanceof RowButton)) {
             Button button = (Button) view;
             button.setAllCaps(false); button.setTextSize(TYPE_BODY);
-            button.setMinHeight(dp(context, 48));
-            button.setPadding(dp(context, 12), dp(context, 8), dp(context, 12), dp(context, 8));
+            button.setMinHeight(dp(context, 44)); button.setMinimumHeight(dp(context, 44));
+            button.setPadding(dp(context, 12), dp(context, 6), dp(context, 12), dp(context, 6));
+            button.setStateListAnimator(null);
             button.setBackground(rowBackground(context));
         }
         if (view instanceof CompoundButton) {

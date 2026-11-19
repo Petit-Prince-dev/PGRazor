@@ -41,7 +41,7 @@ final class SettingsPanel {
     private final java.util.List<AlertDialog> itemDialogs = new java.util.ArrayList<>();
     private final LinearLayout panel, content, body, home, results;
     private final ScrollView bodyScroll;
-    private TextView coords, speedReadout, homeStatus;
+    private TextView coords, speedReadout, homeStatus, homeCounts;
     private View closeIcon, backIcon;
     private TextView title, versionLabel, discord;
     private SettingsUi.Dot homeDot;
@@ -61,7 +61,6 @@ final class SettingsPanel {
     private final java.util.List<String> pageTitles=new java.util.ArrayList<>();
     private final java.util.List<TextView> pageSummaries=new java.util.ArrayList<>(), homeNames=new java.util.ArrayList<>();
     private final java.util.List<MenuIcon> homeIcons=new java.util.ArrayList<>();
-    private LinearLayout homeTarget;
     private int current=-1, homeScroll;
     private Switch incubatorSwitch;
     private Button incubatorPriority;
@@ -81,19 +80,19 @@ final class SettingsPanel {
     private TextView quickSummaryLabel, vgpStatus, cutsceneStatus, healStatus, smartBattleStatus;
     private Switch healSwitch, healReviveSwitch, smartBattleSwitch, gymRepeatSwitch;
     private Button healWhen, healThreshold, healItems;
-    private final CheckBox[] vgpChoices=new CheckBox[3];
-    private CheckBox vgpCooldownStop;
+    private final CompoundButton[] vgpChoices=new CompoundButton[3];
+    private Switch vgpCooldownStop;
     // Status / caption lines (muted, readiness driven).
     private TextView state, steeringStatus, spawnStatus, quickSummaryStatus, transferStatus, quickSpinStatus,
         buddyStatus, giftStatus, itemStatus, rocketStatus, battleStatus, quickBallStatus, ivStatus, cameraStatus, interactionStatus;
-    // Multi-option groups keep checkboxes / radios.
-    private final CheckBox[] transferProtection=new CheckBox[8];
+    // Multi-option groups: one switch per bit of the option mask.
+    private final CompoundButton[] transferProtection=new CompoundButton[8];
     private final Switch[] pvpKeep=new Switch[3];
     private final Button[] pvpRank=new Button[3];
-    private final CheckBox[] giftChoices=new CheckBox[3];
-    private final CheckBox[] quickMenuChoices=new CheckBox[QuickMenu.CUSTOMIZABLE.length];
-    private final CheckBox[] rocketChoices=new CheckBox[3];
-    private final CheckBox[] battleChoices=new CheckBox[10];
+    private final CompoundButton[] giftChoices=new CompoundButton[3];
+    private final CompoundButton[] quickMenuChoices=new CompoundButton[QuickMenu.CUSTOMIZABLE.length];
+    private final CompoundButton[] rocketChoices=new CompoundButton[3];
+    private final CompoundButton[] battleChoices=new CompoundButton[10];
     private Runnable buddyRefresh=()->{},smartRefresh=()->{};
     // PGRazor Root updates (rooted builds only): status line read from the root helper, throttled.
     // Groups gated by backend readiness (catch-summary support, ball-animation support), refreshed without
@@ -138,13 +137,18 @@ final class SettingsPanel {
         }
     }
 
-    /** One titled card of rows: a quiet label above a surface with a hairline border. */
+    /** A bounded press ripple for whole-row hit targets. */
+    private android.graphics.drawable.Drawable rowPress(){
+        return new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(SettingsUi.rippleColor()),null,new android.graphics.drawable.ColorDrawable(0xffffffff));
+    }
+
+    /** One titled card of rows: a small spaced caps label above a surface with a hairline border. */
     private LinearLayout group(LinearLayout owner,String label){
         LinearLayout root=new LinearLayout(activity);root.setOrientation(LinearLayout.VERTICAL);
-        TextView head=text(label,13,muted());head.setTypeface(SettingsUi.medium());
-        LinearLayout.LayoutParams headParams=new LinearLayout.LayoutParams(-1,-2);headParams.topMargin=dp(20);headParams.bottomMargin=dp(8);headParams.leftMargin=dp(2);
+        TextView head=text(label.toUpperCase(Locale.FRANCE),11,SettingsUi.faint());head.setTypeface(SettingsUi.medium());head.setLetterSpacing(0.06f);
+        LinearLayout.LayoutParams headParams=new LinearLayout.LayoutParams(-1,-2);headParams.topMargin=dp(16);headParams.bottomMargin=dp(6);headParams.leftMargin=dp(6);
         root.addView(head,headParams);
-        LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);card.setBackground(SettingsUi.cardBackground(activity));card.setPadding(dp(4),dp(2),dp(4),dp(2));card.setTag(SettingsUi.TAG_CARD,Boolean.TRUE);
+        LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);card.setBackground(SettingsUi.cardBackground(activity));card.setPadding(dp(2),dp(2),dp(2),dp(2));card.setTag(SettingsUi.TAG_CARD,Boolean.TRUE);
         RowList rows=new RowList();rows.setTag(SettingsUi.TAG_GROUP,label);card.addView(rows);
         root.addView(card);owner.addView(root);groupHeads.add(head);
         return rows;
@@ -155,73 +159,98 @@ final class SettingsPanel {
     /** A collapsible card. Its header is the whole hit target, so opening it never needs a second tap target. */
     private LinearLayout section(LinearLayout owner,String label,boolean open){
         LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);card.setBackground(SettingsUi.cardBackground(activity));card.setTag(SettingsUi.TAG_CARD,Boolean.TRUE);
-        LinearLayout head=new LinearLayout(activity);head.setOrientation(LinearLayout.HORIZONTAL);head.setGravity(Gravity.CENTER_VERTICAL);head.setMinimumHeight(dp(52));head.setPadding(dp(14),0,dp(10),0);
+        LinearLayout head=new LinearLayout(activity);head.setOrientation(LinearLayout.HORIZONTAL);head.setGravity(Gravity.CENTER_VERTICAL);head.setMinimumHeight(dp(46));head.setPadding(dp(14),0,dp(10),0);
         TextView title=text(label,14,ink());head.addView(title,new LinearLayout.LayoutParams(0,-2,1f));
         SettingsUi.Chevron chev=new SettingsUi.Chevron(activity);chev.open=open;head.addView(chev,new LinearLayout.LayoutParams(dp(24),dp(24)));
-        RowList rows=new RowList();rows.setVisibility(open?View.VISIBLE:View.GONE);rows.setPadding(dp(4),0,dp(4),dp(4));
-        rows.setTag(SettingsUi.TAG_SECTION_HEAD,head);
+        RowList rows=new RowList();rows.setVisibility(open?View.VISIBLE:View.GONE);rows.setPadding(dp(2),0,dp(2),dp(2));
+        rows.setTag(SettingsUi.TAG_SECTION_HEAD,head);rows.setTag(SettingsUi.TAG_GROUP,label);
         head.setOnClickListener(v->{boolean o=rows.getVisibility()!=View.VISIBLE;rows.setVisibility(o?View.VISIBLE:View.GONE);chev.open=o;chev.invalidate();});
         card.addView(head);card.addView(rows);
-        LinearLayout.LayoutParams cardParams=new LinearLayout.LayoutParams(-1,-2);cardParams.topMargin=dp(20);
+        LinearLayout.LayoutParams cardParams=new LinearLayout.LayoutParams(-1,-2);cardParams.topMargin=dp(16);
         owner.addView(card,cardParams);
         return rows;
     }
 
-    private Switch switchRow(LinearLayout owner,String label){
-        LinearLayout r=new LinearLayout(activity);r.setOrientation(LinearLayout.HORIZONTAL);r.setGravity(Gravity.CENTER_VERTICAL);r.setMinimumHeight(dp(52));r.setPadding(dp(10),dp(2),dp(6),dp(2));
-        TextView t=text(label,14,ink());t.setPadding(0,0,dp(8),0);r.addView(t,new LinearLayout.LayoutParams(0,-2,1f));
+    private Switch switchRow(LinearLayout owner,String label){return switchRow(owner,label,null);}
+    /**
+     * A setting that is on or off: its label (and an optional one-line hint under it) on the left, the
+     * switch on the right. The whole row toggles it, not only the small switch.
+     */
+    private Switch switchRow(LinearLayout owner,String label,String hint){
+        LinearLayout r=new LinearLayout(activity);r.setOrientation(LinearLayout.HORIZONTAL);r.setGravity(Gravity.CENTER_VERTICAL);r.setMinimumHeight(dp(46));r.setPadding(dp(12),dp(6),dp(8),dp(6));
+        LinearLayout texts=new LinearLayout(activity);texts.setOrientation(LinearLayout.VERTICAL);texts.setPadding(0,0,dp(8),0);
+        TextView t=text(label,14,ink());texts.addView(t);
+        if(hint!=null&&!hint.isEmpty()){TextView h=text(hint,12,muted());h.setLineSpacing(0,1.1f);h.setPadding(0,dp(1),0,0);texts.addView(h);captions.add(h);}
+        r.addView(texts,new LinearLayout.LayoutParams(0,-2,1f));
         Switch sw=new Switch(activity);sw.setContentDescription(label);sw.setClickable(true);r.addView(sw,new LinearLayout.LayoutParams(-2,-2));
+        r.setClickable(true);r.setFocusable(true);r.setBackground(rowPress());r.setOnClickListener(v->{if(sw.isEnabled())sw.toggle();});
         owner.addView(r);return sw;
     }
+    /** A switch bound to one bit of an option mask, kept in step by the refresh tick. */
+    private Switch bitRow(LinearLayout owner,String label,int bit,java.util.function.IntSupplier get,java.util.function.IntConsumer put){
+        Switch sw=switchRow(owner,label);sw.setChecked((get.getAsInt()&bit)!=0);
+        sw.setOnCheckedChangeListener((v,checked)->{int value=get.getAsInt();if(((value&bit)!=0)==checked)return;put.accept(checked?value|bit:value&~bit);});
+        return sw;
+    }
     private TextView caption(LinearLayout owner,String s){
-        TextView t=text(s,12,muted());t.setLineSpacing(0,1.25f);t.setPadding(dp(8),dp(6),dp(8),dp(10));
+        TextView t=text(s,12,muted());t.setLineSpacing(0,1.2f);t.setPadding(dp(12),dp(4),dp(12),dp(8));
         owner.addView(t);captions.add(t);return t;
     }
 
-    /** A clean close affix: a small X drawn inside a 48dp hitbox. */
+    /** A clean close affix: a small X drawn inside a 44dp hitbox. */
     private final class CloseIcon extends View {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
-        CloseIcon(Context c){super(c);setContentDescription("Fermer les paramètres PGRazor");setFocusable(true);setClickable(true);
-            setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x3345e1ba),null,rounded(0xffffffff,24)));}
-        protected void onDraw(Canvas c){super.onDraw(c);float cx=getWidth()/2f,cy=getHeight()/2f,r=dp(8);paint.setStyle(Paint.Style.STROKE);paint.setStrokeCap(Paint.Cap.ROUND);paint.setStrokeWidth(dp(2));paint.setColor(muted());c.drawLine(cx-r,cy-r,cx+r,cy+r,paint);c.drawLine(cx-r,cy+r,cx+r,cy-r,paint);}
+        CloseIcon(Context c){super(c);setContentDescription("Fermer les réglages PGRazor");setFocusable(true);setClickable(true);
+            setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x3345e1ba),null,rounded(0xffffffff,22)));}
+        protected void onDraw(Canvas c){super.onDraw(c);float cx=getWidth()/2f,cy=getHeight()/2f,r=dp(7);paint.setStyle(Paint.Style.STROKE);paint.setStrokeCap(Paint.Cap.ROUND);paint.setStrokeWidth(dp(2));paint.setColor(muted());c.drawLine(cx-r,cy-r,cx+r,cy+r,paint);c.drawLine(cx-r,cy+r,cx+r,cy-r,paint);}
     }
 
-    /** A drawn back chevron inside a 48dp hitbox; shown only while a category page is open. */
+    /** A drawn back chevron inside a 44dp hitbox; shown only while a category page is open. */
     private final class BackIcon extends View {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
-        BackIcon(Context c){super(c);setContentDescription("Retour à tous les paramètres");setFocusable(true);setClickable(true);
-            setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x3345e1ba),null,rounded(0xffffffff,24)));}
+        BackIcon(Context c){super(c);setContentDescription("Retour à l'accueil des réglages");setFocusable(true);setClickable(true);
+            setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x3345e1ba),null,rounded(0xffffffff,22)));}
         protected void onDraw(Canvas c){super.onDraw(c);float cx=getWidth()/2f,cy=getHeight()/2f,r=dp(7);paint.setStyle(Paint.Style.STROKE);paint.setStrokeCap(Paint.Cap.ROUND);paint.setStrokeJoin(Paint.Join.ROUND);paint.setStrokeWidth(dp(2));paint.setColor(accent());
             Path p=new Path();p.moveTo(cx+r/2,cy-r);p.lineTo(cx-r/2,cy);p.lineTo(cx+r/2,cy+r);c.drawPath(p,paint);}
     }
 
     /**
-     * Adds a category: an icon tile row on the home screen and the page it opens. Content is built
-     * directly into the returned page container.
+     * Adds a category: a tile on the home grid (short name, live summary) and the page it opens.
+     * Content is built directly into the returned page container.
      */
-    private LinearLayout page(int icon,String label){
+    private LinearLayout page(int icon,String shortName,String pageTitle){
         final int index=pages.size();
-        LinearLayout row=new LinearLayout(activity);row.setOrientation(LinearLayout.HORIZONTAL);row.setGravity(Gravity.CENTER_VERTICAL);row.setMinimumHeight(dp(64));
-        row.setPadding(dp(12),dp(10),dp(10),dp(10));row.setClickable(true);row.setFocusable(true);
-        row.setBackground(SettingsUi.ripple(SettingsUi.cardBackground(activity)));
-        LinearLayout tile=new LinearLayout(activity);tile.setGravity(Gravity.CENTER);tile.setBackground(SettingsUi.rounded(activity,SettingsUi.accentSoft(),10));
-        MenuIcon glyph=new MenuIcon(activity,icon);glyph.accent=true;tile.addView(glyph,new LinearLayout.LayoutParams(dp(20),dp(20)));
-        row.addView(tile,new LinearLayout.LayoutParams(dp(36),dp(36)));
-        LinearLayout texts=new LinearLayout(activity);texts.setOrientation(LinearLayout.VERTICAL);texts.setPadding(dp(12),0,0,0);
-        TextView name=text(label,14,ink());name.setTypeface(SettingsUi.medium());texts.addView(name);
-        TextView summary=text("",12,muted());summary.setMaxLines(2);summary.setEllipsize(android.text.TextUtils.TruncateAt.END);texts.addView(summary);
-        row.addView(texts,new LinearLayout.LayoutParams(0,-2,1f));
-        SettingsUi.Chevron chevron=new SettingsUi.Chevron(activity);row.addView(chevron,new LinearLayout.LayoutParams(dp(24),dp(24)));
-        LinearLayout.LayoutParams rowParams=new LinearLayout.LayoutParams(-1,-2);rowParams.bottomMargin=dp(8);(homeTarget==null?home:homeTarget).addView(row,rowParams);
-        row.setOnClickListener(v->open(index));
+        LinearLayout tile=new LinearLayout(activity);tile.setOrientation(LinearLayout.VERTICAL);tile.setGravity(Gravity.CENTER_HORIZONTAL);
+        tile.setPadding(dp(4),dp(12),dp(4),dp(10));tile.setClickable(true);tile.setFocusable(true);tile.setContentDescription(pageTitle);
+        tile.setBackground(SettingsUi.ripple(SettingsUi.cardBackground(activity)));
+        LinearLayout disc=new LinearLayout(activity);disc.setGravity(Gravity.CENTER);disc.setBackground(SettingsUi.rounded(activity,SettingsUi.accentSoft(),12));
+        MenuIcon glyph=new MenuIcon(activity,icon);glyph.accent=true;disc.addView(glyph,new LinearLayout.LayoutParams(dp(20),dp(20)));
+        tile.addView(disc,new LinearLayout.LayoutParams(dp(40),dp(40)));
+        TextView name=text(shortName,13,ink());name.setTypeface(SettingsUi.medium());name.setGravity(Gravity.CENTER);name.setSingleLine(true);name.setEllipsize(android.text.TextUtils.TruncateAt.END);name.setPadding(0,dp(8),0,0);
+        tile.addView(name,new LinearLayout.LayoutParams(-1,-2));
+        TextView summary=text("",11,muted());summary.setGravity(Gravity.CENTER);summary.setSingleLine(true);summary.setEllipsize(android.text.TextUtils.TruncateAt.END);summary.setPadding(0,dp(2),0,0);
+        tile.addView(summary,new LinearLayout.LayoutParams(-1,-2));
+        tile.setOnClickListener(v->open(index));
         LinearLayout content=new LinearLayout(activity);content.setOrientation(LinearLayout.VERTICAL);content.setVisibility(View.GONE);content.setPadding(0,0,0,dp(24));body.addView(content);
-        pages.add(content);pageTitles.add(label);homeRows.add(row);homeNames.add(name);homeIcons.add(glyph);pageSummaries.add(summary);
+        pages.add(content);pageTitles.add(pageTitle);homeRows.add(tile);homeNames.add(name);homeIcons.add(glyph);pageSummaries.add(summary);
         captions.add(summary);
         return content;
     }
+    /** Lays the category tiles out three per row under the status card. */
+    private void layoutHomeGrid(){
+        LinearLayout grid=new LinearLayout(activity);grid.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout row=null;
+        for(int i=0;i<homeRows.size();i++){
+            if(i%3==0){row=new LinearLayout(activity);row.setOrientation(LinearLayout.HORIZONTAL);grid.addView(row,new LinearLayout.LayoutParams(-1,-2));}
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-1,1f);lp.setMargins(dp(3),dp(3),dp(3),dp(3));row.addView(homeRows.get(i),lp);
+        }
+        if(row!=null)for(int i=homeRows.size()%3;i>0&&i<3;i++)row.addView(new View(activity),new LinearLayout.LayoutParams(0,1,1f));
+        LinearLayout.LayoutParams gridParams=new LinearLayout.LayoutParams(-1,-2);gridParams.topMargin=dp(9);gridParams.leftMargin=-dp(3);gridParams.rightMargin=-dp(3);
+        home.addView(grid,gridParams);
+    }
     /** Shown at the top of a page while some of its groups are hidden because the game has not reported support. */
     private void unavailableNote(LinearLayout owner,boolean needsBall){
-        TextView note=caption(owner,"Certains paramètres ne sont pas encore disponibles.");
+        TextView note=caption(owner,"Certains réglages apparaîtront quand le jeu sera prêt.");
         (needsBall?ballNotes:summaryNotes).add(note);
     }
     /** Shows the home screen (index -1) or one category page, keeping the home scroll position for the way back. */
@@ -234,9 +263,8 @@ final class SettingsPanel {
         home.setVisibility(index<0?View.VISIBLE:View.GONE);
         for(int i=0;i<pages.size();i++)pages.get(i).setVisibility(i==index?View.VISIBLE:View.GONE);
         searchBar.setVisibility(index<0?View.VISIBLE:View.GONE);
-        set(title,index<0?EncounterCounter.title():pageTitles.get(index));
+        set(title,index<0?"PGRazor":pageTitles.get(index));
         backIcon.setVisibility(index<0?View.GONE:View.VISIBLE);
-        // The theme toggle and version make room for the longer page titles; theme is also under Display & Performance.
         versionLabel.setVisibility(index<0?View.VISIBLE:View.GONE);
         final int y=index<0?homeScroll:0;bodyScroll.post(()->bodyScroll.scrollTo(0,y));
     }
@@ -247,26 +275,26 @@ final class SettingsPanel {
         panel.setBackgroundColor(SettingsUi.bg());
         content = new LinearLayout(activity); content.setOrientation(LinearLayout.VERTICAL);
         panel.addView(content,new LinearLayout.LayoutParams(-1,-1));
-        // Full-screen settings header: back (on a category page), title and close controls.
+        // Header: back (on a category page), title, version (home only) and close.
         LinearLayout header = new LinearLayout(activity); header.setOrientation(LinearLayout.HORIZONTAL); header.setGravity(Gravity.CENTER_VERTICAL);
-        backIcon = new BackIcon(activity); backIcon.setVisibility(View.GONE); header.addView(backIcon, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        backIcon = new BackIcon(activity); backIcon.setVisibility(View.GONE); header.addView(backIcon, new LinearLayout.LayoutParams(dp(44), dp(44)));
         backIcon.setOnClickListener(v -> open(-1));
-        title = text("PGRazor", 20, ink()); title.setTypeface(SettingsUi.medium()); title.setPadding(dp(4), 0, 0, 0);
+        title = text("PGRazor", 18, ink()); title.setTypeface(SettingsUi.medium()); title.setPadding(dp(4), 0, 0, 0);
         title.setSingleLine(true); title.setEllipsize(android.text.TextUtils.TruncateAt.END); title.setGravity(Gravity.CENTER_VERTICAL);
-        header.addView(title, new LinearLayout.LayoutParams(0, dp(48), 1f));
+        header.addView(title, new LinearLayout.LayoutParams(0, dp(44), 1f));
         versionLabel = text(BuildVersion.NAME, 11, SettingsUi.faint());
         versionLabel.setTypeface(SettingsUi.mono());
         versionLabel.setSingleLine(true); versionLabel.setGravity(Gravity.CENTER_VERTICAL);
-        versionLabel.setPadding(dp(4), 0, dp(6), 0);
+        versionLabel.setPadding(dp(4), 0, dp(4), 0);
         versionLabel.setContentDescription("Version PGRazor " + BuildVersion.NAME);
         captions.add(versionLabel);
-        header.addView(versionLabel, new LinearLayout.LayoutParams(-2, dp(48)));
-        closeIcon = new CloseIcon(activity); header.addView(closeIcon, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        header.addView(versionLabel, new LinearLayout.LayoutParams(-2, dp(44)));
+        closeIcon = new CloseIcon(activity); header.addView(closeIcon, new LinearLayout.LayoutParams(dp(44), dp(44)));
         content.addView(header);
 
-        // Search sits at the top of Settings, above the scrolling body, so it is always one tap away.
+        // Search sits at the top of the home screen, above the scrolling body.
         searchBar = new LinearLayout(activity); searchBar.setOrientation(LinearLayout.HORIZONTAL); searchBar.setGravity(Gravity.CENTER_VERTICAL);
-        searchBar.setBackground(SettingsUi.fieldBackground(activity)); searchBar.setMinimumHeight(dp(48)); searchBar.setPadding(dp(12),0,dp(2),0);
+        searchBar.setBackground(SettingsUi.fieldBackground(activity)); searchBar.setMinimumHeight(dp(42)); searchBar.setPadding(dp(12),0,dp(2),0);
         SettingsUi.SearchGlyph glass = new SettingsUi.SearchGlyph(activity);
         LinearLayout.LayoutParams glassParams=new LinearLayout.LayoutParams(dp(18),dp(18));glassParams.rightMargin=dp(10);searchBar.addView(glass,glassParams);
         searchField = new EditText(activity);
@@ -276,58 +304,54 @@ final class SettingsPanel {
         searchField.setHint("Rechercher un réglage"); searchField.setSingleLine(true); searchField.setPadding(0,0,0,0);
         searchField.setInputType(InputType.TYPE_CLASS_TEXT);
         searchField.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
-        searchField.setContentDescription("Rechercher un réglage par nom, description ou catégorie");
-        searchBar.addView(searchField,new LinearLayout.LayoutParams(0,dp(48),1f));
+        searchField.setContentDescription("Rechercher un réglage par nom ou par catégorie");
+        searchBar.addView(searchField,new LinearLayout.LayoutParams(0,dp(42),1f));
         clearSearch = new SettingsUi.ClearGlyph(activity); clearSearch.setVisibility(View.GONE);
-        searchBar.addView(clearSearch,new LinearLayout.LayoutParams(dp(40),dp(48)));
+        searchBar.addView(clearSearch,new LinearLayout.LayoutParams(dp(40),dp(42)));
         clearSearch.setOnClickListener(v -> searchField.setText(""));
         searchField.addTextChangedListener(new android.text.TextWatcher(){
             public void beforeTextChanged(CharSequence s,int start,int count,int after){}
             public void onTextChanged(CharSequence s,int start,int before,int count){}
             public void afterTextChanged(android.text.Editable s){if(!suppressSearch)applySearch(s.toString());}
         });
-        LinearLayout.LayoutParams searchParams=new LinearLayout.LayoutParams(-1,-2);searchParams.bottomMargin=dp(12);content.addView(searchBar,searchParams);
+        LinearLayout.LayoutParams searchParams=new LinearLayout.LayoutParams(-1,-2);searchParams.bottomMargin=dp(10);content.addView(searchBar,searchParams);
 
         body = new LinearLayout(activity); body.setOrientation(LinearLayout.VERTICAL);
         bodyScroll = new ScrollView(activity); bodyScroll.setFillViewport(false); bodyScroll.setVerticalScrollBarEnabled(false);
         bodyScroll.addView(body, new ScrollView.LayoutParams(-1,-2));
         content.addView(bodyScroll, new LinearLayout.LayoutParams(-1,0,1));
 
-        discord = text("Rejoindre notre Discord", 12, accent());
-        discord.setGravity(Gravity.CENTER); discord.setMinimumHeight(dp(44));
-        discord.setContentDescription("Rejoindre la communauté Discord de PGRazor");
-        discord.setClickable(true); discord.setFocusable(true);
-        discord.setBackground(SettingsUi.pressable(activity));
-        content.addView(discord, new LinearLayout.LayoutParams(-1,dp(44)));
-        discord.setOnClickListener(v -> {
-            try { activity.startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://discord.gg/9QqfkDSQX3"))); }
-            catch (android.content.ActivityNotFoundException unavailable) {
-                android.widget.Toast.makeText(activity, "Aucune appli pour ouvrir les liens Discord", android.widget.Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        // Home screen: the live telemetry card, then grouped category cards.
+        // Home: the live status card, then the category grid; the community link closes the home screen.
         home = new LinearLayout(activity); home.setOrientation(LinearLayout.VERTICAL); body.addView(home);
         buildTelemetryCard();
-        homeTarget=homeGroup("Jeu");
         buildLocationPage();
         buildCatchingPage();
         buildPokemonPage();
         buildGoPlusPage();
         buildBattlesPage();
         buildSocialPage();
-        homeTarget=homeGroup("Automatisation");
         buildAutomationPage();
-        buildEventsPage();
-        homeTarget=homeGroup("Appli");
         buildDisplayPage();
         buildAccountsPage();   // last: its Diagnostics group collects status lines created by the pages above
-        homeTarget=null;
+        layoutHomeGrid();
+        discord = text("Rejoindre le Discord PGRazor", 12, accent());
+        discord.setGravity(Gravity.CENTER);
+        discord.setContentDescription("Rejoindre la communauté Discord de PGRazor");
+        discord.setClickable(true); discord.setFocusable(true);
+        discord.setBackground(SettingsUi.pressable(activity));
+        LinearLayout.LayoutParams discordParams=new LinearLayout.LayoutParams(-1,dp(40));discordParams.topMargin=dp(14);
+        home.addView(discord, discordParams);
+        discord.setOnClickListener(v -> {
+            try { activity.startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://discord.gg/9QqfkDSQX3"))); }
+            catch (android.content.ActivityNotFoundException unavailable) {
+                android.widget.Toast.makeText(activity, "Aucune appli pour ouvrir les liens Discord", android.widget.Toast.LENGTH_SHORT).show();
+            }
+        });
         results = new LinearLayout(activity); results.setOrientation(LinearLayout.VERTICAL); results.setVisibility(View.GONE); body.addView(results);
 
         // Closing the full-screen settings panel simply returns to the game (or the quick menu on the next tap).
         closeIcon.setOnClickListener(v -> { hideKeyboard(); hide(); });
-        // The settings panel is a full-screen modal now; it consumes taps so the game behind it stays inert.
+        // The settings panel is a full-screen modal; it consumes taps so the game behind it stays inert.
         panel.setClickable(true);
         // The column stops growing on tablets and stays centred instead of stretching rows across the screen.
         panel.addOnLayoutChangeListener((v,l,t,r,b,ol,ot,orr,ob)->updateContentWidth());
@@ -350,151 +374,124 @@ final class SettingsPanel {
         }catch(RuntimeException ignored){}
     }
 
-    private LinearLayout homeGroup(String label){
-        TextView head=text(label,12,SettingsUi.faint());head.setTypeface(SettingsUi.medium());
-        LinearLayout.LayoutParams headParams=new LinearLayout.LayoutParams(-1,-2);headParams.topMargin=dp(22);headParams.bottomMargin=dp(8);headParams.leftMargin=dp(2);
-        home.addView(head,headParams);
-        LinearLayout list=new LinearLayout(activity);list.setOrientation(LinearLayout.VERTICAL);home.addView(list);
-        return list;
-    }
-
+    /** The home status card: spoofing state and speed, coordinates, then encounters and cooldown. */
     private void buildTelemetryCard(){
         LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(SettingsUi.cardBackground(activity));card.setTag(SettingsUi.TAG_CARD,Boolean.TRUE);card.setPadding(dp(14),dp(12),dp(14),dp(12));
+        card.setBackground(SettingsUi.cardBackground(activity));card.setTag(SettingsUi.TAG_CARD,Boolean.TRUE);card.setPadding(dp(14),dp(10),dp(14),dp(10));
         LinearLayout top=new LinearLayout(activity);top.setOrientation(LinearLayout.HORIZONTAL);top.setGravity(Gravity.CENTER_VERTICAL);
         homeDot=new SettingsUi.Dot(activity,SettingsUi.success());top.addView(homeDot,new LinearLayout.LayoutParams(dp(8),dp(8)));
-        homeStatus=text("Démarrage",12,muted());homeStatus.setSingleLine(true);homeStatus.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        homeStatus=text("Démarrage",13,ink());homeStatus.setTypeface(SettingsUi.medium());homeStatus.setSingleLine(true);homeStatus.setEllipsize(android.text.TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams statusParams=new LinearLayout.LayoutParams(0,-2,1f);statusParams.leftMargin=dp(8);top.addView(homeStatus,statusParams);
-        speedReadout=text("0.0 km/h",12,accent());speedReadout.setTypeface(SettingsUi.mono());top.addView(speedReadout);
+        speedReadout=text("0,0 km/h",12,accent());speedReadout.setTypeface(SettingsUi.mono());top.addView(speedReadout);
         card.addView(top);
-        coords=text(String.format(Locale.US,"%.6f, %.6f",Control.engine.latitude,Control.engine.longitude),13,ink());coords.setTypeface(SettingsUi.mono());coords.setSingleLine(true);
-        LinearLayout.LayoutParams coordsParams=new LinearLayout.LayoutParams(-1,-2);coordsParams.topMargin=dp(8);card.addView(coords,coordsParams);
+        coords=text(String.format(Locale.US,"%.6f, %.6f",Control.engine.latitude,Control.engine.longitude),12,muted());coords.setTypeface(SettingsUi.mono());coords.setSingleLine(true);
+        LinearLayout.LayoutParams coordsParams=new LinearLayout.LayoutParams(-1,-2);coordsParams.topMargin=dp(6);card.addView(coords,coordsParams);
+        homeCounts=text("",12,muted());homeCounts.setSingleLine(true);homeCounts.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams countsParams=new LinearLayout.LayoutParams(-1,-2);countsParams.topMargin=dp(2);card.addView(homeCounts,countsParams);captions.add(homeCounts);
         home.addView(card);
     }
 
     private void buildLocationPage() {
-        LinearLayout loc = page(MenuIcon.TELEPORT, "Position & carte");
-        LinearLayout core = group(loc, "Position & déplacement");
+        LinearLayout loc = page(MenuIcon.TELEPORT, "Position", "Position & déplacement");
+        LinearLayout core = group(loc, "Spoof");
         locationSwitch=switchRow(core,"Spoof de position");locationSwitch.setChecked(Control.desiredEnabled());
         locationSwitch.setOnCheckedChangeListener((v,checked)->{if(checked==Control.desiredEnabled())return;host.releaseJoystick(true);Control.setLocationSpoofing(checked);host.refresh();});
         steeringStatus = caption(core, "Le joystick suit la caméra");
         launch(core, "Coordonnées & vitesse", host::editLocation);
         launch(core, "Carte du monde", host::openMap);
-        joystickSwitch = switchRow(core, "Afficher le joystick"); joystickSwitch.setChecked(Control.joystickVisible());
+        joystickSwitch = switchRow(core, "Joystick à l'écran"); joystickSwitch.setChecked(Control.joystickVisible());
         joystickSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.joystickVisible())return; host.setJoystickVisible(checked); });
-        idleWalkSwitch = switchRow(core, "Marche à l'arrêt");idleWalkSwitch.setChecked(Control.idleWalking());
+        idleWalkSwitch = switchRow(core, "Marche à l'arrêt", "Tourne en rond quand tu ne bouges pas. Vitesse 0 = pause.");idleWalkSwitch.setChecked(Control.idleWalking());
         idleWalkSwitch.setOnCheckedChangeListener((v,checked)->{if(checked!=Control.idleWalking())Control.setIdleWalking(checked);});
-        caption(core, "À l'arrêt, marche en cercle. Une vitesse de 0 la met en pause.");
 
         LinearLayout map = group(loc, "Carte du jeu");
         mapTap = button("Appui sur la carte : ne rien faire"); map.addView(mapTap);
         mapTap.setOnClickListener(v -> { Control.setMapTapMode((Control.mapTapMode()+1)%4); host.refresh(); });
-        spawnSwitch = switchRow(map, "Booster d'apparitions (80 m)"); spawnSwitch.setChecked(Control.spawnBooster());
+        spawnSwitch = switchRow(map, "Booster d'apparitions", "Rayon de 80 m. Peut faire ramer dans les zones chargées."); spawnSwitch.setChecked(Control.spawnBooster());
         spawnSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.spawnBooster())return; Control.setSpawnBooster(spawnSwitch.isChecked()); });
         spawnStatus = caption(map, "");
-        caption(map, "Peut faire ramer dans les zones avec beaucoup de Pokémon. Désactive-le si le jeu saccade.");
-
-        LinearLayout overlays = group(loc, "Cooldown & heure");
-        cooldownSwitch = switchRow(overlays, "Overlay du cooldown"); cooldownSwitch.setChecked(Control.cooldownOverlay());
-        cooldownSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.cooldownOverlay())return; Control.setCooldownOverlay(cooldownSwitch.isChecked()); host.refresh(); });
-        launch(overlays, "Historique du cooldown", () -> Cooldown.show(activity));
-        localTimeSwitch = switchRow(overlays, "Afficher l'heure locale"); localTimeSwitch.setChecked(Control.localTimeOverlay());
-        localTimeSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.localTimeOverlay())return; Control.setLocalTimeOverlay(localTimeSwitch.isChecked()); host.refresh(); });
-        caption(overlays, "Heure à ta position spoofée.");
-        LinearLayout encounters = group(loc, "Compteur de rencontres");
-        encounterCounterSwitch = switchRow(encounters, "Compter les rencontres"); encounterCounterSwitch.setChecked(Control.encounterCounter());
-        encounterCounterSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.encounterCounter())return; Control.setEncounterCounter(encounterCounterSwitch.isChecked()); host.refresh(); });
-        encounterOverlaySwitch = switchRow(encounters, "Afficher le compteur sur la carte"); encounterOverlaySwitch.setChecked(Control.encounterOverlay());
-        encounterOverlaySwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.encounterOverlay())return; Control.setEncounterOverlay(encounterOverlaySwitch.isChecked()); host.refresh(); });
-        caption(encounters, "Pokémon sauvages rencontrés par ce compte ces dernières 24 h sur cet appareil avec PGRazor actif, affichés à côté du titre PGRazor. Les rencontres faites ailleurs, et celles de Leurre, d'Encens, de raid et d'étude, ne sont pas comptées.");
     }
 
     private void buildCatchingPage() {
-        LinearLayout page = page(MenuIcon.CATCH, "Capture");
+        LinearLayout page = page(MenuIcon.CATCH, "Capture", "Capture");
         unavailableNote(page, true);
 
         // ----- Quick catch (gated by catch-summary support) -----
         LinearLayout quick = group(page, "Capture rapide"); summaryGated.add((View)quick.getParent());
-        LinearLayout sumRow = new LinearLayout(activity); sumRow.setOrientation(LinearLayout.HORIZONTAL); sumRow.setGravity(Gravity.CENTER_VERTICAL); sumRow.setMinimumHeight(dp(44));
+        LinearLayout sumRow = new LinearLayout(activity); sumRow.setOrientation(LinearLayout.HORIZONTAL); sumRow.setGravity(Gravity.CENTER_VERTICAL); sumRow.setMinimumHeight(dp(46)); sumRow.setPadding(dp(12),0,dp(8),0);
         quickSummaryLabel = new TextView(activity); quickSummaryLabel.setTextSize(14); sumRow.addView(quickSummaryLabel, new LinearLayout.LayoutParams(0,-2,1f));
         quickSummarySwitch = new Switch(activity); quickSummarySwitch.setContentDescription("Capture rapide"); sumRow.addView(quickSummarySwitch, new LinearLayout.LayoutParams(-2,-2)); quick.addView(sumRow);
+        sumRow.setClickable(true); sumRow.setBackground(rowPress()); sumRow.setOnClickListener(v -> { if(quickSummarySwitch.isEnabled()) quickSummarySwitch.toggle(); });
         quickSummarySwitch.setChecked(Control.quickSummaryEnabled());
         quickSummarySwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.quickSummaryEnabled())return; Control.setQuickSummaryEnabled(quickSummarySwitch.isChecked()); host.refresh(); });
         quickSummaryStatus = caption(quick, "");
 
-        // ----- Throws, ball choice and auto throw (gated by ball-animation support) -----
+        // ----- Throws (gated by ball-animation support) -----
         LinearLayout throwC = group(page, "Lancers"); ballGated.add((View)throwC.getParent());
-        throwGrade = button("Qualité du lancer : OFF"); throwC.addView(throwGrade);
+        throwGrade = button("Qualité du lancer : désactivée"); throwC.addView(throwGrade);
         throwGrade.setOnClickListener(v -> { Control.setThrowGrade((Control.throwRating()+1)%4); host.refresh(); });
         throwVariety = button("Lancers variés : Off"); throwC.addView(throwVariety);
         throwVariety.setOnClickListener(v -> { Control.setThrowVariety((Control.throwVariety()+1)%4); host.refresh(); });
-        caption(throwC, "Lancers variés choisit une qualité au hasard à chaque lancer, à chances égales. « Tous » inclut un lancer simple. Remplace la qualité du lancer quand c'est activé.");
-        curveSwitch = switchRow(throwC, "Toujours en balle courbe"); curveSwitch.setChecked(Control.throwCurve());
+        curveSwitch = switchRow(throwC, "Balle courbe"); curveSwitch.setChecked(Control.throwCurve());
         curveSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.throwCurve())return; Control.setThrowCurve(curveSwitch.isChecked()); host.refresh(); });
         alwaysHitSwitch = switchRow(throwC, "Toujours toucher"); alwaysHitSwitch.setChecked(Control.throwAlwaysHit());
         alwaysHitSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.throwAlwaysHit())return; Control.setThrowAlwaysHit(alwaysHitSwitch.isChecked()); host.refresh(); });
-        arSwitch = switchRow(throwC, "Bonus de lancer RA+"); arSwitch.setChecked(Control.throwAr());
+        arSwitch = switchRow(throwC, "Bonus RA+", "Rencontres sauvages, en plus de la qualité et de la courbe."); arSwitch.setChecked(Control.throwAr());
         arSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.throwAr())return; Control.setThrowAr(arSwitch.isChecked()); host.refresh(); });
-        caption(throwC, "Rencontres sauvages. Se combine avec la qualité du lancer et la balle courbe.");
+        caption(throwC, "Lancers variés : une qualité au hasard à chaque lancer, à la place de la qualité fixe.");
 
-        LinearLayout ballC = group(page, "Chance de capture & choix de Ball"); ballGated.add((View)ballC.getParent());
+        LinearLayout ballC = group(page, "Choix de la Ball"); ballGated.add((View)ballC.getParent());
         catchChanceSwitch = switchRow(ballC, "Afficher la chance de capture"); catchChanceSwitch.setChecked(Control.catchChanceShown());
         catchChanceSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.catchChanceShown())return; Control.setCatchChanceShown(checked); host.refresh(); });
-        autoBallSwitch = switchRow(ballC, "Ball auto"); autoBallSwitch.setChecked(Control.autoBall());
+        autoBallSwitch = switchRow(ballC, "Ball auto", "La Ball la moins chère qui atteint l'objectif. Jamais de Master Ball."); autoBallSwitch.setChecked(Control.autoBall());
         autoBallSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.autoBall())return; Control.setAutoBall(checked); host.refresh(); });
-        autoBallTarget = button("Objectif Ball auto : "+Control.autoBallTarget()+"%"); ballC.addView(autoBallTarget);
+        autoBallTarget = button("Objectif : "+Control.autoBallTarget()+" %"); ballC.addView(autoBallTarget);
         autoBallTarget.setOnClickListener(v -> {
             int[] targets=Control.AUTO_BALL_TARGETS;int next=targets[0];
             for(int i=0;i<targets.length;i++)if(targets[i]==Control.autoBallTarget()){next=targets[(i+1)%targets.length];break;}
             Control.setAutoBallTarget(next); host.refresh(); });
-        caption(ballC, "Rencontres manuelles. La chance utilise le taux de capture du serveur pour chaque Ball avec ta baie, ta qualité de lancer et la balle courbe ; le taux du serveur inclut déjà ton bonus de médaille de type. Ball auto choisit la Poké Ball, Super Ball ou Hyper Ball la moins chère qui atteint l'objectif, à l'ouverture de la rencontre et après chaque fuite ; une Ball choisie à la main est gardée jusqu'à la fuite suivante. N'utilise jamais de Master Ball.");
 
         LinearLayout autoC = group(page, "Lancer auto"); ballGated.add((View)autoC.getParent());
         autoThrowSwitch = switchRow(autoC, "Lancer auto"); autoThrowSwitch.setChecked(Control.autoThrow());
         autoThrowSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.autoThrow())return; Control.setAutoThrow(autoThrowSwitch.isChecked()); host.refresh(); });
-        autoThrowMapSwitch = switchRow(autoC, "Capture depuis la carte (touche le Pokémon)");
+        autoThrowMapSwitch = switchRow(autoC, "Capturer depuis la carte", "Touche le Pokémon sur la carte.");
         autoThrowMapSwitch.setChecked(Control.autoThrowOnMap());
         autoThrowMapSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.autoThrowOnMap())return; Control.setAutoThrowOnMap(checked); host.refresh(); });
         quickBallStatus = caption(autoC, "");
 
         LinearLayout berryC = group(page, "Baies"); summaryGated.add((View)berryC.getParent());
-        berrySwitch = switchRow(berryC, "Baies de capture & overlay"); berrySwitch.setChecked(Control.encounterBerryEnabled());
+        berrySwitch = switchRow(berryC, "Baies auto", "Avec le bouton de baie pendant la rencontre."); berrySwitch.setChecked(Control.encounterBerryEnabled());
         berrySwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.encounterBerryEnabled())return; Control.setEncounterBerryEnabled(berrySwitch.isChecked()); host.refresh(); });
         berryPicker = new BerryPriorityPicker(activity, host::refresh);
-        berryPriority = button("Priorité des baies : "+BerryPriorityPicker.summary()); berryC.addView(berryPriority);
+        berryPriority = button("Priorité : "+BerryPriorityPicker.summary()); berryC.addView(berryPriority);
         berryPriority.setOnClickListener(v -> berryPicker.show());
     }
 
     private void buildPokemonPage() {
-        LinearLayout page = page(MenuIcon.BOX, "Pokémon & transfert");
+        LinearLayout page = page(MenuIcon.BOX, "Pokémon", "Pokémon & transfert");
         unavailableNote(page, false);
 
         // ----- Transfer on catch (gated by catch-summary support) -----
         LinearLayout transfer = plain(page); summaryGated.add(transfer);
-        LinearLayout txC = group(transfer, "Transférer à la capture");
-        autoTransferSwitch = switchRow(txC, "Transférer sous 90 % d'IV"); autoTransferSwitch.setChecked(Control.autoTransferEnabled());
+        LinearLayout txC = group(transfer, "Transfert auto");
+        autoTransferSwitch = switchRow(txC, "Transférer sous 90 % d'IV", "Définitif. Favoris et données inconnues toujours gardés."); autoTransferSwitch.setChecked(Control.autoTransferEnabled());
         autoTransferSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.autoTransferEnabled())return; Control.setAutoTransferEnabled(autoTransferSwitch.isChecked()); host.refresh(); });
-        caption(txC, "Les transferts sont définitifs. Les favoris et les données inconnues sont toujours gardés.");
         transferStatus = caption(txC, "");
 
         LinearLayout keepC = group(transfer, "Toujours garder");
         // Indexed by protection bit; costume (bit 7) is listed next to event.
-        String[] protections={"Garder légendaires / fabuleux / Ultra-Chimères","Garder les Pokémon shiny","Garder les Pokémon d'événement","Garder les Pokémon avec fond spécial","Garder les XXS","Garder les XXL","Garder les 0 % IV (0/0/0)","Garder les Pokémon costumés"};
-        for(int i:new int[]{0,1,2,7,3,4,5,6}){final int bit=1<<i;CheckBox box=new CheckBox(activity);box.setText(protections[i]);box.setChecked((Control.transferProtect()&bit)!=0);transferProtection[i]=box;keepC.addView(box);
-            box.setOnClickListener(v->Control.setTransferProtect(box.isChecked()?Control.transferProtect()|bit:Control.transferProtect()&~bit));}
-        transferKeepList = button("Liste perso à garder"); keepC.addView(transferKeepList);
+        String[] protections={"Légendaires, fabuleux, Ultra-Chimères","Shiny","Événement","Fond spécial","XXS","XXL","0 % IV (0/0/0)","Costumés"};
+        for(int i:new int[]{0,1,2,7,3,4,5,6})transferProtection[i]=bitRow(keepC,protections[i],1<<i,Control::transferProtect,Control::setTransferProtect);
+        transferKeepList = button("Ma liste d'espèces"); keepC.addView(transferKeepList);
         transferKeepList.setOnClickListener(v -> TransferKeepDialog.show(activity, host::refresh));
-        transferOverlaySwitch = switchRow(keepC, "Bouton overlay « tout garder »"); transferOverlaySwitch.setChecked(Control.transferOverlayEnabled());
-        transferOverlaySwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.transferOverlayEnabled())return; Control.setTransferOverlayEnabled(transferOverlaySwitch.isChecked()); host.refresh(); });
-        caption(keepC, "Les espèces gardées ne sont jamais transférées automatiquement, toutes formes confondues. Le bouton flottant garde chaque capture (Tout garder) ou suit les règles ci-dessus.");
 
         LinearLayout pvpC = group(transfer, "Garder pour le PvP");
         // One row per league: its switch, then the rank it keeps (tap to cycle).
         for(int i=0;i<3;i++){final int league=i;
-            LinearLayout row=new LinearLayout(activity);row.setOrientation(LinearLayout.HORIZONTAL);row.setGravity(Gravity.CENTER_VERTICAL);row.setMinimumHeight(dp(44));
-            TextView label=new TextView(activity);label.setText("Garder les IV PvP "+Control.PVP_LEAGUES[i]+" ");label.setTextSize(14);row.addView(label,new LinearLayout.LayoutParams(0,-2,1f));
-            Button rank=button("Top "+Control.pvpRank(i));pvpRank[i]=rank;row.addView(rank,new LinearLayout.LayoutParams(-2,-2));
-            Switch sw=new Switch(activity);sw.setContentDescription("Garder les IV PvP "+Control.PVP_LEAGUES[i]+" ");sw.setChecked(Control.pvpKeep(i));pvpKeep[i]=sw;
+            LinearLayout row=new LinearLayout(activity);row.setOrientation(LinearLayout.HORIZONTAL);row.setGravity(Gravity.CENTER_VERTICAL);row.setMinimumHeight(dp(46));row.setPadding(dp(12),0,dp(8),0);
+            TextView label=new TextView(activity);label.setText(Control.PVP_LEAGUES[i]);label.setTextSize(14);row.addView(label,new LinearLayout.LayoutParams(0,-2,1f));
+            Button rank=button("Top "+Control.pvpRank(i));pvpRank[i]=rank;rank.setMinWidth(0);rank.setMinimumWidth(0);row.addView(rank,new LinearLayout.LayoutParams(-2,dp(36)));
+            Switch sw=new Switch(activity);sw.setContentDescription("Garder les IV PvP "+Control.PVP_LEAGUES[i]);sw.setChecked(Control.pvpKeep(i));pvpKeep[i]=sw;
             LinearLayout.LayoutParams swParams=new LinearLayout.LayoutParams(-2,-2);swParams.leftMargin=dp(8);row.addView(sw,swParams);
             sw.setOnCheckedChangeListener((v,checked)->{if(checked==Control.pvpKeep(league))return;Control.setPvpKeep(league,checked);host.refresh();});
             rank.setOnClickListener(v->{
@@ -502,19 +499,18 @@ final class SettingsPanel {
                 for(int j=0;j<ranks.length;j++)if(ranks[j]==Control.pvpRank(league)){next=ranks[(j+1)%ranks.length];break;}
                 Control.setPvpRank(league,next);host.refresh();});
             pvpC.addView(row);}
-        caption(pvpC, "Le PvP garde une capture dont les IV sont dans le top choisi d'une ligue activée, pour elle ou ses évolutions. L'espèce doit être dans le top "+Control.PVP_META+" de PvPoke pour la ligue, et rester sous la limite de PC de la ligue. Les rangs autorisent jusqu'au niveau 50.");
+        caption(pvpC, "Garde les IV du top choisi pour la ligue (espèces du top "+Control.PVP_META+" PvPoke, sous la limite de PC, jusqu'au niveau 50).");
 
-        LinearLayout evolveC = group(transfer, "Faire évoluer avant de transférer");
-        evolveTransferSwitch = switchRow(evolveC, "Faire évoluer avant de transférer");
+        LinearLayout evolveC = group(transfer, "Évoluer avant de transférer");
+        evolveTransferSwitch = switchRow(evolveC, "Faire évoluer d'abord", "Nouvelles captures, évolutions simples avec Bonbons. Sinon, transfert normal.");
         evolveTransferSwitch.setChecked(Control.evolveTransferEnabled());
         evolveTransferSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.evolveTransferEnabled())return; Control.setEvolveTransferEnabled(evolveTransferSwitch.isChecked()); host.refresh(); });
         evolveTransferStages = button("Évolution : une fois"); evolveC.addView(evolveTransferStages);
         evolveTransferStages.setOnClickListener(v -> { Control.setEvolveTransferStages(Control.evolveTransferStages()==2?1:2); host.refresh(); });
-        evolveTransferMode = button("S'applique à : règles de transfert actuelles"); evolveC.addView(evolveTransferMode);
+        evolveTransferMode = button("Pour : règles de transfert"); evolveC.addView(evolveTransferMode);
         evolveTransferMode.setOnClickListener(v -> { Control.setEvolveTransferMode(Control.evolveTransferMode()==1?0:1); host.refresh(); });
-        evolveTransferList = button("Espèces sélectionnées"); evolveC.addView(evolveTransferList);
-        evolveTransferList.setOnClickListener(v -> TransferKeepDialog.show(activity, "Espèces sélectionnées", "espèces sélectionnées", Control::evolveTransferSpecies, Control::setEvolveTransferSpecies, host::refresh));
-        caption(evolveC, "Nouvelles captures uniquement ; nécessite le transfert ci-dessus. Utilise les Bonbons pour les évolutions simples, sans objet ni condition spéciale. Les règles de conservation s'appliquent toujours. Si l'évolution est impossible, transfert normal. Le mode « espèces sélectionnées » garde toutes les espèces hors de sa liste.");
+        evolveTransferList = button("Espèces choisies"); evolveC.addView(evolveTransferList);
+        evolveTransferList.setOnClickListener(v -> TransferKeepDialog.show(activity, "Espèces choisies", "espèces choisies", Control::evolveTransferSpecies, Control::setEvolveTransferSpecies, host::refresh));
 
         // ----- IV display: the encounter, Pokemon details and storage list IV overlays -----
         LinearLayout iv = group(page, "Affichage des IV");
@@ -532,20 +528,20 @@ final class SettingsPanel {
     }
 
     private void buildGoPlusPage() {
-        LinearLayout page = page(MenuIcon.BAG, "Go Plus, PokéStops & objets");
+        LinearLayout page = page(MenuIcon.BAG, "Go Plus", "Go Plus, PokéStops & objets");
         unavailableNote(page, false);
 
         LinearLayout vgpC=group(page,"Go Plus virtuel");
-        vgpSwitch=switchRow(vgpC,"Overlay VGP");vgpSwitch.setChecked(Control.vgpOverlay());
+        vgpSwitch=switchRow(vgpC,"Go Plus virtuel","Bouton VGP dans le panneau sur la carte.");vgpSwitch.setChecked(Control.vgpOverlay());
         vgpSwitch.setOnCheckedChangeListener((b,checked)->{if(checked!=Control.vgpOverlay())Control.setVgpOverlay(checked);host.refresh();});
-        String[] vgpLabels={"Pokémon à proximité","PokéStops à proximité","Notifications push"};
-        for(int i=0;i<3;i++){final int bit=1<<i;CheckBox box=new CheckBox(activity);box.setText(vgpLabels[i]);box.setChecked((Control.vgpOptions()&bit)!=0);vgpChoices[i]=box;vgpC.addView(box);
-            box.setOnClickListener(v->{Control.setVgpOptions(box.isChecked()?Control.vgpOptions()|bit:Control.vgpOptions()&~bit);
-                if(bit==4&&box.isChecked()&&Build.VERSION.SDK_INT>=33&&activity.checkSelfPermission("android.permission.POST_NOTIFICATIONS")!=android.content.pm.PackageManager.PERMISSION_GRANTED)activity.requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"},7301);
+        String[] vgpLabels={"Pokémon proches","PokéStops proches","Notifications"};
+        for(int i=0;i<3;i++){final int bit=1<<i;Switch box=bitRow(vgpC,vgpLabels[i],bit,Control::vgpOptions,Control::setVgpOptions);vgpChoices[i]=box;
+            box.setOnCheckedChangeListener((v,checked)->{int value=Control.vgpOptions();if(((value&bit)!=0)==checked)return;Control.setVgpOptions(checked?value|bit:value&~bit);
+                if(bit==4&&checked&&Build.VERSION.SDK_INT>=33&&activity.checkSelfPermission("android.permission.POST_NOTIFICATIONS")!=android.content.pm.PackageManager.PERMISSION_GRANTED)activity.requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"},7301);
             });
         }
-        vgpCooldownStop=new CheckBox(activity);vgpCooldownStop.setText("Stop pendant le cooldown (estimé)");vgpCooldownStop.setContentDescription("Arrêter le Go Plus virtuel pendant le cooldown estimé");vgpCooldownStop.setChecked(Control.vgpStopOnCooldown());vgpC.addView(vgpCooldownStop);
-        vgpCooldownStop.setOnClickListener(v->{if(vgpCooldownStop.isChecked()!=Control.vgpStopOnCooldown())Control.setVgpStopOnCooldown(vgpCooldownStop.isChecked());host.refresh();});
+        vgpCooldownStop=switchRow(vgpC,"Pause pendant le cooldown");vgpCooldownStop.setContentDescription("Mettre le Go Plus virtuel en pause pendant le cooldown estimé");vgpCooldownStop.setChecked(Control.vgpStopOnCooldown());
+        vgpCooldownStop.setOnCheckedChangeListener((v,checked)->{if(checked!=Control.vgpStopOnCooldown())Control.setVgpStopOnCooldown(checked);host.refresh();});
         vgpStatus=caption(vgpC,Control.vgpStatus());
         smartRefresh=SmartCatchSettings.populate(activity,vgpC);
 
@@ -555,61 +551,57 @@ final class SettingsPanel {
         quickSpinStatus = caption(stops, "");
 
         LinearLayout routesC = group(page, "Routes"); summaryGated.add((View)routesC.getParent());
-        routeGiftSwitch = switchRow(routesC, "Échanger des cadeaux avec Mateo"); routeGiftSwitch.setChecked(Control.routeGiftExchange());
+        routeGiftSwitch = switchRow(routesC, "Cadeaux avec Mateo", "Sur une Route : échange et ouvre les cadeaux à ta place. Les échanges de Pokémon restent manuels."); routeGiftSwitch.setChecked(Control.routeGiftExchange());
         routeGiftSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.routeGiftExchange())return; Control.setRouteGiftExchange(checked); });
-        caption(routesC, "When Mateo offers a gift exchange on a Route, goes through it for you: taps him once you are in range, accepts, sends the suggested gift without a sticker and opens his gift. Pokémon trades are left to you.");
 
         // ----- Inventory (opens its modal directly) -----
         LinearLayout itemsC = group(page, "Objets"); summaryGated.add((View)itemsC.getParent());
-        itemSettings = button("Jeter les objets auto"); itemsC.addView(itemSettings); itemSettings.setOnClickListener(v -> showItemSettings());
+        itemSettings = button("Tri auto des objets"); itemsC.addView(itemSettings); itemSettings.setOnClickListener(v -> showItemSettings());
         itemStatus = caption(itemsC, "");
     }
 
     private void buildBattlesPage() {
-        LinearLayout page = page(MenuIcon.BATTLE, "Combats");
+        LinearLayout page = page(MenuIcon.BATTLE, "Combats", "Combats");
         unavailableNote(page, false);
         LinearLayout battleC = plain(page); summaryGated.add(battleC);
         LinearLayout all = group(battleC, "Tous les combats");
         buildSmartBattle(all);
         buildHealing(all);
 
-        // ----- Team Rocket -----
-        LinearLayout rocketC = group(battleC, "Team GO Rocket");
-        String[] rocketLabels={"Attaque rapide auto","Attaque chargée auto","Bouclier auto"};
-        for(int i=0;i<3;i++){final int bit=1<<i;CheckBox box=new CheckBox(activity);box.setText(rocketLabels[i]);box.setChecked((Control.rocketOptions()&bit)!=0);rocketChoices[i]=box;rocketC.addView(box);
-            box.setOnClickListener(v->Control.setRocketOptions(box.isChecked()?Control.rocketOptions()|bit:Control.rocketOptions()&~bit));}
-        caption(rocketC, "Tant qu'une de ces options est active, le Pokémon suivant est choisi automatiquement quand l'un est K.O.");
-        rocketStatus = caption(rocketC, "");
-
         LinearLayout gymC = group(battleC, "Arènes");
-        launch(gymC, "Placement en arène & nourrissage", () -> GymAutomationSettings.show(activity));
+        launch(gymC, "Placement & nourrissage", () -> GymAutomationSettings.show(activity));
+        launch(gymC, "Nourrir à distance", () -> AutomationPanel.showRemoteFeed(activity));
         battleChoice(gymC,2,"Attaque rapide auto");
         battleChoice(gymC,3,"Attaque chargée auto");
         battleChoice(gymC,8,"Esquive auto");
-        gymRepeatSwitch = switchRow(gymC, "Combattre jusqu'à la défaite"); gymRepeatSwitch.setChecked(Control.gymRepeatEnabled());
+        gymRepeatSwitch = switchRow(gymC, "Combattre jusqu'à la défaite", "Relance la manche suivante depuis la même arène."); gymRepeatSwitch.setChecked(Control.gymRepeatEnabled());
         gymRepeatSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.gymRepeatEnabled())return; Control.setGymRepeatEnabled(checked); });
-        caption(gymC, "Après le début d'un combat d'arène, relance automatiquement la manche suivante depuis le même écran d'arène jusqu'à la défaite. Utilise tes réglages d'attaque et attend le soin intelligent s'il est réglé sur « Après les combats » ou les deux. Désactive ou quitte manuellement pour arrêter.");
-        launch(gymC, "Nourrissage d'arène à distance", () -> AutomationPanel.showRemoteFeed(activity));
 
         LinearLayout raidC = group(battleC, "Raids");
+        launch(raidC, "Auto-Raid", () -> AutoRaidDialog.show(activity));
         battleChoice(raidC,0,"Attaque rapide auto");
         battleChoice(raidC,1,"Attaque chargée auto");
         battleChoice(raidC,7,"Esquive auto");
-        launch(raidC, "Auto-Raid", () -> AutoRaidDialog.show(activity));
 
         LinearLayout maxC = group(battleC, "Dynamax");
         battleChoice(maxC,4,"Attaque rapide auto");
         battleChoice(maxC,5,"Attaque chargée auto");
         battleChoice(maxC,6,"Attaque Max auto");
         battleChoice(maxC,9,"Esquive auto");
-        caption(maxC,"Se déplace automatiquement vers les particules Max proches pendant le combat quand PGRazor est actif.");
+        caption(maxC,"Va chercher les particules Max proches pendant le combat.");
+
+        // ----- Team Rocket -----
+        LinearLayout rocketC = group(battleC, "Team GO Rocket");
+        String[] rocketLabels={"Attaque rapide auto","Attaque chargée auto","Bouclier auto"};
+        for(int i=0;i<3;i++)rocketChoices[i]=bitRow(rocketC,rocketLabels[i],1<<i,Control::rocketOptions,Control::setRocketOptions);
+        caption(rocketC, "Le Pokémon suivant est choisi tout seul quand l'un est K.O.");
+        rocketStatus = caption(rocketC, "");
         battleStatus = caption(battleC, "");
     }
 
     private void buildSmartBattle(LinearLayout owner) {
-        smartBattleSwitch = switchRow(owner, "Combat intelligent"); smartBattleSwitch.setChecked(Control.smartBattle());
+        smartBattleSwitch = switchRow(owner, "Combat intelligent", "Choisit tes meilleurs counters avant et pendant les combats."); smartBattleSwitch.setChecked(Control.smartBattle());
         smartBattleSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.smartBattle())return; Control.setSmartBattle(checked); refreshSmartBattle(); });
-        caption(owner, "Choisit des counters contre le Pokémon affronté : remplit ton équipe avant les combats d'arène, de raid et Rocket, et passe à ton meilleur counter pendant les combats d'arène et Rocket.");
         smartBattleStatus = caption(owner, "");
         refreshSmartBattle();
     }
@@ -629,7 +621,7 @@ final class SettingsPanel {
         healThreshold.setOnClickListener(v -> { Control.cycleHealThreshold(); refreshHealing(); });
         healItems = button(""); owner.addView(healItems);
         healItems.setOnClickListener(v -> { Control.setHealFull(!Control.healFull()); refreshHealing(); });
-        healReviveSwitch = switchRow(owner, "Ranimer les Pokémon K.O."); healReviveSwitch.setChecked(Control.healRevive());
+        healReviveSwitch = switchRow(owner, "Ranimer les K.O."); healReviveSwitch.setChecked(Control.healRevive());
         healReviveSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.healRevive())return; Control.setHealRevive(checked); });
         healStatus = caption(owner, "");
         refreshHealing();
@@ -638,115 +630,115 @@ final class SettingsPanel {
     private void refreshHealing() {
         if(healSwitch==null)return;
         healSwitch.setChecked(Control.healEnabled()); healReviveSwitch.setChecked(Control.healRevive());
-        set(healWhen,"Soigner : "+Control.HEAL_WHEN_LABELS[Control.healWhen()]);
-        set(healThreshold,Control.healThreshold()>=100?"Soigner si : il manque des PV":"Soigner si : sous "+Control.healThreshold()+" % de PV");
-        set(healItems,Control.healFull()?"Objets : toujours soigner à fond":"Objets : intelligent (garde les grosses potions)");
+        set(healWhen,"Quand : "+Control.HEAL_WHEN_LABELS[Control.healWhen()]);
+        set(healThreshold,Control.healThreshold()>=100?"Seuil : dès qu'il manque des PV":"Seuil : sous "+Control.healThreshold()+" % de PV");
+        set(healItems,Control.healFull()?"Objets : soin complet":"Objets : économe (garde les grosses potions)");
         boolean on=Control.healEnabled();
-        SettingsUi.enabled(healWhen,on); SettingsUi.enabled(healThreshold,on); SettingsUi.enabled(healItems,on); SettingsUi.enabled(healReviveSwitch,on);
+        SettingsUi.enabled(healWhen,on); SettingsUi.enabled(healThreshold,on); SettingsUi.enabled(healItems,on); SettingsUi.enabled((View)healReviveSwitch.getParent(),on);
         status(healStatus,Control.healStatus());
     }
 
     private void battleChoice(LinearLayout owner,int index,String label) {
         // Keep the persisted/native option bits unchanged when moving controls between groups.
-        final int bit=1<<index;
-        CheckBox box=new CheckBox(activity);box.setText(label);
-        box.setChecked((Control.battleOptions()&bit)!=0);battleChoices[index]=box;owner.addView(box);
-        box.setOnClickListener(v->Control.setBattleOptions(box.isChecked()?Control.battleOptions()|bit:Control.battleOptions()&~bit));
+        battleChoices[index]=bitRow(owner,label,1<<index,Control::battleOptions,Control::setBattleOptions);
     }
 
     private void buildSocialPage() {
-        LinearLayout page = page(MenuIcon.HEART, "Copain, Œufs & amis");
+        LinearLayout page = page(MenuIcon.HEART, "Copain", "Copain, œufs & cadeaux");
         unavailableNote(page, false);
 
-        LinearLayout buddyC=group(page,"Moteur d'émotions du copain"); summaryGated.add((View)buddyC.getParent());
+        LinearLayout buddyC=group(page,"Humeur du copain"); summaryGated.add((View)buddyC.getParent());
         buddyRefresh=BuddyEmotionSettings.populate(activity,buddyC);
         buddyStatus=caption(buddyC,"");
 
         LinearLayout eggsC = group(page, "Œufs");
-        incubatorSwitch = switchRow(eggsC, "Incubation auto");
+        incubatorSwitch = switchRow(eggsC, "Incubation auto", "Incubateur illimité uniquement.");
         incubatorSwitch.setChecked(Control.autoIncubate());
         incubatorSwitch.setOnCheckedChangeListener((v, checked) -> {
             if (checked != Control.autoIncubate()) Control.setAutoIncubate(checked);
         });
-        incubatorPriority = button("Priorité : distance la plus courte"); eggsC.addView(incubatorPriority);
+        incubatorPriority = button("Œuf prioritaire : le plus court"); eggsC.addView(incubatorPriority);
         incubatorPriority.setOnClickListener(v -> { Control.setIncubateLongest(!Control.incubateLongest()); host.refresh(); });
-        caption(eggsC, "Incubateur illimité uniquement");
         incubatorStatus = caption(eggsC, Control.incubatorStatus());
 
         LinearLayout giftC = group(page, "Cadeaux d'amis"); summaryGated.add((View)giftC.getParent());
-        String[] giftLabels={"Ouvrir les cadeaux auto","Envoyer les cadeaux auto","Ajouter un autocollant possédé"};
-        for(int i=0;i<3;i++){final int bit=1<<i;CheckBox box=new CheckBox(activity);box.setText(giftLabels[i]);box.setChecked((Control.giftOptions()&bit)!=0);giftChoices[i]=box;giftC.addView(box);box.setOnClickListener(v->Control.setGiftOptions(box.isChecked()?Control.giftOptions()|bit:Control.giftOptions()&~bit));}
+        launch(giftC, "Envoyer & ouvrir maintenant", () -> GiftBatchDialog.show(activity));
+        String[] giftLabels={"Ouvrir les cadeaux auto","Envoyer les cadeaux auto","Ajouter un autocollant"};
+        for(int i=0;i<3;i++)giftChoices[i]=bitRow(giftC,giftLabels[i],1<<i,Control::giftOptions,Control::setGiftOptions);
         giftStatus = caption(giftC, "");
-        launch(giftC, "Envoyer & ouvrir les cadeaux", () -> GiftBatchDialog.show(activity));
     }
 
     private void buildAutomationPage() {
-        // One-shot manual tasks; mirrors the quick-menu Automation hub, plus Research.
-        LinearLayout page = page(MenuIcon.AUTOMATION, "Automatisation");
-        LinearLayout tasks = group(page, "Tâches ponctuelles");
-        caption(tasks, "Chaque tâche s'exécute quand tu la lances.");
-        launch(tasks, "Shundo Sniper (expérimental)", () -> ShundoSniper.show(activity));
-        launch(tasks, "Shiny Scanner (expérimental)", () -> ShinyScanner.show(activity));
+        // One-shot tasks you start yourself, field research and the temporary event settings.
+        LinearLayout page = page(MenuIcon.AUTOMATION, "Tâches", "Tâches & événements");
+        LinearLayout tasks = group(page, "Tâches à lancer");
+        launch(tasks, "Shundo Sniper (bêta)", () -> ShundoSniper.show(activity));
+        launch(tasks, "Scan shiny (bêta)", () -> ShinyScanner.show(activity));
         launch(tasks, "Auto-Raid", () -> AutoRaidDialog.show(activity));
         launch(tasks, "Session d'Encens du jour", () -> AutomationPanel.showIncense(activity));
-        launch(tasks, "Nourrissage d'arène à distance", () -> AutomationPanel.showRemoteFeed(activity));
+        launch(tasks, "Nourrir les arènes à distance", () -> AutomationPanel.showRemoteFeed(activity));
         launch(tasks, "Envoyer & ouvrir les cadeaux", () -> GiftBatchDialog.show(activity));
         launch(tasks, "Évolution en masse", () -> BatchEvolutionSettings.show(activity));
         LinearLayout research = group(page, "Études de terrain");
         launch(research, "Études", () -> ResearchSettings.show(activity));
-    }
-
-    private void buildEventsPage() {
-        LinearLayout page = page(MenuIcon.EVENTS, "Événements");
-        LinearLayout events = group(page, "Réglages des événements");
-        caption(events, "Réglages des événements temporaires.");
+        LinearLayout events = group(page, "Événements");
         launch(events, "Halloween 2026", () -> dev.pgrazor.events.EventPanel.showHalloween(activity, Control.darkTheme()));
         launch(events, "Go Wild November 2026", () -> dev.pgrazor.events.EventPanel.showGoWild(activity, Control.darkTheme()));
     }
 
     private void buildDisplayPage() {
-        LinearLayout page = page(MenuIcon.SETTINGS, "Affichage & performances");
+        LinearLayout page = page(MenuIcon.SETTINGS, "Affichage", "Affichage & batterie");
+        // Everything the map panel (the card under the R) can show, in one place.
+        LinearLayout hud = group(page, "Panneau sur la carte");
+        cooldownSwitch = switchRow(hud, "Cooldown", "Temps estimé avant de pouvoir rejouer sans risque."); cooldownSwitch.setChecked(Control.cooldownOverlay());
+        cooldownSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.cooldownOverlay())return; Control.setCooldownOverlay(cooldownSwitch.isChecked()); host.refresh(); });
+        launch(hud, "Historique du cooldown", () -> Cooldown.show(activity));
+        encounterCounterSwitch = switchRow(hud, "Compter les rencontres", "Sauvages, sur 24 h, sur cet appareil (hors Leurre, Encens, raids et études)."); encounterCounterSwitch.setChecked(Control.encounterCounter());
+        encounterCounterSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.encounterCounter())return; Control.setEncounterCounter(encounterCounterSwitch.isChecked()); host.refresh(); });
+        encounterOverlaySwitch = switchRow(hud, "Rencontres dans le panneau"); encounterOverlaySwitch.setChecked(Control.encounterOverlay());
+        encounterOverlaySwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.encounterOverlay())return; Control.setEncounterOverlay(encounterOverlaySwitch.isChecked()); host.refresh(); });
+        localTimeSwitch = switchRow(hud, "Heure locale", "L'heure à ta position spoofée."); localTimeSwitch.setChecked(Control.localTimeOverlay());
+        localTimeSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.localTimeOverlay())return; Control.setLocalTimeOverlay(localTimeSwitch.isChecked()); host.refresh(); });
+        transferOverlaySwitch = switchRow(hud, "Bouton « Tout garder »", "Garde chaque capture ou suit tes règles de transfert. Demande le transfert auto."); transferOverlaySwitch.setChecked(Control.transferOverlayEnabled());
+        transferOverlaySwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.transferOverlayEnabled())return; Control.setTransferOverlayEnabled(transferOverlaySwitch.isChecked()); host.refresh(); });
+
         LinearLayout look = group(page, "Interface");
-        uiScale=button("Taille de l'interface : "+Control.uiScalePercent()+"%");look.addView(uiScale);
-        uiScale.setOnClickListener(v->{final int[] values={100,75,50,25};String[] labels={"100%","75%","50%","25%"};int selected=0;for(int i=0;i<values.length;i++)if(values[i]==Control.uiScalePercent())selected=i;
-            new AlertDialog.Builder(dialogContext()).setTitle("Taille de l'overlay").setSingleChoiceItems(labels,selected,(dialog,which)->{host.releaseJoystick(true);Control.setUiScalePercent(values[which]);host.refresh();dialog.dismiss();}).setNegativeButton("Annuler",null).show();});
+        uiScale=button("Taille des overlays : "+Control.uiScalePercent()+" %");look.addView(uiScale);
+        uiScale.setOnClickListener(v->{final int[] values={100,75,50,25};String[] labels={"100 %","75 %","50 %","25 %"};int selected=0;for(int i=0;i<values.length;i++)if(values[i]==Control.uiScalePercent())selected=i;
+            new AlertDialog.Builder(dialogContext()).setTitle("Taille des overlays").setSingleChoiceItems(labels,selected,(dialog,which)->{host.releaseJoystick(true);Control.setUiScalePercent(values[which]);host.refresh();dialog.dismiss();}).setNegativeButton("Annuler",null).show();});
         skipCutscenesSwitch = switchRow(look, "Passer les cinématiques"); skipCutscenesSwitch.setChecked(Control.skipCutscenes());
         skipCutscenesSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.skipCutscenes())return; Control.setSkipCutscenes(checked); });
         cutsceneStatus = caption(look, "");  // shown only when the native module reports an error
 
         LinearLayout battery = group(page, "Batterie");
-        caption(battery, "Baisse les graphismes pour économiser la batterie et garder le téléphone plus frais. Chaque option revient au réglage du jeu quand elle est désactivée.");
-        batteryResSwitch = switchRow(battery, "Résolution réduite"); batteryResSwitch.setChecked(Control.batteryLowRes());
+        batteryResSwitch = switchRow(battery, "Résolution réduite", "Carte et Pokémon en demi-résolution ; menus et texte restent nets."); batteryResSwitch.setChecked(Control.batteryLowRes());
         batteryResSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked!=Control.batteryLowRes())Control.setBatteryLowRes(checked); });
-        caption(battery, "Affiche la carte et les Pokémon en demi-résolution. Les menus et le texte restent nets.");
         batteryFpsSwitch = switchRow(battery, "Limiter à 20 FPS"); batteryFpsSwitch.setChecked(Control.batteryFps20());
         batteryFpsSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked!=Control.batteryFps20())Control.setBatteryFps20(checked); });
-        batteryQualitySwitch = switchRow(battery, "Graphismes bas"); batteryQualitySwitch.setChecked(Control.batteryLowQuality());
+        batteryQualitySwitch = switchRow(battery, "Graphismes bas", "Sans ombres, brouillard, reflets, herbe, HDR ni anticrénelage."); batteryQualitySwitch.setChecked(Control.batteryLowQuality());
         batteryQualitySwitch.setOnCheckedChangeListener((v,checked) -> { if(checked!=Control.batteryLowQuality())Control.setBatteryLowQuality(checked); });
-        caption(battery, "Désactive les ombres, le brouillard, les reflets d'eau, l'herbe en rencontre, le HDR et l'anticrénelage, et réduit les détails au loin.");
 
-        LinearLayout menu = group(page,"Entrées du menu rapide");
-        caption(menu,"Choisis les entrées affichées. Ça n'active ni ne désactive aucune fonction. « Paramètres » reste visible.");
+        LinearLayout menu = section(page,"Entrées du menu rapide",false);
+        caption(menu,"Choisis les tuiles du menu rapide (sous le R). Ça n'active ni ne coupe aucune fonction.");
         for(int i=0;i<QuickMenu.CUSTOMIZABLE.length;i++){
             if(QuickMenu.CUSTOMIZABLE[i]==null)continue; // retired entry keeps its bit
             final int bit=1<<i;
-            CheckBox box=new CheckBox(activity);box.setText(QuickMenu.CUSTOMIZABLE[i]);
-            box.setChecked(Control.quickMenuVisible(bit));quickMenuChoices[i]=box;menu.addView(box);
-            box.setOnClickListener(v->{Control.setQuickMenuVisible(bit,box.isChecked());host.refresh();});
+            Switch box=switchRow(menu,QuickMenu.CUSTOMIZABLE[i]);box.setChecked(Control.quickMenuVisible(bit));quickMenuChoices[i]=box;
+            box.setOnCheckedChangeListener((v,checked)->{if(checked==Control.quickMenuVisible(bit))return;Control.setQuickMenuVisible(bit,checked);host.refresh();});
         }
     }
 
     private void buildAccountsPage() {
-        LinearLayout page = page(MenuIcon.ACCOUNTS, "Sauvegarde & diagnostics");
-        LinearLayout data = group(page, "Données");
+        LinearLayout page = page(MenuIcon.ACCOUNTS, "Données", "Données & diagnostic");
+        LinearLayout data = group(page, "Sauvegarde");
         launch(data, "Exporter / importer les réglages", () -> {
             if(PgAssets.rooted())new SettingsBackup(activity).show();
             else activity.startActivity(new Intent(activity,LogActivity.class).putExtra("settingsBackup",true));
         });
-        launch(data, "Journal / export", () -> LogActivity.open(activity));
+        launch(data, "Journal & export", () -> LogActivity.open(activity));
 
         // ----- Diagnostics (status plumbing kept out of everyday settings) -----
-        LinearLayout diag = section(page, "Diagnostics", false);
+        LinearLayout diag = section(page, "Diagnostic", false);
         state = caption(diag, Control.connection);
         for(TextView status:new TextView[]{steeringStatus,spawnStatus,quickSummaryStatus,transferStatus,quickSpinStatus,buddyStatus,giftStatus,itemStatus,rocketStatus,battleStatus,quickBallStatus}){
             ((ViewGroup)status.getParent()).removeView(status);diag.addView(status);
@@ -765,25 +757,23 @@ final class SettingsPanel {
         });
     }
 
-    /** Home-row summary: the features that are on, or a plain "Tout est désactivé". Arguments alternate name, state. */
-    private static String active(Object... pairs){
-        StringBuilder out=new StringBuilder();
-        for(int i=0;i+1<pairs.length;i+=2)if(Boolean.TRUE.equals(pairs[i+1])){if(out.length()>0)out.append(" · ");out.append(pairs[i]);}
-        return out.length()==0?"Tout est désactivé":out.toString();
+    /** Tile summary: how many listed features are on ("2 actives"), or "Désactivé". Arguments are the on/off states. */
+    private static String count(boolean... on){
+        int n=0;for(boolean b:on)if(b)n++;
+        return n==0?"Désactivé":n==1?"1 active":n+" actives";
     }
     private void summary(int index,String value){TextView view=pageSummaries.get(index);if(!value.contentEquals(view.getText()))view.setText(value);}
     private void refreshHome(){
         if(current>=0)return;
-        summary(0,active("Spoofing",Control.desiredEnabled(),"Joystick",Control.joystickVisible(),"Marche à l'arrêt",Control.idleWalking(),"Cooldown",Control.cooldownOverlay(),"Heure locale",Control.localTimeOverlay()));
-        summary(1,active("Capture rapide",Control.quickSummaryEnabled(),"Lancer auto",Control.autoThrow(),"Ball auto",Control.autoBall(),"Balle courbe",Control.throwCurve(),"Toujours toucher",Control.throwAlwaysHit(),"Baies",Control.encounterBerryEnabled()));
-        summary(2,active("Transfert auto",Control.autoTransferEnabled(),"Évolution d'abord",Control.autoTransferEnabled()&&Control.evolveTransferEnabled(),"IV affichés",Control.ivCatchMode()!=0||Control.ivOwnedMode()!=0||Control.storageIvMode()!=0));
-        summary(3,active("Overlay Go Plus",Control.vgpOverlay(),"Spin rapide",Control.quickSpinEnabled(),"Tri des objets",Control.itemTransferEnabled()));
-        summary(4,active("Combat intelligent",Control.smartBattle(),"Soin intelligent",Control.healEnabled(),"Attaques auto",Control.battleOptions()!=0||Control.rocketOptions()!=0,"Arène en boucle",Control.gymRepeatEnabled()));
-        summary(5,active("Moteur copain",BuddyEmotionSettings.enabled(),"Incubation auto",Control.autoIncubate(),"Ouvrir les cadeaux",(Control.giftOptions()&1)!=0,"Envoyer les cadeaux",(Control.giftOptions()&2)!=0));
-        summary(6,AutoRaid.running()?"Auto-Raid en cours":ShundoSniper.active()?"Shundo Sniper actif":ShinyScanner.enabled()?"Scan shiny actif":"Shundo, scan shiny, raids, Encens, nourrissage d'arène, cadeaux, évolution, études");
-        summary(7,"Halloween · Go Wild");
-        summary(8,"Interface "+Control.uiScalePercent()+" %"+(Control.skipCutscenes()?" · Cinématiques passées":""));
-        summary(9,"Export / import, journal, diagnostics");
+        summary(0,Control.desiredEnabled()?(Control.engine.walking?"En marche":"Spoof actif"):"Position réelle");
+        summary(1,count(Control.quickSummaryEnabled(),Control.autoThrow(),Control.autoBall(),Control.throwCurve(),Control.throwAlwaysHit(),Control.encounterBerryEnabled()));
+        summary(2,count(Control.autoTransferEnabled(),Control.autoTransferEnabled()&&Control.evolveTransferEnabled(),Control.ivCatchMode()!=0||Control.ivOwnedMode()!=0||Control.storageIvMode()!=0));
+        summary(3,count(Control.vgpOverlay(),Control.quickSpinEnabled(),Control.itemTransferEnabled(),Control.routeGiftExchange()));
+        summary(4,count(Control.smartBattle(),Control.healEnabled(),Control.battleOptions()!=0||Control.rocketOptions()!=0,Control.gymRepeatEnabled()));
+        summary(5,count(BuddyEmotionSettings.enabled(),Control.autoIncubate(),(Control.giftOptions()&1)!=0,(Control.giftOptions()&2)!=0));
+        summary(6,AutoRaid.running()?"Auto-Raid en cours":ShundoSniper.active()?"Shundo en cours":ShinyScanner.enabled()?"Scan shiny en cours":"Aucune en cours");
+        summary(7,"Overlays "+Control.uiScalePercent()+" %");
+        summary(8,"Export, journal");
     }
 
     /** The root panel view; Pad owns attachment to the window and insets wiring. */
@@ -877,9 +867,13 @@ final class SettingsPanel {
     private static String firstText(ViewGroup group){
         for(int i=0;i<group.getChildCount();i++){
             View child=group.getChildAt(i);
+            if(child instanceof CompoundButton)continue;
             if(child instanceof TextView){
                 CharSequence text=((TextView)child).getText();
                 if(text!=null&&text.length()>0)return text.toString();
+            }else if(child instanceof ViewGroup){
+                String nested=firstText((ViewGroup)child);
+                if(nested!=null)return nested;
             }
         }
         return null;
@@ -901,7 +895,7 @@ final class SettingsPanel {
             LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);
             card.setBackground(SettingsUi.cardBackground(activity));card.setTag(SettingsUi.TAG_CARD,Boolean.TRUE);card.setPadding(dp(16),dp(16),dp(16),dp(12));
             TextView empty=text("Aucun réglage trouvé",14,ink());empty.setTypeface(SettingsUi.medium());card.addView(empty);
-            TextView hint=text("Essaie une fonction ou un mot-clé, par exemple Ball auto, cooldown ou IV.",12,muted());
+            TextView hint=text("Essaie un mot-clé : Ball auto, cooldown, IV…",12,muted());
             hint.setPadding(0,dp(4),0,dp(10));card.addView(hint);
             Button clear=button("Effacer la recherche");clear.setOnClickListener(v->searchField.setText(""));card.addView(clear);
             results.addView(card);
@@ -979,11 +973,11 @@ final class SettingsPanel {
     void applyTheme(){
         panel.setBackgroundColor(SettingsUi.bg());styleTree(panel);
         if(panel.getVisibility()==View.VISIBLE)syncSystemBars();
-        for(TextView head:groupHeads){head.setTextColor(muted());head.setTypeface(SettingsUi.medium());}
+        for(TextView head:groupHeads){head.setTextColor(SettingsUi.faint());head.setTypeface(SettingsUi.medium());}
         for(TextView c:captions)c.setTextColor(muted());
-        if(coords!=null)coords.setTextColor(ink());
+        if(coords!=null)coords.setTextColor(muted());
         if(speedReadout!=null)speedReadout.setTextColor(accent());
-        if(homeStatus!=null)homeStatus.setTextColor(muted());
+        if(homeStatus!=null)homeStatus.setTextColor(ink());
         if(title!=null)title.setTextColor(ink());
         if(versionLabel!=null)versionLabel.setTextColor(SettingsUi.faint());
         if(discord!=null)discord.setTextColor(accent());
@@ -997,6 +991,10 @@ final class SettingsPanel {
         for(MenuIcon icon:homeIcons)icon.invalidate();
         if(backIcon!=null)backIcon.invalidate();
         if(closeIcon!=null)closeIcon.invalidate();
+    }
+
+    private static String distance(double meters){
+        return meters>=1000?String.format(Locale.FRANCE,"%.1f km",meters/1000):String.format(Locale.FRANCE,"%.0f m",meters);
     }
 
     private static int telemetryColor(){
@@ -1072,9 +1070,9 @@ final class SettingsPanel {
     }
 
     private void refreshDependencies(){
-        for(CheckBox box:vgpChoices)SettingsUi.enabled(box,Control.vgpOverlay());
-        SettingsUi.enabled(vgpCooldownStop,Control.vgpOverlay());smartRefresh.run();
-        for(CheckBox box:transferProtection)SettingsUi.enabled(box,Control.autoTransferEnabled());
+        for(CompoundButton box:vgpChoices)SettingsUi.enabled((View)box.getParent(),Control.vgpOverlay());
+        SettingsUi.enabled((View)vgpCooldownStop.getParent(),Control.vgpOverlay());smartRefresh.run();
+        for(CompoundButton box:transferProtection)SettingsUi.enabled((View)box.getParent(),Control.autoTransferEnabled());
         SettingsUi.enabled(transferKeepList,Control.autoTransferEnabled());
         SettingsUi.enabled((View)transferOverlaySwitch.getParent(),Control.autoTransferEnabled());
         // Evolve before transferring needs the auto-transfer master; its options need the feature on, and
@@ -1085,23 +1083,26 @@ final class SettingsPanel {
         SettingsUi.enabled(evolveTransferMode,evolveOn);
         SettingsUi.enabled(evolveTransferList,evolveOn&&Control.evolveTransferMode()==1);
         SettingsUi.enabled(incubatorPriority,Control.autoIncubate()&&Control.incubatorAvailable());
-        SettingsUi.enabled(giftChoices[2],(Control.giftOptions()&2)!=0);
+        SettingsUi.enabled((View)giftChoices[2].getParent(),(Control.giftOptions()&2)!=0);
         SettingsUi.enabled((View)joystickSwitch.getParent(),Control.desiredEnabled());
         SettingsUi.enabled(mapTap,Control.desiredEnabled()&&Control.quickBallConfigured());
     }
 
     private void refreshLocationStatus() {
-        if(uiScale!=null)set(uiScale,"Taille de l'interface : "+Control.uiScalePercent()+"%");
+        if(uiScale!=null)set(uiScale,"Taille des overlays : "+Control.uiScalePercent()+" %");
         set(coords,String.format(Locale.US,"%.6f, %.6f",Control.engine.latitude,Control.engine.longitude));
-        set(speedReadout,String.format(Locale.US,"%.1f km/h",Control.engine.speedKmh));
+        set(speedReadout,String.format(Locale.FRANCE,"%.1f km/h",Control.engine.speedKmh));
         MotionEngine.RouteProgress route=Control.engine.routeProgress();
         locationSwitch.setChecked(Control.desiredEnabled());
-        String movement=!Control.desiredEnabled()?"DEVICE LOCATION":Control.engine.enabled ? (Control.engine.walking ? "WALKING" : "ON") : "EN ATTENTE DE L'ADAPTATEUR";
-        if (route.total>1 && route.active) movement=String.format(Locale.US,"ROUTE %d/%d  ·  %.0f m left",route.visited+1,route.total,route.remainingMeters);
-        else if (route.total>1 && route.visited==route.total) movement="ON  ·  route terminée";
-        set(homeStatus,!Control.desiredEnabled()?"Device location":movement);
+        String movement=!Control.desiredEnabled()?"Position réelle":Control.engine.enabled ? (Control.engine.walking ? "En marche" : "Spoof actif") : "En attente du jeu";
+        if (route.total>1 && route.active) movement=String.format(Locale.FRANCE,"Trajet %d/%d · %s restants",route.visited+1,route.total,distance(route.remainingMeters));
+        else if (route.total>1 && route.visited==route.total) movement="Spoof actif · trajet terminé";
+        set(homeStatus,movement);
+        String encounters=Control.encounterCounter()?EncounterCounter.label():"";
+        String cooldown=Control.cooldownOverlay()?"Cooldown "+Cooldown.label().replace("Est. ",""):"";
+        status(homeCounts,encounters.isEmpty()?cooldown:cooldown.isEmpty()?encounters:encounters+"  ·  "+cooldown);
         if(homeDot!=null)homeDot.setColor(telemetryColor());
-        set(state,Control.connection + "\n" + movement + "  ·  lectures de coordonnées " + Control.latitudeReads + "/" + Control.longitudeReads);
+        set(state,Control.connection + "\n" + movement + " · lectures de coordonnées " + Control.latitudeReads + "/" + Control.longitudeReads);
         set(steeringStatus,Control.cameraSteeringConfigured() ? Control.cameraSteeringStatus() : "Le joystick suit la caméra");
     }
 
@@ -1129,12 +1130,12 @@ final class SettingsPanel {
         autoTransferSwitch.setChecked(Control.autoTransferEnabled());
         for(int i=0;i<transferProtection.length;i++)transferProtection[i].setChecked((Control.transferProtect()&(1<<i))!=0);
         for(int i=0;i<3;i++){pvpKeep[i].setChecked(Control.pvpKeep(i));set(pvpRank[i],"Top "+Control.pvpRank(i));pvpRank[i].setEnabled(Control.pvpKeep(i));}
-        if(transferKeepList!=null){String kept=Control.transferKeepSpecies();int n=kept.isEmpty()?0:kept.split(",").length;set(transferKeepList,n>0?"Liste perso à garder ("+n+")":"Liste perso à garder");}
+        if(transferKeepList!=null){String kept=Control.transferKeepSpecies();int n=kept.isEmpty()?0:kept.split(",").length;set(transferKeepList,n>0?"Ma liste d'espèces : "+n:"Ma liste d'espèces");}
         if(transferOverlaySwitch!=null){transferOverlaySwitch.setChecked(Control.transferOverlayEnabled());transferOverlaySwitch.setEnabled(Control.autoTransferEnabled());transferOverlaySwitch.setAlpha(1f);}
         if(evolveTransferSwitch!=null)evolveTransferSwitch.setChecked(Control.evolveTransferEnabled());
-        set(evolveTransferStages,"Évolution : "+(Control.evolveTransferStages()==2?"toutes les étapes disponibles":"une fois"));
-        set(evolveTransferMode,"S'applique à : "+(Control.evolveTransferMode()==1?"espèces choisies uniquement":"règles de transfert actuelles"));
-        if(evolveTransferList!=null){String sel=Control.evolveTransferSpecies();int n=sel.isEmpty()?0:sel.split(",").length;set(evolveTransferList,n>0?"Espèces sélectionnées ("+n+")":"Espèces sélectionnées");}
+        set(evolveTransferStages,"Évolution : "+(Control.evolveTransferStages()==2?"toutes les étapes":"une fois"));
+        set(evolveTransferMode,"Pour : "+(Control.evolveTransferMode()==1?"espèces choisies":"règles de transfert"));
+        if(evolveTransferList!=null){String sel=Control.evolveTransferSpecies();int n=sel.isEmpty()?0:sel.split(",").length;set(evolveTransferList,n>0?"Espèces choisies : "+n:"Espèces choisies");}
         status(transferStatus,Control.transferStatus());
     }
 
@@ -1145,8 +1146,8 @@ final class SettingsPanel {
     private void refreshIncubation() {
         incubatorSwitch.setChecked(Control.autoIncubate());
         incubatorSwitch.setEnabled(Control.incubatorAvailable());
-        set(incubatorPriority,"Priorité : " + (Control.incubateLongest() ? "longest" : "shortest") + " ");
-        status(incubatorStatus,Control.autoIncubate() ? Control.incubatorStatus() : "Off");
+        set(incubatorPriority,"Œuf prioritaire : " + (Control.incubateLongest() ? "le plus long" : "le plus court"));
+        status(incubatorStatus,Control.autoIncubate() ? Control.incubatorStatus() : "");
     }
 
     private void refreshVgpOptions() {
@@ -1170,15 +1171,15 @@ final class SettingsPanel {
     }
 
     private void refreshItems() {
-        set(itemSettings,"Tri des objets : "+(Control.itemTransferEnabled()?"ON":"OFF"));status(itemStatus,Control.itemStatus());
+        set(itemSettings,"Tri auto des objets : "+(Control.itemTransferEnabled()?"activé":"désactivé"));status(itemStatus,Control.itemStatus());
     }
 
     private void refreshQuickCatch() {
         berrySwitch.setChecked(Control.encounterBerryEnabled());
-        set(berryPriority,"Priorité des baies : "+BerryPriorityPicker.summary());
+        set(berryPriority,"Priorité : "+BerryPriorityPicker.summary());
         berryPicker.refresh();
         quickSpinSwitch.setChecked(Control.quickSpinEnabled());status(quickSpinStatus,Control.quickSpinStatus());
-        set(quickSummaryLabel,Control.quickSummaryAutoDismiss() ? "Capture rapide" : "Résumé de capture plus rapide");
+        set(quickSummaryLabel,Control.quickSummaryAutoDismiss() ? "Capture rapide" : "Résumé de capture accéléré");
         quickSummarySwitch.setChecked(Control.quickSummaryEnabled());
         quickSummarySwitch.setEnabled(Control.quickSummaryConfigured());
         status(quickBallStatus,Control.quickBallStatus());
@@ -1187,20 +1188,19 @@ final class SettingsPanel {
     private void refreshLocationOptions() {
         for(int i=0;i<quickMenuChoices.length;i++)if(quickMenuChoices[i]!=null)quickMenuChoices[i].setChecked(Control.quickMenuVisible(1<<i));
         idleWalkSwitch.setChecked(Control.idleWalking());idleWalkSwitch.setEnabled(Control.desiredEnabled());idleWalkSwitch.setAlpha(Control.desiredEnabled()?1f:.45f);
-        set(mapTap,"Appui sur la carte : "+new String[]{"Ne rien faire","Marcher","Téléporter","Marcher / double appui pour téléporter"}[Control.mapTapMode()]);
+        set(mapTap,"Appui sur la carte : "+new String[]{"rien","marcher","téléporter","marcher (double : téléporter)"}[Control.mapTapMode()]);
         mapTap.setEnabled(Control.quickBallConfigured());
         spawnSwitch.setChecked(Control.spawnBooster());spawnSwitch.setEnabled(Control.spawnAllowed());status(spawnStatus,Control.spawnStatus());
         localTimeSwitch.setChecked(Control.localTimeOverlay());
         encounterCounterSwitch.setChecked(Control.encounterCounter());encounterOverlaySwitch.setChecked(Control.encounterOverlay());
         SettingsUi.enabled(encounterOverlaySwitch,Control.encounterCounter());
-        if(current<0)set(title,EncounterCounter.title());
     }
 
     // Indexed by IV mode: 0 off, 1 level and attack/defense/stamina, 2 level and percent, 3 all three.
-    private static final String[] IV_MODES={"Off","Niv · 15/14/12","Niv · IV","Niv · IV · 15/14/12","Niv · IV · 15/14/12 · PvP"};
+    private static final String[] IV_MODES={"désactivé","Niv · 15/14/12","Niv · IV","Niv · IV · 15/14/12","Niv · IV · 15/14/12 · PvP"};
 
     private void refreshThrows() {
-        set(throwGrade,"Qualité du lancer : "+new String[]{"OFF","Bien","Super","Excellent"}[Control.throwRating()]);
+        set(throwGrade,"Qualité du lancer : "+new String[]{"désactivée","Bien","Super","Excellent"}[Control.throwRating()]);
         throwGrade.setEnabled(Control.quickBallConfigured()&&Control.throwVariety()==0);
         set(throwVariety,"Lancers variés : "+Control.THROW_VARIETY_LABELS[Control.throwVariety()]);
         throwVariety.setEnabled(Control.quickBallConfigured());
@@ -1208,13 +1208,13 @@ final class SettingsPanel {
         alwaysHitSwitch.setChecked(Control.throwAlwaysHit());alwaysHitSwitch.setEnabled(Control.throwAlwaysHitReady() || Control.throwAlwaysHit());
         arSwitch.setChecked(Control.throwAr());arSwitch.setEnabled(Control.throwArReady());
         catchChanceSwitch.setChecked(Control.catchChanceShown());autoBallSwitch.setChecked(Control.autoBall());
-        set(autoBallTarget,"Objectif Ball auto : "+Control.autoBallTarget()+"%");autoBallTarget.setEnabled(Control.autoBall());
+        set(autoBallTarget,"Objectif : "+Control.autoBallTarget()+" %");autoBallTarget.setEnabled(Control.autoBall());
         autoThrowSwitch.setChecked(Control.autoThrow());
         autoThrowMapSwitch.setChecked(Control.autoThrowOnMap());
         autoThrowMapSwitch.setEnabled(Control.autoThrow());
         set(ivCatchMode,"Rencontre : "+IV_MODES[Control.ivCatchMode()]);ivCatchMode.setEnabled(Control.quickBallConfigured());
-        set(ivOwnedMode,"Écran des stats du Pokémon : "+IV_MODES[Control.ivOwnedMode()]);ivOwnedMode.setEnabled(Control.quickBallConfigured());
-        set(storageIv,"Liste du stockage Pokémon : "+IV_MODES[Control.storageIvMode()]);
+        set(ivOwnedMode,"Fiche du Pokémon : "+IV_MODES[Control.ivOwnedMode()]);ivOwnedMode.setEnabled(Control.quickBallConfigured());
+        set(storageIv,"Stockage : "+IV_MODES[Control.storageIvMode()]);
         String ivText=Control.ivDisplayStatus(), storageText=Control.storageIvStatus();
         status(ivStatus,ivText.isEmpty()?storageText:storageText.isEmpty()?ivText:ivText+"\n"+storageText);
     }

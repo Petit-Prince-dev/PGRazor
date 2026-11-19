@@ -75,7 +75,7 @@ public final class VgpControllerTest {
         Control.suspendForBackground();
         android.os.Handler.drain();
         check(!Control.vgpEnabled(),"Background switches VGP off");
-        check(Control.vgpStatus().equals("L'appli n'est plus au premier plan ; touche VGP pour démarrer"),"Background reason shown");
+        check(Control.vgpStatus().equals("Jeu en arrière-plan : touche VGP pour relancer"),"Background reason shown");
 
         // Returning to the foreground and turning the overlay off clears the runtime enable.
         foreground(true);

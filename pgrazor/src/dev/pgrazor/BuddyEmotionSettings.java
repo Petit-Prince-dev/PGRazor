@@ -41,20 +41,20 @@ public final class BuddyEmotionSettings {
     public static Runnable populate(Activity activity,LinearLayout body){
         Context ui=body.getContext();
         TextView description=new TextView(ui);
-        description.setText("Fait monter l'humeur du copain avec des photos et des caresses tant que le jeu est au premier plan, menus compris quand les services du copain sont disponibles. Les EP viennent du jeu ; l'entretien est une estimation. La marche et les combats restent manuels.");body.addView(description);
-        CheckBox master=new CheckBox(ui);master.setText("Lancer le moteur d'émotions du copain");body.addView(master);
+        description.setText("Photos et caresses auto pour monter l'humeur du copain, jeu au premier plan. Marche et combats restent manuels.");body.addView(description);
+        CheckBox master=new CheckBox(ui);master.setText("Humeur du copain auto");body.addView(master);
         TextView progress=new TextView(ui);body.addView(progress);
         TextView priority=button(body,"");
         TextView reserve=button(body,"");
-        CheckBox gifts=new CheckBox(ui);gifts.setText("Ouvrir les cadeaux rapportés par le copain");body.addView(gifts);
-        CheckBox overlay=new CheckBox(ui);overlay.setText("Afficher l'overlay EP");body.addView(overlay);
-        TextView explanation=new TextView(ui);explanation.setText("Donne la première baie choisie dont le stock dépasse sa réserve. La réserve s'applique à chaque baie séparément. La Framby dorée et la Nanana argentée sont des choix premium optionnels, aucun n'est choisi par défaut. Vide la liste pour désactiver le nourrissage.");body.addView(explanation);
+        CheckBox gifts=new CheckBox(ui);gifts.setText("Ouvrir ses cadeaux");body.addView(gifts);
+        CheckBox overlay=new CheckBox(ui);overlay.setText("EP dans le panneau sur la carte");body.addView(overlay);
+        TextView explanation=new TextView(ui);explanation.setText("Donne la 1re baie de la liste dont le stock dépasse la réserve. Liste vide : pas de nourrissage.");body.addView(explanation);
         final boolean[] refreshing={false};
         Runnable refresh=()->{
             refreshing[0]=true;
             boolean on=preferences.enabled();master.setChecked(on);gifts.setChecked(preferences.gifts());
             overlay.setChecked(preferences.overlay());
-            progress.setText(status());priority.setText("Priorité de nourrissage : "+priorityLabel(preferences.berries()));
+            progress.setText(status());priority.setText("Baies : "+priorityLabel(preferences.berries()));
             reserve.setText("Réserve par baie : "+preferences.reserve());
             for(android.view.View v:new android.view.View[]{priority,reserve,gifts,overlay,explanation}){v.setEnabled(on);v.setAlpha(on?1f:0.45f);}
             refreshing[0]=false;

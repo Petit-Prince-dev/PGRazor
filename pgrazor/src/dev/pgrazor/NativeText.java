@@ -65,6 +65,7 @@ final class NativeText {
             {"Gift declined \\((.*)", "Cadeau refusé ($1"},
             {"Paused: snapshot session declined \\((.*)", "En pause : session refusée ($1"},
             {"Paused: buddy action declined \\((.*)", "En pause : action du copain refusée ($1"},
+            {"No selected berry above reserve \\((\\d+) each\\)", "Aucune baie choisie au-dessus de la réserve ($1 par baie)"},
             {"No selected berry above reserve \\((.*)", "Aucune baie choisie au-dessus de la réserve ($1"},
             {"Feeding selected berry (\\d+)", "Nourrissage avec la baie choisie $1"},
             {"IV panel shown \\((.*)", "Panneau IV affiché ($1"},

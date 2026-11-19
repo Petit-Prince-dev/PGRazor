@@ -147,6 +147,6 @@ final class VgpController {
     }
     /** Losing the foreground switches VGP off, clears any target, and never auto-resumes. */
     void suspend() {
-        synchronized(lock){enabledWriter.accept(false);targetAt=0;guardReason="L'appli n'est plus au premier plan ; touche VGP pour démarrer";}
+        synchronized(lock){enabledWriter.accept(false);targetAt=0;guardReason="Jeu en arrière-plan : touche VGP pour relancer";}
     }
 }
