@@ -1,6 +1,5 @@
 package dev.pgrazor;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -15,11 +14,9 @@ import android.os.Looper;
 import android.widget.TextView;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -27,8 +24,8 @@ import java.util.HashMap;
 
 /** Draws and makes tappable the game-loaded nearby points (stops/gyms/raids) over the map.
  *  All map coupling is explicit: a {@link Projector} places lat/lon on screen, a {@link Snapshots}
- *  feeds the point data, a themed context hosts the detail dialogs, and a redraw callback
- *  requests frames. Map gestures, routes and selection stay in the dialog's view. */
+ *  feeds the point data and a redraw callback requests frames. A tapped marker is only named
+ *  ({@link #kind}); its actions live on the map's own card. */
 final class MapPoiLayer {
     /** Screen placement for a lat/lon against the live viewport, plus the drawable bounds. */
     interface Projector {
@@ -44,7 +41,6 @@ final class MapPoiLayer {
     }
 
     private final Context context; // asset access and density
-    private final Context dialogContext; // themed chrome for POI detail dialogs
     private final Projector projector;
     private final Snapshots snapshots;
     private final Runnable invalidate;
@@ -63,24 +59,15 @@ final class MapPoiLayer {
     // Bundled POI art is decoded once and reused every frame; a null entry marks a tried-but-missing
     // asset so the vector fallback renders without re-hitting the AssetManager each draw.
     private final Map<String, Bitmap> markerIcons = new HashMap<>();
-    // Raid-boss base-species id -> English game name, read once from the bundled table (null if unreadable).
-    private Map<String, String> bossNames;
-    private boolean bossNamesLoaded;
-    private final List<AlertDialog> poiDialogs = new ArrayList<>();
     private final Runnable poiRefresh = this::refresh;
     private int layers;
     private TextView poiStatus;
     private JSONArray pois = new JSONArray();
     private String lastPois = "";
     private boolean closed;
-    private WorldMapDialog.DestinationListener walk, teleport;
 
-    void setDestinationActions(WorldMapDialog.DestinationListener walk, WorldMapDialog.DestinationListener teleport) {
-        this.walk = walk; this.teleport = teleport;
-    }
-
-    MapPoiLayer(Context context, Context dialogContext, Projector projector, Snapshots snapshots, Runnable invalidate) {
-        this.context = context; this.dialogContext = dialogContext; this.projector = projector;
+    MapPoiLayer(Context context, Projector projector, Snapshots snapshots, Runnable invalidate) {
+        this.context = context; this.projector = projector;
         this.snapshots = snapshots; this.invalidate = invalidate;
         for (String icon : new String[]{"stop.png","gym.png","raid-normal.png","raid-rare.png","raid-legendary.png","raid-primal.png","raid-ultra.png","raid-shadow.png","raid-active.png","raid-mega-active.png","raid-primal-active.png","raid-shadow-active.png"}) loadIcon(icon);
         // White glyphs on a dark outline keep the count legible over any street colour.
@@ -231,146 +218,22 @@ final class MapPoiLayer {
         List<JSONObject> sorted = new ArrayList<>(); for (int i : order) sorted.add(hits.get(i)); return sorted;
     }
 
-    void openDetails(List<JSONObject> hits) {
-        if (closed || hits.isEmpty()) return;
-        if (hits.size() == 1) { showPoiDetails(hits.get(0)); return; }
-        String[] labels = new String[hits.size()]; for (int i = 0; i < labels.length; i++) labels[i] = poiShortLabel(hits.get(i));
-        AlertDialog chooser = ChoiceList.attach(new AlertDialog.Builder(dialogContext).setTitle("Proches ici (" + hits.size() + ")")
-            .setNegativeButton("Fermer", null).create(), labels, which -> showPoiDetails(hits.get(which)));
-        registerPoiDialog(chooser); chooser.show();
-    }
-    private String poiShortLabel(JSONObject point) {
-        long now = System.currentTimeMillis();
-        if (point.optLong("raidEnd") > now) { String tier = point.optString("tier", ""); return "Raid" + (tier.isEmpty() ? "" : " " + tier) + (point.optBoolean("egg") ? " (œuf)" : ""); }
-        if ("stop".equals(point.optString("kind"))) { String rocket = rocketName(point, now); return rocket == null ? "PokéStop" : "PokéStop · Team GO Rocket " + rocket; }
-        String team = point.optString("team", ""); return "Arène" + (team.isEmpty() ? "" : " (" + team + ")");
-    }
-    private void registerPoiDialog(AlertDialog dialog) {
-        poiDialogs.add(dialog); dialog.setOnDismissListener(d -> poiDialogs.remove(dialog));
-    }
-    private void showPoiDetails(JSONObject initial) {
-        if (closed) return;
-        final String id = initial.optString("id", "");
-        final TextView body = new TextView(dialogContext);
-        int pad = dp(18); body.setPadding(pad, pad, pad, pad); body.setTextSize(14);
-        final double latitude = initial.optDouble("lat", Double.NaN), longitude = initial.optDouble("lon", Double.NaN);
-        final boolean valid = Double.isFinite(latitude) && Double.isFinite(longitude) && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
-        AlertDialog.Builder builder = new AlertDialog.Builder(dialogContext).setTitle(poiTitle(initial)).setView(body).setNegativeButton("Fermer", null);
-        if (walk != null) builder.setNeutralButton("Marcher", null);
-        if (teleport != null) builder.setPositiveButton("Téléporter", null);
-        final AlertDialog dialog = builder.create();
-        dialog.setOnShowListener(d -> {
-            MapTheme.styleButtons(dialog);
-            if (walk != null) {
-                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setEnabled(valid);
-                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
-                    if (!closed && walk.onDestination(latitude, longitude)) dialog.dismiss();
-                });
-            }
-            if (teleport != null) {
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(valid);
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                    if (!closed && teleport.onDestination(latitude, longitude)) dialog.dismiss();
-                });
-            }
-        });
-        final Runnable[] refresh = new Runnable[1];
-        refresh[0] = () -> {
-            if (closed || !dialog.isShowing()) return;
-            JSONObject live = id.isEmpty() ? null : findPoi(id);
-            dialog.setTitle(poiTitle(live != null ? live : initial));
-            body.setText(poiDetailsText(live != null ? live : initial, live == null));
-            main.postDelayed(refresh[0], 1000);
-        };
-        dialog.setOnDismissListener(d -> { poiDialogs.remove(dialog); main.removeCallbacks(refresh[0]); });
-        poiDialogs.add(dialog); DialogStyle.attach(dialog); dialog.show(); refresh[0].run();
-    }
-    private JSONObject findPoi(String id) {
-        for (int i = 0; i < pois.length(); i++) { JSONObject point = pois.optJSONObject(i); if (point != null && id.equals(point.optString("id"))) return point; }
-        return null;
-    }
-    private static String poiTitle(JSONObject point) {
-        long now = System.currentTimeMillis();
-        if (point.optLong("raidEnd") > now) return "Raid";
+    /** What a tapped marker is, as the map's card names it: "Raid", "PokéStop" or "Arène". */
+    static String kind(JSONObject point) {
+        if (point.optLong("raidEnd") > System.currentTimeMillis()) return "Raid";
         return "stop".equals(point.optString("kind")) ? "PokéStop" : "Arène";
     }
-    /** Read-only; never changes the selected destination. "Unknown"/"unavailable" stay explicit. */
-    private String poiDetailsText(JSONObject p, boolean gone) {
-        StringBuilder sb = new StringBuilder();
-        double lat = p.optDouble("lat", Double.NaN), lon = p.optDouble("lon", Double.NaN);
-        if (Double.isFinite(lat) && Double.isFinite(lon)) sb.append(String.format(Locale.US, "%.6f, %.6f\n\n", lat, lon));
-        long now = System.currentTimeMillis();
-        boolean stop = "stop".equals(p.optString("kind"));
-        if (stop) {
-            sb.append("PokéStop chargé à proximité par le jeu.\n");
-            String rocket = rocketName(p, now);
-            if (rocket != null) sb.append("\nTeam GO Rocket ").append(rocket).append(" — se termine dans ").append(countdown(p.optLong("incidentEnd") - now)).append('\n');
-        }
-        else {
-            String team = p.optString("team", "");
-            sb.append("Équipe : ").append(team.isEmpty() ? "Inconnue" : team).append('\n');
-            // Six defenders per gym: official Pokemon GO Help Center, Battling at Gyms (verified 2026-10-21).
-            int slots = p.optInt("slots", -1);
-            if (slots >= 0 && slots <= 6) sb.append("Défenseurs : ").append(6 - slots).append("/6 (" + slots + " places libres)\n");
-            else sb.append("Défenseurs : indisponible\n");
-        }
-        if (p.optLong("raidEnd") > now) {
-            sb.append('\n'); boolean egg = p.optBoolean("egg"); String tier = p.optString("tier", "");
-            sb.append("Niveau du raid : ").append(tier.isEmpty() ? "Inconnue" : tier.replace("_", " ").replaceAll("([0-9])([A-Za-z])", "$1 $2").trim()).append('\n');
-            if (egg) {
-                long start = p.optLong("raidStart", 0);
-                sb.append("Œuf — boss pas encore révélé");
-                if (start > now) sb.append("; éclot dans ").append(countdown(start - now));
-                sb.append('\n');
-            } else {
-                int boss = p.optInt("boss", 0);
-                String name = boss > 0 ? bossName(boss) : null; // base species only; forms (e.g. Mega X/Y) not inferred
-                sb.append("Boss : ").append(boss > 0 ? (name != null ? name : ("#" + boss)) : "unknown").append('\n');
-            }
-            long end = p.optLong("raidEnd", 0); if (end > now) sb.append("Se termine dans ").append(countdown(end - now)).append('\n');
-        }
-        if (p.optLong("raidEnd") > 0 && p.optLong("raidEnd") <= now) sb.append("\nRaid terminé.\n");
-        if (gone) sb.insert(0, "Dernières données connues - pas d'instantané récent.\n\n");
-        return sb.toString().trim();
-    }
+
     /** "Grunt", "Leader" or "Giovanni" for a stop with an unexpired Team GO Rocket invasion, else null.
      *  incident is the game's raw IncidentDisplayType: 1 grunt, 2 leader, 3 Giovanni, 4 grunt (variant). */
     private static String rocketName(JSONObject p, long now) {
         if (p.optLong("incidentEnd") <= now) return null;
         switch (p.optInt("incident", 0)) { case 1: case 4: return "Grunt"; case 2: return "Leader"; case 3: return "Giovanni"; default: return null; }
     }
-    private static String countdown(long millis) {
-        long total = Math.max(0, millis) / 1000;
-        if (total >= 3600) return String.format(Locale.US, "%d:%02d:%02d", total / 3600, total / 60 % 60, total % 60);
-        return String.format(Locale.US, "%d:%02d", total / 60, total % 60);
-    }
-
-    /** English name for a base-species id, or null to fall back to #id; the table is read once. */
-    private String bossName(int id) {
-        if (!bossNamesLoaded) { bossNamesLoaded = true; bossNames = loadBossNames(); } // one asset read per map, not per refresh
-        return bossNames == null ? null : bossNames.get(Integer.toString(id));
-    }
-    /** Parse the bundled id->name table once; any missing/oversize/malformed file leaves #id fallbacks. */
-    private Map<String, String> loadBossNames() {
-        try (InputStream in = PgAssets.open(context, "pgrazor/map-icons/pokemon-names.json")) {
-            ByteArrayOutputStream out = new ByteArrayOutputStream(); byte[] buffer = new byte[8192]; int count;
-            while ((count = in.read(buffer)) != -1) { if (out.size() + count > 2 * 1024 * 1024) throw new IOException("Oversize name table"); out.write(buffer, 0, count); }
-            JSONObject json = new JSONObject(new String(out.toByteArray(), "UTF-8"));
-            Map<String, String> map = new HashMap<>();
-            for (Iterator<String> keys = json.keys(); keys.hasNext();) {
-                String key = keys.next(); String value = json.optString(key, "");
-                if (!value.isEmpty()) map.put(key, value);
-            }
-            return map;
-        } catch (IOException | org.json.JSONException | RuntimeException e) { return null; }
-    }
-
     void close() {
         if (closed) return;
         closed = true;
         main.removeCallbacksAndMessages(null);
-        for (AlertDialog dialog : new ArrayList<>(poiDialogs)) dialog.dismiss();
-        poiDialogs.clear();
         snapshots.setOpen(false);
     }
 

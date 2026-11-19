@@ -22,6 +22,7 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -47,6 +48,8 @@ public final class WorldMapDialog {
         boolean onDestination(double latitude, double longitude);
     }
     interface LongPress { void at(double latitude, double longitude); }
+    /** A touch on the map: the point, and what is there ("PokéStop", "Arène", "Raid") or null for a plain spot. */
+    interface Pick { void at(double latitude, double longitude, String kind); }
     public interface RouteListener {
         /** Coordinates are copied in visit order; loop repeats from the first stop. Return true only after accepting the route. */
         boolean onRoute(double[][] waypoints, boolean loop);
@@ -78,7 +81,7 @@ public final class WorldMapDialog {
             throw new IllegalArgumentException("Coordonnées de carte invalides");
         Context ui = MapTheme.wrap(activity); // themed chrome; the map view itself keeps the real Activity
         final boolean hub = walk != null && route != null;
-        final AlertDialog[] self = {null}, cooldownDialog = {null}, searchDialog = {null}, favoriteDialog = {null};
+        final AlertDialog[] self = {null}, cooldownDialog = {null}, searchDialog = {null};
 
         // The whole window: a top bar (tabs, or a title), then the pages filling the rest.
         HubRoot root = new HubRoot(activity); root.setOrientation(LinearLayout.VERTICAL);
@@ -107,9 +110,7 @@ public final class WorldMapDialog {
         android.widget.FrameLayout pages = new android.widget.FrameLayout(activity);
         root.addView(pages, new LinearLayout.LayoutParams(-1, 0, 1));
 
-        // ----- Page Carte: search, map, pin line, layers, tools, route builder, status, then the action bar.
-        // The actions are part of the layout (not a dialog button bar), so the map shrinks to make room
-        // for them and they can never be pushed off screen.
+        // ----- Page Carte: search, the map (with its card and the ◎ button on it), layers, route bar, status.
         ResponsiveLayout layout = new ResponsiveLayout(activity);
         layout.setOrientation(LinearLayout.VERTICAL);
         int pad = dp(activity, 12);
@@ -122,25 +123,22 @@ public final class WorldMapDialog {
         LinearLayout.LayoutParams searchParams = new LinearLayout.LayoutParams(-1, dp(activity, 40)); searchParams.bottomMargin = dp(activity, 8);
         layout.addView(search, searchParams);
 
-        TextView selected = label(ui, "", 12);
         TextView status = label(ui, "Chargement de la carte…", 11);
-        MapView map = new MapView(activity, latitude, longitude, selected, status);
-        layout.map = map;
+        MapView map = new MapView(activity, latitude, longitude, status);
+        // The map, with on top of it the ◎ button (back to the player) and the card of the touched point.
+        android.widget.FrameLayout mapFrame = new android.widget.FrameLayout(activity);
+        mapFrame.addView(map, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        TextView current = label(ui, "◎", 20); current.setGravity(Gravity.CENTER); current.setTag(DialogStyle.KEEP);
+        current.setClickable(true); current.setFocusable(true); current.setContentDescription("Centrer la carte sur ta position en jeu");
+        android.widget.FrameLayout.LayoutParams currentParams = new android.widget.FrameLayout.LayoutParams(dp(activity, 42), dp(activity, 42), Gravity.TOP | Gravity.END);
+        currentParams.setMargins(0, dp(activity, 10), dp(activity, 10), 0);
+        mapFrame.addView(current, currentParams);
+        SpotCard card = new SpotCard(activity, ui, walk != null);
+        mapFrame.addView(card.view, card.params());
+        layout.map = mapFrame;
         // The map fills the space left by the controls (see ResponsiveLayout); this is only a baseline height.
-        layout.addView(map, new LinearLayout.LayoutParams(-1, dp(activity, 240)));
-
-        // The pin line: its coordinates (tap: centre on the pin and copy them), then Favori and Moi.
-        LinearLayout pinRow = new LinearLayout(ui); pinRow.setGravity(Gravity.CENTER_VERTICAL); pinRow.setTag(DialogStyle.KEEP);
-        pinRow.setPadding(0, dp(activity, 4), 0, 0);
-        selected.setTypeface(SettingsUi.mono()); selected.setSingleLine(true); selected.setPadding(dp(activity, 2), dp(activity, 6), dp(activity, 2), dp(activity, 6));
-        selected.setClickable(true); selected.setFocusable(true); selected.setContentDescription("Centrer sur l'épingle et copier ses coordonnées");
-        pinRow.addView(selected, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView favorite = chip(ui, "☆ Favori"), current = chip(ui, "◎ Moi");
-        favorite.setContentDescription("Ajouter l'épingle à tes favoris");
-        current.setContentDescription("Centrer la carte sur ta position en jeu");
-        pinRow.addView(favorite); pinRow.addView(current);
-        layout.addView(pinRow);
-        TextView hint = label(ui, "", 11);
+        layout.addView(mapFrame, new LinearLayout.LayoutParams(-1, dp(activity, 240)));
+        TextView hint = label(ui, "", 11); hint.setPadding(0, dp(activity, 6), 0, 0);
         layout.addView(hint);
 
         // Map layers on one line.
@@ -186,25 +184,14 @@ public final class WorldMapDialog {
         layout.addView(foot);
         layout.addView(coverage);
 
-        // The action bar: Marcher ici (when walking is available) and the primary Téléporter.
-        LinearLayout actions = new LinearLayout(ui);
-        Button walkHere = toolButton(ui, "Marcher ici"), teleport = toolButton(ui, "Téléporter");
-        walkHere.setTextSize(14); teleport.setTextSize(14); teleport.setTypeface(SettingsUi.medium()); walkHere.setTypeface(SettingsUi.medium());
-        teleport.setTag(DialogStyle.KEEP); walkHere.setTag(DialogStyle.KEEP);
-        walkHere.setVisibility(walk == null ? View.GONE : View.VISIBLE);
-        LinearLayout.LayoutParams walkParams = new LinearLayout.LayoutParams(0, dp(activity, 44), 1); walkParams.rightMargin = dp(activity, 8);
-        actions.addView(walkHere, walkParams);
-        actions.addView(teleport, new LinearLayout.LayoutParams(0, dp(activity, 44), 1));
-        layout.addView(actions);
-
         map.refreshPois();
+        map.onPick = card::show;
         search.setOnClickListener(v -> {
             if (searchDialog[0] != null && searchDialog[0].isShowing()) return;
             searchDialog[0] = MapSearchDialog.show(activity, MapProjection.latitude(map.centerY),
-                MapProjection.longitude(map.centerX), (lat, lon) -> map.select(lat, lon));
+                MapProjection.longitude(map.centerX), (lat, lon) -> { map.select(lat, lon); card.show(lat, lon, null); });
         });
         current.setOnClickListener(v -> map.centerCurrentLocation());
-        selected.setOnClickListener(v -> { map.centerSelection(); CoordinateClipboard.copy(activity, map.latitude, map.longitude, "Coordonnées de l'épingle copiées"); });
 
         RouteDraft draft = route == null ? null : new RouteDraft(activity, ui, map, routeBar, routeSummary, undo, saveRoute, startRoute, clearRoute, route);
         if (draft != null) map.onLongPress = draft::add;
@@ -213,7 +200,7 @@ public final class WorldMapDialog {
         // ----- Pages Lieux and Autowalk (hub only).
         final Tabs pager = hub ? new Tabs(ui, tabs, new View[3]) : null;
         final PlacesPanel places = !hub ? null : new PlacesPanel(activity, ui, new PlacesPanel.Host() {
-            public void showOnMap(double lat, double lon) { pager.select(TAB_MAP); map.select(lat, lon); }
+            public void showOnMap(double lat, double lon) { pager.select(TAB_MAP); map.select(lat, lon); card.show(lat, lon, null); }
             public void openRoute(GpxRoute chosen, boolean stored) { pager.select(TAB_MAP); draft.load(chosen, stored); }
             public boolean teleport(double lat, double lon) { return listener.onDestination(lat, lon); }
             public boolean walk(double lat, double lon) { return walk.onDestination(lat, lon); }
@@ -228,36 +215,25 @@ public final class WorldMapDialog {
             pager.onSelect = index -> { if (index == TAB_PLACES) places.reload(); if (index == TAB_WALK) walker.resume(); else walker.pause(); };
             for (int i = 0; i < tabs.length; i++) { final int index = i; tabs[i].setOnClickListener(v -> pager.select(index)); }
         }
-        favorite.setOnClickListener(v -> {
-            if (favoriteDialog[0] != null && favoriteDialog[0].isShowing()) return;
-            favoriteDialog[0] = PlacesPanel.promptSave(activity, ui, map.latitude, map.longitude, places == null ? null : places::reload);
-        });
 
         AlertDialog dialog = new AlertDialog.Builder(ui).setView(root).create();
         self[0] = dialog;
         if (draft != null) { draft.parent = dialog; draft.saved = places == null ? null : places::reload; }
         close.setOnClickListener(v -> dialog.dismiss());
-        map.poiLayer.setDestinationActions(walk == null ? null : (lat, lon) -> {
-            if (!walk.onDestination(lat, lon)) return false;
-            dialog.dismiss(); return true;
-        }, (latitudePoi, longitudePoi) -> {
-            if (cooldownDialog[0] != null && cooldownDialog[0].isShowing()) return false;
-            cooldownDialog[0] = TeleportDialog.confirm(activity, latitudePoi, longitudePoi, (lat, lon) -> {
-                if (!listener.onDestination(lat, lon)) return false;
-                dialog.dismiss(); return true;
-            });
-            return false; // Keep details visible if the cooldown confirmation is cancelled.
-        });
-        teleport.setOnClickListener(v -> {
+        card.saved = places == null ? null : places::reload;
+        card.teleport.setOnClickListener(v -> {
             if (cooldownDialog[0] != null && cooldownDialog[0].isShowing()) return;
-            cooldownDialog[0] = TeleportDialog.confirm(activity, map.latitude, map.longitude, (lat, lon) -> {
+            cooldownDialog[0] = TeleportDialog.confirm(activity, card.latitude, card.longitude, (lat, lon) -> {
                 if (!listener.onDestination(lat, lon)) return false;
                 dialog.dismiss(); return true;
             });
         });
-        if (walk != null) walkHere.setOnClickListener(v -> { if (walk.onDestination(map.latitude, map.longitude)) dialog.dismiss(); });
+        if (walk != null) card.walk.setOnClickListener(v -> { if (walk.onDestination(card.latitude, card.longitude)) dialog.dismiss(); });
+        // Opened just to look at a spot (not the hub), its card is up from the start.
+        if (!hub) card.show(latitude, longitude, null);
         DialogLifecycle.bind(activity, dialog, () -> {
-            for (AlertDialog child : new AlertDialog[]{cooldownDialog[0], searchDialog[0], favoriteDialog[0]}) if (child != null) child.dismiss();
+            for (AlertDialog child : new AlertDialog[]{cooldownDialog[0], searchDialog[0]}) if (child != null) child.dismiss();
+            card.close();
             if (draft != null) draft.close();
             if (places != null) places.close();
             if (walker != null) walker.close();
@@ -267,14 +243,14 @@ public final class WorldMapDialog {
             MapTheme.fullScreen(dialog); MapTheme.style(layout);
             root.setBackgroundColor(SettingsUi.surface()); top.setBackgroundColor(SettingsUi.surface());
             tabBar.setBackground(SettingsUi.shape(ui, SettingsUi.raised(), 12, SettingsUi.border()));
-            // Colours after the generic pass: quiet secondary text, accent pin line, field-like search, filled primary.
-            selected.setTextColor(SettingsUi.accent()); selected.setBackground(SettingsUi.ripple(SettingsUi.rounded(ui, 0x00000000, 8)));
+            // Colours after the generic pass: quiet secondary text, field-like search, the map's own controls.
             for (TextView quiet : new TextView[]{hint, status, coverage}) quiet.setTextColor(SettingsUi.muted());
             attribution.setTextColor(SettingsUi.faint());
             search.setTextColor(SettingsUi.faint()); search.setBackground(SettingsUi.ripple(SettingsUi.fieldBackground(ui)));
-            teleport.setTextColor(SettingsUi.accentInk()); teleport.setBackground(SettingsUi.ripple(SettingsUi.rounded(ui, SettingsUi.accentFill(), 12)));
-            walkHere.setTextColor(SettingsUi.ink()); walkHere.setBackground(SettingsUi.ripple(SettingsUi.shape(ui, SettingsUi.raised(), 12, SettingsUi.border())));
-            for (TextView link : new TextView[]{favorite, current, clearRoute}) paintChip(ui, link);
+            current.setTextColor(SettingsUi.ink()); current.setBackground(SettingsUi.ripple(SettingsUi.shape(ui, SettingsUi.surface(), 21, SettingsUi.border())));
+            current.setElevation(dp(activity, 3));
+            card.paint();
+            paintChip(ui, clearRoute);
             routeBar.setBackground(SettingsUi.cardBackground(ui)); routeSummary.setTextColor(SettingsUi.ink());
             HubUi.paint(undo, false); HubUi.paint(saveRoute, false); HubUi.paint(startRoute, true);
             if (pager != null) pager.select(tab >= 0 ? tab : lastTab);
@@ -313,10 +289,148 @@ public final class WorldMapDialog {
         }
     }
 
-    static final String MAP_HINT = "Touche la carte pour placer l'épingle · glisse pour bouger · pince pour zoomer.";
-    static final String ROUTE_HINT = "Touche : épingle · appui long : point de route · pince : zoom";
+    static final String MAP_HINT = "Touche un point pour ses actions · glisse pour bouger · pince pour zoomer.";
+    static final String ROUTE_HINT = "Touche : actions du point · appui long : point de route · pince : zoom";
 
-    /** A small accent text button on the map page (Favori, Moi, Effacer). */
+    /**
+     * The card on the map for the point just touched: what it is (PokéStop, Arène, Raid, or a plain spot with
+     * its coordinates), how far, then Marcher ici and Téléporter. A plain spot also offers ☆ Favori, which turns
+     * the card into a name field saved straight to the favourites (the card then sits at the top of the map, clear
+     * of the keyboard). Hidden until a touch; ✕ hides it.
+     */
+    private static final class SpotCard {
+        final Activity activity;
+        final Context ui;
+        final LinearLayout view, buttons, form;
+        final TextView title, detail, dismiss;
+        final Button favorite, walk, teleport, cancel, save;
+        final EditText name;
+        final boolean canWalk;
+        final Handler main = new Handler(Looper.getMainLooper());
+        double latitude, longitude;
+        /** Runs after a favourite is saved, so Lieux lists it. */
+        Runnable saved;
+        private boolean closed;
+
+        SpotCard(Activity activity, Context ui, boolean canWalk) {
+            this.activity = activity; this.ui = ui; this.canWalk = canWalk;
+            view = new LinearLayout(ui); view.setOrientation(LinearLayout.VERTICAL); view.setTag(DialogStyle.KEEP);
+            view.setPadding(dp(ui, 14), dp(ui, 10), dp(ui, 6), dp(ui, 12)); view.setClickable(true); view.setVisibility(View.GONE);
+            LinearLayout head = new LinearLayout(ui); head.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout texts = new LinearLayout(ui); texts.setOrientation(LinearLayout.VERTICAL);
+            title = label(ui, "", 16); title.setTypeface(SettingsUi.medium()); title.setSingleLine(true);
+            detail = label(ui, "", 12); detail.setSingleLine(true); detail.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            detail.setClickable(true); detail.setContentDescription("Copier les coordonnées");
+            detail.setOnClickListener(v -> CoordinateClipboard.copy(activity, latitude, longitude, "Coordonnées copiées"));
+            texts.addView(title); texts.addView(detail);
+            head.addView(texts, new LinearLayout.LayoutParams(0, -2, 1));
+            dismiss = label(ui, "✕", 16); dismiss.setGravity(Gravity.CENTER); dismiss.setClickable(true); dismiss.setContentDescription("Fermer");
+            dismiss.setOnClickListener(v -> hide());
+            head.addView(dismiss, new LinearLayout.LayoutParams(dp(ui, 40), dp(ui, 40)));
+            view.addView(head);
+
+            favorite = HubUi.button(ui, "☆ Favori", false); walk = HubUi.button(ui, "Marcher ici", false); teleport = HubUi.button(ui, "Téléporter", true);
+            buttons = HubUi.actions(ui, favorite, walk, teleport); buttons.setPadding(0, dp(ui, 8), dp(ui, 8), 0);
+            walk.setVisibility(canWalk ? View.VISIBLE : View.GONE);
+            favorite.setOnClickListener(v -> edit());
+            view.addView(buttons);
+
+            form = new LinearLayout(ui); form.setOrientation(LinearLayout.VERTICAL); form.setPadding(0, dp(ui, 8), dp(ui, 8), 0); form.setVisibility(View.GONE);
+            name = new EditText(ui); name.setHint("Nom du favori"); name.setSingleLine(true); name.setTextSize(14);
+            name.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+            name.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+            name.setFilters(new InputFilter[]{new InputFilter.LengthFilter(SavedPlaces.NAME_LIMIT)});
+            name.setPadding(dp(ui, 12), 0, dp(ui, 12), 0);
+            name.setOnEditorActionListener((v, action, event) -> { save(); return true; });
+            form.addView(name, new LinearLayout.LayoutParams(-1, dp(ui, 44)));
+            cancel = HubUi.button(ui, "Annuler", false); save = HubUi.button(ui, "Enregistrer", true);
+            LinearLayout formButtons = HubUi.actions(ui, cancel, save); formButtons.setPadding(0, dp(ui, 8), 0, 0);
+            cancel.setOnClickListener(v -> browse());
+            save.setOnClickListener(v -> save());
+            form.addView(formButtons);
+            view.addView(form);
+        }
+
+        android.widget.FrameLayout.LayoutParams params() {
+            android.widget.FrameLayout.LayoutParams lp = new android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
+            lp.setMargins(dp(ui, 8), dp(ui, 8), dp(ui, 8), dp(ui, 8));
+            return lp;
+        }
+
+        /** Shows the card for a touched point; {@code kind} names a PokéStop, Arène or Raid, null for a plain spot. */
+        void show(double latitude, double longitude, String kind) {
+            if (closed) return;
+            this.latitude = latitude; this.longitude = longitude;
+            title.setText(kind == null ? "Point choisi" : kind);
+            String away = HubUi.away(latitude, longitude);
+            detail.setText(String.format(Locale.US, "%.5f, %.5f", latitude, longitude) + (away.isEmpty() ? "" : " · " + away));
+            favorite.setVisibility(kind == null ? View.VISIBLE : View.GONE);
+            browse();
+            view.setVisibility(View.VISIBLE);
+        }
+
+        void hide() { browse(); view.setVisibility(View.GONE); }
+
+        /** Back to the actions: the name field closes and the card returns to the bottom of the map. */
+        private void browse() {
+            keyboard(false);
+            form.setVisibility(View.GONE); buttons.setVisibility(View.VISIBLE); name.setError(null); save.setEnabled(true);
+            place(Gravity.BOTTOM);
+        }
+
+        private void edit() {
+            buttons.setVisibility(View.GONE); form.setVisibility(View.VISIBLE);
+            name.setText(""); place(Gravity.TOP);
+            name.requestFocus(); keyboard(true);
+        }
+
+        private void save() {
+            if (form.getVisibility() != View.VISIBLE || !save.isEnabled()) return;
+            final SavedPlaces.Entry entry;
+            try { entry = new SavedPlaces.Entry(name.getText().toString(), latitude, longitude); }
+            catch (IllegalArgumentException e) { name.setError(e.getMessage()); return; }
+            save.setEnabled(false);
+            new Thread(() -> {
+                String error = null;
+                try { new SavedPlaces(activity).add(entry); }
+                catch (IOException | RuntimeException e) { error = e.getMessage() == null ? "Impossible d'enregistrer ce lieu." : e.getMessage(); }
+                final String failed = error;
+                main.post(() -> {
+                    if (closed) return;
+                    if (failed != null) { save.setEnabled(true); name.setError(failed); return; }
+                    Toast.makeText(activity, "Ajouté aux favoris : " + entry.name, Toast.LENGTH_SHORT).show();
+                    title.setText("☆ " + entry.name); favorite.setVisibility(View.GONE);
+                    browse();
+                    if (saved != null) saved.run();
+                });
+            }, "pgrazor-favorite-save").start();
+        }
+
+        private void place(int gravity) {
+            android.widget.FrameLayout.LayoutParams lp = (android.widget.FrameLayout.LayoutParams) view.getLayoutParams();
+            if (lp != null && lp.gravity != gravity) { lp.gravity = gravity; view.setLayoutParams(lp); }
+        }
+
+        private void keyboard(boolean open) {
+            InputMethodManager input = (InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (input == null) return;
+            if (open) name.post(() -> input.showSoftInput(name, InputMethodManager.SHOW_IMPLICIT));
+            else input.hideSoftInputFromWindow(name.getWindowToken(), 0);
+        }
+
+        void paint() {
+            view.setBackground(SettingsUi.cardBackground(ui)); view.setElevation(dp(ui, 6));
+            title.setTextColor(SettingsUi.ink()); detail.setTextColor(SettingsUi.muted()); dismiss.setTextColor(SettingsUi.muted());
+            dismiss.setBackground(SettingsUi.ripple(SettingsUi.rounded(ui, 0x00000000, 20)));
+            name.setTextColor(SettingsUi.ink()); name.setHintTextColor(SettingsUi.faint()); name.setBackground(SettingsUi.fieldBackground(ui));
+            HubUi.paint(favorite, false); HubUi.paint(walk, false); HubUi.paint(teleport, true);
+            HubUi.paint(cancel, false); HubUi.paint(save, true);
+        }
+
+        void close() { closed = true; main.removeCallbacksAndMessages(null); }
+    }
+
+    /** A small accent text button on the map page (Effacer). */
     private static TextView chip(Context c, String text) {
         TextView t = label(c, text, 12); t.setTypeface(SettingsUi.medium()); t.setSingleLine(true); t.setGravity(Gravity.CENTER);
         t.setClickable(true); t.setFocusable(true); t.setPadding(dp(c, 10), dp(c, 6), dp(c, 10), dp(c, 6));
@@ -326,9 +440,6 @@ public final class WorldMapDialog {
         chip.setTextColor(SettingsUi.accent()); chip.setBackground(SettingsUi.ripple(SettingsUi.rounded(c, 0x00000000, 8)));
     }
 
-    private static LinearLayout.LayoutParams toolParams(Context c) {
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(c, 36), 1); lp.setMargins(dp(c, 2), dp(c, 2), dp(c, 2), dp(c, 2)); return lp;
-    }
     /** A compact tool button; colours and background come from MapTheme.style when the dialog shows. */
     private static Button toolButton(Context c, String text) {
         Button b = new Button(c); b.setText(text); b.setAllCaps(false); b.setTextSize(12); b.setSingleLine(true);
@@ -445,7 +556,6 @@ public final class WorldMapDialog {
     }
 
     private static final class MapView extends View {
-        private final TextView selectionLabel;
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         private final int tileSize, slop;
         private final MapTileSource tiles;
@@ -460,6 +570,8 @@ public final class WorldMapDialog {
         private boolean dragged, multiTouch, longPressed;
         /** Set by the hub: a finger held still on the map adds a route point there. */
         LongPress onLongPress;
+        /** A tap: on a marker it picks that PokéStop/Arène/Raid, elsewhere the spot under the finger. */
+        Pick onPick;
         private final Runnable longPress = new Runnable() {
             public void run() {
                 if (closed || dragged || multiTouch || onLongPress == null) return;
@@ -479,17 +591,16 @@ public final class WorldMapDialog {
             }
         };
 
-        MapView(Activity activity, double latitude, double longitude, TextView selection, TextView status) {
+        MapView(Activity activity, double latitude, double longitude, TextView status) {
             super(activity);
             this.latitude = latitude; this.longitude = longitude;
             centerX = MapProjection.x(longitude); centerY = MapProjection.y(latitude);
-            selectionLabel = selection;
             tileSize = dp(activity, 256); slop = ViewConfiguration.get(activity).getScaledTouchSlop();
             tiles = new MapTileSource(new MapTileSource.Host() {
                 public int zoom() { return zoom; }
                 public void onTilesChanged() { invalidate(); }
             }, status, new File(activity.getCacheDir(), "pgrazor-map-tiles-v1"));
-            poiLayer = new MapPoiLayer(activity, MapTheme.wrap(activity), new MapPoiLayer.Projector() {
+            poiLayer = new MapPoiLayer(activity, new MapPoiLayer.Projector() {
                 public float screenX(double lon) { return projectX(lon); }
                 public float screenY(double lat) { return projectY(lat); }
                 public int width() { return getWidth(); }
@@ -498,18 +609,13 @@ public final class WorldMapDialog {
                 public void setOpen(boolean open) { Control.setMapPoiOpen(open); }
                 public String read() { return Control.mapPoiSnapshot(); }
             }, this::invalidate);
-            setContentDescription("Carte du monde. Le point bleu est ta position actuelle ; l'épingle rouge est la destination. Glisse pour te déplacer, pince pour zoomer, touche pour choisir la destination.");
-            // Use the activity hardware renderer; tile I/O stays on the worker.
-            updateSelection();
+            setContentDescription("Carte du monde. Le point bleu est ta position actuelle ; l'épingle rouge est le point choisi. Glisse pour te déplacer, pince pour zoomer, touche un point pour ses actions.");
         }
 
         void setPoiLayer(int bit, boolean on) { poiLayer.setLayer(bit, on); }
         void setPoiStatus(TextView view) { poiLayer.setStatusView(view); }
         void refreshPois() { poiLayer.refresh(); }
 
-        private void updateSelection() {
-            selectionLabel.setText(String.format(Locale.US, "Épingle : %.6f, %.6f", latitude, longitude));
-        }
         private double displayedTileSize() { return (zoom == 0 ? Math.max(1, Math.min(getWidth(), getHeight())) : tileSize)*zoomScale; }
         private double world() { return MapProjection.worldPixels(zoom, displayedTileSize()); }
         void zoom(int amount) { int next = Math.max(0, Math.min(19, zoom + amount)); if (next != zoom) { zoom = next; viewportChanged(); } }
@@ -519,9 +625,8 @@ public final class WorldMapDialog {
             zoomScale=1;if(zoom==0)zoom=14;
             centerX=MapProjection.x(lon);centerY=MapProjection.y(lat);viewportChanged();
         }
-        void centerSelection() { zoomScale=1; if (zoom == 0) zoom = 14; centerX = MapProjection.x(longitude); centerY = MapProjection.y(latitude); viewportChanged(); }
         /** Moves the pin without moving the view. */
-        void pin(double latitude, double longitude) { this.latitude = latitude; this.longitude = longitude; updateSelection(); invalidate(); }
+        void pin(double latitude, double longitude) { this.latitude = latitude; this.longitude = longitude; invalidate(); }
         /** Frames every point (a whole route), never closer than street level. */
         void fit(List<double[]> points) {
             if (points.isEmpty() || closed) return;
@@ -542,7 +647,7 @@ public final class WorldMapDialog {
         void select(double latitude, double longitude) {
             this.latitude = latitude; this.longitude = longitude;
             zoomScale=1; zoom = 14; centerX = MapProjection.x(longitude); centerY = MapProjection.y(latitude);
-            updateSelection(); viewportChanged();
+            viewportChanged();
         }
         void setRoute(List<double[]> points) {
             List<double[]> copy=new ArrayList<>(points.size());
@@ -685,13 +790,18 @@ public final class WorldMapDialog {
                     if (longPressed) { getParent().requestDisallowInterceptTouchEvent(false); return true; }
                     boolean insideWorld = zoom != 0 || (Math.abs(event.getX() - getWidth() / 2.0) <= world() / 2 && Math.abs(event.getY() - getHeight() / 2.0) <= world() / 2);
                     if (!dragged && !multiTouch) {
-                        // Browsing marker details never moves the destination; movement needs an explicit action.
+                        // A tap only picks a point (a marker first); moving there needs a button on the card.
                         List<JSONObject> hits = poiLayer.hasLayers() ? poiLayer.hits(event.getX(), event.getY()) : Collections.<JSONObject>emptyList();
-                        if (!hits.isEmpty()) { performClick(); poiLayer.openDetails(hits); getParent().requestDisallowInterceptTouchEvent(false); return true; }
-                        if (insideWorld) {
+                        JSONObject marker = hits.isEmpty() ? null : hits.get(0);
+                        double lat = marker == null ? Double.NaN : marker.optDouble("lat", Double.NaN), lon = marker == null ? Double.NaN : marker.optDouble("lon", Double.NaN);
+                        if (marker != null && Double.isFinite(lat) && Double.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+                            latitude = lat; longitude = lon; invalidate(); performClick();
+                            if (onPick != null) onPick.at(lat, lon, MapPoiLayer.kind(marker));
+                        } else if (insideWorld) {
                             longitude = MapProjection.longitude(MapProjection.offsetX(centerX, event.getX() - getWidth() / 2.0, world()));
                             latitude = MapProjection.latitude(MapProjection.offsetY(centerY, event.getY() - getHeight() / 2.0, world()));
-                            updateSelection(); invalidate(); performClick();
+                            invalidate(); performClick();
+                            if (onPick != null) onPick.at(latitude, longitude, null);
                         }
                     }
                     getParent().requestDisallowInterceptTouchEvent(false); return true;

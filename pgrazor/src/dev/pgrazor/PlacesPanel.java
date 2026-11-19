@@ -89,7 +89,7 @@ final class PlacesPanel {
         if (loading) HubUi.empty(body, MenuIcon.FAVORITES, "Chargement…", "Lecture de tes lieux enregistrés.");
         else if (places == null) HubUi.empty(body, MenuIcon.FAVORITES, "Favoris illisibles", "Impossible de lire les lieux enregistrés.");
         else if (places.entries.isEmpty())
-            HubUi.empty(body, MenuIcon.FAVORITES, "Aucun favori", "Place l'épingle sur la carte, puis touche « Enregistrer ».");
+            HubUi.empty(body, MenuIcon.FAVORITES, "Aucun favori", "Touche un point sur la carte, puis « ☆ Favori ».");
         else {
             LinearLayout card = HubUi.card(body);
             for (SavedPlaces.Entry entry : places.entries) {
@@ -273,48 +273,7 @@ final class PlacesPanel {
         track(dialog); dialog.show();
     }
 
-    // ------------------------------------------------------------------ saving a favourite
-
-    /** Names the pinned spot and adds it to the favourites; {@code after} runs once it is saved. */
-    static AlertDialog promptSave(Activity activity, Context ui, double latitude, double longitude, Runnable after) {
-        if (activity.isFinishing() || activity.isDestroyed()) return null;
-        LinearLayout form = new LinearLayout(ui); form.setOrientation(LinearLayout.VERTICAL);
-        int pad = HubUi.dp(ui, 22); form.setPadding(pad, HubUi.dp(ui, 4), pad, 0);
-        form.addView(SettingsUi.text(ui, String.format(Locale.US, "%.6f, %.6f", latitude, longitude), 13, SettingsUi.muted()));
-        EditText name = new EditText(ui); name.setHint("Nom du lieu"); name.setSingleLine(true);
-        name.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-        name.setFilters(new InputFilter[]{new InputFilter.LengthFilter(SavedPlaces.NAME_LIMIT)});
-        form.addView(name);
-        AlertDialog dialog = new AlertDialog.Builder(ui).setTitle("Ajouter aux favoris").setView(form)
-            .setNegativeButton("Annuler", null).setPositiveButton("Enregistrer", null).create();
-        Handler main = new Handler(Looper.getMainLooper());
-        DialogLifecycle.bind(activity, dialog, null);
-        dialog.setOnShowListener(d -> {
-            name.requestFocus();
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                final SavedPlaces.Entry entry;
-                try { entry = new SavedPlaces.Entry(name.getText().toString(), latitude, longitude); }
-                catch (IllegalArgumentException e) { name.setError(e.getMessage()); return; }
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
-                new Thread(() -> {
-                    String error = null;
-                    try { new SavedPlaces(activity).add(entry); }
-                    catch (IOException | RuntimeException e) { error = e.getMessage() == null ? "Impossible d'enregistrer ce lieu." : e.getMessage(); }
-                    final String failed = error;
-                    main.post(() -> {
-                        if (!dialog.isShowing()) return;
-                        if (failed != null) { dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true); name.setError(failed); return; }
-                        dialog.dismiss();
-                        Toast.makeText(activity, "Ajouté aux favoris : " + entry.name, Toast.LENGTH_SHORT).show();
-                        if (after != null) after.run();
-                    });
-                }, "pgrazor-favorite-save").start();
-            });
-        });
-        if (dialog.getWindow() != null) dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
-        dialog.show();
-        return dialog;
-    }
+    // ------------------------------------------------------------------ saving a route
 
     /** Receives the name a route was saved under. */
     interface RouteSaved { void saved(String name); }
