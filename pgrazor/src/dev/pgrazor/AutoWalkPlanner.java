@@ -7,7 +7,7 @@ import java.util.List;
  * Deterministic nearest-neighbour route planning over loaded map POIs.
  *
  * Pure coordinate logic with no Android or JSON dependency, so it unit-tests in plain
- * Java and is reusable by {@link AutoWalkDialog}. The dialog converts the game's POI
+ * Java and is reusable by {@link AutoWalkPanel}. The panel converts the game's POI
  * snapshot into plain latitude/longitude pairs and hands them here; this class only ever
  * reads coordinates and never moves the avatar.
  */

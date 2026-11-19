@@ -5,7 +5,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Ready-made GPS walks listed in Destinations, under the hotspots. To add one, append a {@link Preset}
+ * Ready-made GPS walks listed in the map's Lieux tab, under the saved walks. To add one, append a {@link Preset}
  * to {@link #ALL}: where it is, whether it loops, its name and its ordered [latitude, longitude] stops.
  * The stops are validated like any GPX route (see {@link GpxRoute}).
  */

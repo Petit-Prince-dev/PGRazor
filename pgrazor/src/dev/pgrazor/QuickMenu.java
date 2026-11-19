@@ -14,20 +14,17 @@ import java.util.List;
  * launcher's line stays on top and the menu unfolds right under it, so the same R button closes it
  * (nothing else does: no outside-tap dismissal).
  *
- * <p>Layout: the walking speed (tap to cycle), then one grid holding everything: the map, the
- * destinations, favourites, autowalk and feeds, followed by one tile per settings category, each opening
+ * <p>Layout: the walking speed (tap to cycle), then one grid holding everything: Carte (the travel hub:
+ * map, places and autowalk) and the feeds, followed by one tile per settings category, each opening
  * that category as a floating sheet. Every option of the mod is reachable from here.
  */
 public final class QuickMenu {
     public interface Listener {
+        /** The travel hub: map, places (favourites, hotspots, walks) and autowalk. */
         void onMap();
         /** Cycles the walk speed and returns the new value (km/h); the header refreshes from it. */
         double onCycleWalkSpeed();
-        void onAutoWalk();
         void onFeeds();
-        void onFavorites();
-        /** Hotspots and ready-made GPS walks. */
-        void onDestinations();
         /** Opens one settings category (index into the pages the settings sheet was built with). */
         void onSettingsPage(int index);
     }
@@ -70,9 +67,6 @@ public final class QuickMenu {
         grid = new LinearLayout(activity); grid.setOrientation(LinearLayout.VERTICAL);
         card.addView(grid, new LinearLayout.LayoutParams(-1, -2));
         tile(MenuIcon.MAP, "Carte", listener::onMap);
-        tile(MenuIcon.HOTSPOT, "Destinations", listener::onDestinations);
-        tile(MenuIcon.FAVORITES, "Favoris", listener::onFavorites);
-        tile(MenuIcon.AUTOWALK, "Autowalk", listener::onAutoWalk);
         tile(MenuIcon.FEEDS, "Flux", listener::onFeeds);
         for (int i = 0; i < pageNames.length; i++) {
             final int index = i;

@@ -162,7 +162,7 @@ public final class Pad {
             public void applyTheme(){ Pad.this.applyTheme(); }
             public void releaseJoystick(boolean preserveWalk){ stick.release(preserveWalk); }
             public void setJoystickVisible(boolean visible){ stick.release(true); Control.setJoystickVisible(visible); joystickOverlay.setVisibility(visible?View.VISIBLE:View.GONE); }
-            public void openMap(){ openWorldMap(); }
+            public void openMap(){ openWorldMap(WorldMapDialog.TAB_MAP); }
             public void editLocation(){ edit(); }
         });
 
@@ -248,10 +248,7 @@ public final class Pad {
         quickMenu=new QuickMenu(host,new QuickMenu.Listener(){
             public void onMap(){openWorldMap();}
             public double onCycleWalkSpeed(){double s=Control.cycleWalkSpeed();refresh();return s;}
-            public void onAutoWalk(){stick.release(true);AutoWalkDialog.show(activity);}
             public void onFeeds(){stick.release(true);FeedChooser.show(activity);}
-            public void onFavorites(){QuickLocationDialogs.showFavorites(activity,Pad.this::quickTeleport);}
-            public void onDestinations(){stick.release(true);DestinationsDialog.show(activity,Pad.this::quickTeleport,Pad.this::quickWalk,Pad.this::quickRoute);}
             public void onSettingsPage(int index){openSettings(index);}
         },settings.pageNames(),settings.pageIcons());
         // The menu unfolds inside the card, right under the launcher line, so the R button stays visible to close it.
@@ -502,8 +499,9 @@ public final class Pad {
         dialog.show();
     }
 
-    /** Shared World map handler for both the settings list and the quick menu Map row. */
-    private void openWorldMap() {
+    /** The travel hub (map, places, autowalk): from the R menu on the tab used last, from the settings on the map. */
+    private void openWorldMap() { openWorldMap(-1); }
+    private void openWorldMap(int tab) {
         stick.release(true);
         Control.event("map-open", "Browsing does not apply a destination; current walk=" + Control.engine.walking);
         WorldMapDialog.show(activity, Control.engine.latitude, Control.engine.longitude, (lat, lon) -> {
@@ -529,7 +527,7 @@ public final class Pad {
                 Control.event("route-started", String.format(Locale.US,"stops=%d visited=%d remainingMeters=%.2f speedKmh=%.2f loop=%s",progress.total,progress.visited,progress.remainingMeters,Control.engine.speedKmh,loop));
                 refresh(); return true;
             } catch (IllegalArgumentException error) { Toast.makeText(activity,error.getMessage(),Toast.LENGTH_SHORT).show(); return false; }
-        });
+        }, tab);
     }
     /** Opens the existing settings panel full screen; the game runtime is left untouched. */
     private void openSettings(int page) {
@@ -538,7 +536,7 @@ public final class Pad {
         Control.event("settings-open", "Full-screen panel; runtime unaffected");
         refresh();
     }
-    /** Shared quick teleport for Favoris and Destinations; validates readiness. */
+    /** Teleport after a map tap; validates readiness. */
     private boolean quickTeleport(double latitude, double longitude) {
         if (!Control.canEnable()) { Toast.makeText(activity,"L'adaptateur de position n'est pas prêt",Toast.LENGTH_SHORT).show(); return false; }
         try {
@@ -555,23 +553,6 @@ public final class Pad {
             if(!quickTeleport(lat,lon))return false;
             Control.event("map-tap-applied",String.format(Locale.US,"mode=%d lat=%.7f lon=%.7f",mode,lat,lon));return true;
         });
-    }
-    /** Starts a preset GPS route from Destinations, at the current walking speed. */
-    private boolean quickRoute(double[][] points,boolean loop) {
-        if(!Control.canEnable()){Toast.makeText(activity,"L'adaptateur de position n'est pas prêt",Toast.LENGTH_SHORT).show();return false;}
-        try {
-            stick.release();Control.walkRoute(points,loop);
-            Control.event("preset-route","stops="+points.length+" loop="+loop);
-            refresh();return true;
-        } catch(IllegalArgumentException error){Toast.makeText(activity,"Ce trajet est invalide",Toast.LENGTH_SHORT).show();return false;}
-    }
-    private boolean quickWalk(double latitude,double longitude) {
-        if(!Control.canEnable()){Toast.makeText(activity,"L'adaptateur de position n'est pas prêt",Toast.LENGTH_SHORT).show();return false;}
-        try {
-            stick.release();Control.walkTo(latitude,longitude);
-            Control.event("quick-walk",String.format(Locale.US,"lat=%.7f lon=%.7f",latitude,longitude));
-            refresh();return true;
-        } catch(IllegalArgumentException error){Toast.makeText(activity,"Choisis des coordonnées valides",Toast.LENGTH_SHORT).show();return false;}
     }
     public void close() {
         if (closed) return;
