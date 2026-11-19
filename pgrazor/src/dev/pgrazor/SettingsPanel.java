@@ -68,7 +68,7 @@ final class SettingsPanel {
     private Button evolveTransferStages, evolveTransferMode, evolveTransferList;
     // Boolean settings use proper switches.
     private Switch idleWalkSwitch, locationSwitch, vgpSwitch, joystickSwitch, cooldownSwitch, localTimeSwitch, encounterCounterSwitch, encounterOverlaySwitch, spawnSwitch, autoTransferSwitch,
-        quickSpinSwitch, berrySwitch, quickSummarySwitch, curveSwitch, alwaysHitSwitch, arSwitch, transferOverlaySwitch, catchChanceSwitch, autoBallSwitch, autoThrowSwitch, autoThrowMapSwitch, skipCutscenesSwitch, routeGiftSwitch,
+        quickSpinSwitch, berrySwitch, quickSummarySwitch, curveSwitch, alwaysHitSwitch, arSwitch, transferOverlaySwitch, catchChanceSwitch, autoBallSwitch, autoThrowSwitch, autoThrowMapSwitch, skipCutscenesSwitch,
         batteryResSwitch, batteryFpsSwitch, batteryQualitySwitch;
     private Button autoBallTarget, berryPriority;
     private BerryPriorityPicker berryPicker;
@@ -85,7 +85,6 @@ final class SettingsPanel {
     private final Switch[] pvpKeep=new Switch[3];
     private final Button[] pvpRank=new Button[3];
     private final CompoundButton[] giftChoices=new CompoundButton[3];
-    private final CompoundButton[] quickMenuChoices=new CompoundButton[QuickMenu.CUSTOMIZABLE.length];
     private final CompoundButton[] rocketChoices=new CompoundButton[3];
     private final CompoundButton[] battleChoices=new CompoundButton[10];
     private Runnable buddyRefresh=()->{},smartRefresh=()->{};
@@ -507,10 +506,6 @@ final class SettingsPanel {
         quickSpinSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.quickSpinEnabled())return; Control.setQuickSpinEnabled(quickSpinSwitch.isChecked()); });
         quickSpinStatus = caption(stops, "");
 
-        LinearLayout routesC = group(page, "Routes"); summaryGated.add((View)routesC.getParent());
-        routeGiftSwitch = switchRow(routesC, "Cadeaux avec Mateo", "Sur une Route : échange et ouvre les cadeaux à ta place. Les échanges de Pokémon restent manuels."); routeGiftSwitch.setChecked(Control.routeGiftExchange());
-        routeGiftSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.routeGiftExchange())return; Control.setRouteGiftExchange(checked); });
-
         // ----- Inventory (opens its modal directly) -----
         LinearLayout itemsC = group(page, "Objets"); summaryGated.add((View)itemsC.getParent());
         itemSettings = button("Tri auto des objets"); itemsC.addView(itemSettings); itemSettings.setOnClickListener(v -> showItemSettings());
@@ -689,15 +684,6 @@ final class SettingsPanel {
         batteryFpsSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked!=Control.batteryFps20())Control.setBatteryFps20(checked); });
         batteryQualitySwitch = switchRow(battery, "Graphismes bas", "Sans ombres, brouillard, reflets, herbe, HDR ni anticrénelage."); batteryQualitySwitch.setChecked(Control.batteryLowQuality());
         batteryQualitySwitch.setOnCheckedChangeListener((v,checked) -> { if(checked!=Control.batteryLowQuality())Control.setBatteryLowQuality(checked); });
-
-        LinearLayout menu = section(page,"Raccourcis affichés",false);
-        caption(menu,"Choisis les raccourcis du menu R. Les catégories de réglages restent toujours affichées.");
-        for(int i=0;i<QuickMenu.CUSTOMIZABLE.length;i++){
-            if(QuickMenu.CUSTOMIZABLE[i]==null)continue; // retired entry keeps its bit
-            final int bit=1<<i;
-            Switch box=switchRow(menu,QuickMenu.CUSTOMIZABLE[i]);box.setChecked(Control.quickMenuVisible(bit));quickMenuChoices[i]=box;
-            box.setOnCheckedChangeListener((v,checked)->{if(checked==Control.quickMenuVisible(bit))return;Control.setQuickMenuVisible(bit,checked);host.refresh();});
-        }
     }
 
     /** The update status line, re-read at most every 1.5 s while the sheet refreshes. */
@@ -764,7 +750,7 @@ final class SettingsPanel {
         summary(0,Control.desiredEnabled()?(Control.engine.walking?"En marche":"Spoof actif"):"Position réelle");
         summary(1,count(Control.quickSummaryEnabled(),Control.autoThrow(),Control.autoBall(),Control.throwCurve(),Control.throwAlwaysHit(),Control.encounterBerryEnabled()));
         summary(2,count(Control.autoTransferEnabled(),Control.autoTransferEnabled()&&Control.evolveTransferEnabled(),Control.ivCatchMode()!=0||Control.ivOwnedMode()!=0||Control.storageIvMode()!=0));
-        summary(3,count(Control.vgpOverlay(),Control.quickSpinEnabled(),Control.itemTransferEnabled(),Control.routeGiftExchange()));
+        summary(3,count(Control.vgpOverlay(),Control.quickSpinEnabled(),Control.itemTransferEnabled()));
         summary(4,count(Control.smartBattle(),Control.healEnabled(),Control.battleOptions()!=0||Control.rocketOptions()!=0,Control.gymRepeatEnabled()));
         summary(5,count(BuddyEmotionSettings.enabled(),Control.autoIncubate(),(Control.giftOptions()&1)!=0,(Control.giftOptions()&2)!=0));
         summary(6,AutoRaid.running()?"Auto-Raid en cours":ShundoSniper.active()?"Shundo en cours":ShinyScanner.enabled()?"Scan shiny en cours":"Aucune en cours");
@@ -921,7 +907,6 @@ final class SettingsPanel {
         refreshLocationOptions();
         refreshThrows();
         skipCutscenesSwitch.setChecked(Control.skipCutscenes());
-        routeGiftSwitch.setChecked(Control.routeGiftExchange());
         batteryResSwitch.setChecked(Control.batteryLowRes());batteryFpsSwitch.setChecked(Control.batteryFps20());batteryQualitySwitch.setChecked(Control.batteryLowQuality());
         status(cutsceneStatus,Control.cutsceneSkipStatus());
         refreshHealing();
@@ -1046,7 +1031,6 @@ final class SettingsPanel {
     }
 
     private void refreshLocationOptions() {
-        for(int i=0;i<quickMenuChoices.length;i++)if(quickMenuChoices[i]!=null)quickMenuChoices[i].setChecked(Control.quickMenuVisible(1<<i));
         idleWalkSwitch.setChecked(Control.idleWalking());idleWalkSwitch.setEnabled(Control.desiredEnabled());idleWalkSwitch.setAlpha(Control.desiredEnabled()?1f:.45f);
         set(mapTap,"Appui sur la carte : "+new String[]{"rien","marcher","téléporter","marcher (double : téléporter)"}[Control.mapTapMode()]);
         mapTap.setEnabled(Control.quickBallConfigured());

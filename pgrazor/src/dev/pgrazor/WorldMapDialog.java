@@ -20,7 +20,6 @@ import android.text.InputType;
 import android.text.method.LinkMovementMethod;
 import android.view.Gravity;
 import android.view.MotionEvent;
-import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.widget.Button;
@@ -120,32 +119,33 @@ public final class WorldMapDialog {
         }
         layout.addView(layers);
 
-        // Map tools (route mode turns them into Ajouter / Annuler / Arrêts / GPX).
-        LinearLayout tools = new LinearLayout(ui);
-        Button globe = toolButton(ui, "Monde"), center = toolButton(ui, "Centrer"), retry = toolButton(ui, "Réessayer");
-        Button gpx = route == null ? null : toolButton(ui, "GPX");
-        if (gpx != null) { gpx.setContentDescription("Enregistrer, importer ou exporter une route GPX"); gpx.setVisibility(View.GONE); }
-        for (Button b : gpx == null ? new Button[]{globe, center, retry} : new Button[]{globe, center, retry, gpx}) tools.addView(b, toolParams(activity));
-        layout.addView(tools);
-        // Places: saved spots, hotspots, and copying coordinates (each also centres the map).
+        // Places: saved spots, destinations, and copying coordinates (each also centres the map).
         LinearLayout places = new LinearLayout(ui);
-        Button saved = toolButton(ui, "Mes lieux"), hotspots = toolButton(ui, "Hotspots");
+        Button saved = toolButton(ui, "Mes lieux"), destinations = toolButton(ui, "Destinations");
         Button current = toolButton(ui, "Ma position"), pin = toolButton(ui, "Copier l'épingle");
         current.setContentDescription("Centrer la carte sur ta position en jeu et copier ses coordonnées");
         pin.setContentDescription("Centrer la carte sur l'épingle et copier ses coordonnées");
-        for (Button b : new Button[]{saved, hotspots, current, pin}) places.addView(b, toolParams(activity));
+        for (Button b : new Button[]{saved, destinations, current, pin}) places.addView(b, toolParams(activity));
         layout.addView(places);
-        // Route-only line: loop and clear.
+        // Route builder tools, shown only while a route is being built: stops, GPX, loop and clear.
+        LinearLayout routePanel = new LinearLayout(ui); routePanel.setOrientation(LinearLayout.VERTICAL); routePanel.setVisibility(View.GONE);
+        LinearLayout tools = new LinearLayout(ui);
+        Button add = toolButton(ui, "Ajouter un arrêt"), undo = toolButton(ui, "Annuler"), stops = toolButton(ui, "Arrêts"), gpx = toolButton(ui, "GPX");
+        add.setContentDescription("Ajouter l'épingle comme prochain arrêt"); undo.setContentDescription("Annuler le dernier arrêt");
+        stops.setContentDescription("Voir les arrêts dans l'ordre"); gpx.setContentDescription("Enregistrer, importer ou exporter une route GPX");
+        for (Button b : new Button[]{add, undo, stops, gpx}) tools.addView(b, toolParams(activity));
+        routePanel.addView(tools);
         LinearLayout routeTools = new LinearLayout(ui); routeTools.setGravity(Gravity.CENTER_VERTICAL);
         CheckBox loop = new CheckBox(ui); loop.setText("Route en boucle"); loop.setTextSize(12);
-        loop.setContentDescription("Répéter la route depuis le premier arrêt après le dernier"); loop.setVisibility(View.GONE);
+        loop.setContentDescription("Répéter la route depuis le premier arrêt après le dernier");
         routeTools.addView(loop, new LinearLayout.LayoutParams(0, dp(activity, 40), 1));
         Button clearRoute = toolButton(ui, "Effacer la route");
-        clearRoute.setContentDescription("Effacer tous les arrêts du brouillon de route"); clearRoute.setVisibility(View.GONE);
+        clearRoute.setContentDescription("Effacer tous les arrêts du brouillon de route");
         routeTools.addView(clearRoute, new LinearLayout.LayoutParams(dp(activity, 120), dp(activity, 36)));
-        layout.addView(routeTools);
+        routePanel.addView(routeTools);
+        layout.addView(routePanel);
 
-        // Status and the tile attribution share one small line.
+        // Status and the tile attribution share one small line (failed tiles are retried on their own).
         LinearLayout foot = new LinearLayout(ui); foot.setGravity(Gravity.CENTER_VERTICAL); foot.setPadding(0, dp(activity, 2), 0, dp(activity, 6));
         status.setSingleLine(true); status.setEllipsize(android.text.TextUtils.TruncateAt.END);
         foot.addView(status, new LinearLayout.LayoutParams(0, -2, 1));
@@ -170,11 +170,7 @@ public final class WorldMapDialog {
         layout.addView(actions);
 
         map.refreshPois();
-        final AlertDialog[] hotspotsDialog = {null}, cooldownDialog = {null}, searchDialog = {null};
-        hotspots.setOnClickListener(v -> {
-            if (hotspotsDialog[0] != null && hotspotsDialog[0].isShowing()) return;
-            hotspotsDialog[0] = HotspotsDialog.show(activity, spot -> { map.select(spot.latitude, spot.longitude); });
-        });
+        final AlertDialog[] destinationsDialog = {null}, cooldownDialog = {null}, searchDialog = {null};
         search.setOnClickListener(v -> {
             if (searchDialog[0] != null && searchDialog[0].isShowing()) return;
             searchDialog[0] = MapSearchDialog.show(activity, MapProjection.latitude(map.centerY),
@@ -187,12 +183,16 @@ public final class WorldMapDialog {
             CoordinateClipboard.copy(activity, Control.engine.latitude, Control.engine.longitude, "Ta position est copiée");
         });
         pin.setOnClickListener(v -> { map.centerSelection(); CoordinateClipboard.copy(activity, map.latitude, map.longitude, "Position de l'épingle copiée"); });
-        globe.setOnClickListener(v -> map.worldView());
-        center.setOnClickListener(v -> map.centerSelection()); retry.setOnClickListener(v -> map.retry());
 
-        RouteUi routes = route == null ? null : new RouteUi(activity, ui, map, routeMode, hint, globe, center, retry, gpx, clearRoute, loop, route, walk != null);
+        RouteUi routes = route == null ? null : new RouteUi(activity, ui, map, routeMode, hint, routePanel, add, undo, stops, gpx, clearRoute, loop, route, walk != null);
         if (routes != null) { routes.reopen = () -> WorldMapDialog.show(activity, Control.engine.latitude, Control.engine.longitude, listener, walk, route); routes.title = title; routes.action = teleport; routes.walkAction = walkHere; }
         else hint.setText(MAP_HINT);
+        // A hotspot places the pin; a ready-made walk opens in the route builder.
+        destinations.setOnClickListener(v -> {
+            if (destinationsDialog[0] != null && destinationsDialog[0].isShowing()) return;
+            destinationsDialog[0] = DestinationsDialog.pick(activity, (lat, lon) -> { map.select(lat, lon); return true; },
+                routes == null ? null : routes::onGpxChosen);
+        });
         AlertDialog dialog = new AlertDialog.Builder(ui).setView(layout).create();
         close.setOnClickListener(v -> dialog.dismiss());
         map.poiLayer.setDestinationActions(walk == null ? null : (lat, lon) -> {
@@ -215,7 +215,7 @@ public final class WorldMapDialog {
             });
         });
         if (walk != null) walkHere.setOnClickListener(v -> { if (walk.onDestination(map.latitude, map.longitude)) dialog.dismiss(); });
-        DialogLifecycle.bind(activity, dialog, () -> { if (hotspotsDialog[0] != null) hotspotsDialog[0].dismiss(); if (cooldownDialog[0] != null) cooldownDialog[0].dismiss(); if (searchDialog[0] != null) searchDialog[0].dismiss(); if (routes != null) routes.close(); placeUi.close(); map.close(); });
+        DialogLifecycle.bind(activity, dialog, () -> { if (destinationsDialog[0] != null) destinationsDialog[0].dismiss(); if (cooldownDialog[0] != null) cooldownDialog[0].dismiss(); if (searchDialog[0] != null) searchDialog[0].dismiss(); if (routes != null) routes.close(); placeUi.close(); map.close(); });
         dialog.setOnShowListener(d -> {
             MapTheme.fullScreen(dialog); MapTheme.style(layout);
             // Colours after the generic pass: quiet secondary text, accent pin line, field-like search, filled primary.
@@ -258,6 +258,7 @@ public final class WorldMapDialog {
         final Context ui;
         final MapView map;
         final Button mode,add,undo,stops,gpx,clearRoute;
+        final View panel;
         final TextView hint;
         final CheckBox loop;
         final RouteListener listener;
@@ -274,14 +275,14 @@ public final class WorldMapDialog {
         String routeName="Route";
         Runnable reopen;
         boolean closed;
-        RouteUi(Activity activity,Context ui,MapView map,Button mode,TextView hint,Button add,Button undo,Button stops,Button gpx,Button clearRoute,CheckBox loop,RouteListener listener,boolean hasWalk) {
-            this.activity=activity;this.ui=ui;this.map=map;this.mode=mode;this.hint=hint;this.loop=loop;
+        RouteUi(Activity activity,Context ui,MapView map,Button mode,TextView hint,View panel,Button add,Button undo,Button stops,Button gpx,Button clearRoute,CheckBox loop,RouteListener listener,boolean hasWalk) {
+            this.activity=activity;this.ui=ui;this.map=map;this.mode=mode;this.hint=hint;this.loop=loop;this.panel=panel;
             this.add=add;this.undo=undo;this.stops=stops;this.gpx=gpx;this.clearRoute=clearRoute;this.listener=listener;this.hasWalk=hasWalk;
             clearRoute.setOnClickListener(v -> clearDraft());
             mode.setOnClickListener(v -> {editing=!editing;if(editing)maybeLoadPending();refresh();});
-            add.setOnClickListener(v -> {if(editing)addStop();else map.worldView();});
-            undo.setOnClickListener(v -> {if(editing)undo();else map.centerSelection();});
-            stops.setOnClickListener(v -> {if(editing)showStops();else map.retry();});
+            add.setOnClickListener(v -> addStop());
+            undo.setOnClickListener(v -> undo());
+            stops.setOnClickListener(v -> showStops());
             gpx.setOnClickListener(v -> {if(editing)GpxRouteDialog.menu(activity,this::sourceRoute,this::onGpxChosen);});
         }
         void attach(AlertDialog parent) {this.parent=parent;if(pendingRoute!=null){editing=true;maybeLoadPending();}refresh();}
@@ -293,13 +294,10 @@ public final class WorldMapDialog {
             hint.setText(!editing ? MAP_HINT
                 : big ? "Route GPX : "+draft.size()+" arrêts. Touche Démarrer pour la parcourir dans l'ordre."
                 : "Route : "+draft.size()+"/"+LIMIT+" arrêts. Touche la carte, puis Ajouter un arrêt.");
-            add.setText(editing ? "Ajouter un arrêt" : "Monde"); add.setContentDescription(editing ? "Ajouter la destination choisie comme prochain arrêt" : "Afficher la carte du monde");
-            undo.setText(editing ? "Annuler" : "Centrer"); undo.setContentDescription(editing ? "Annuler le dernier arrêt" : "Centrer sur la destination choisie");
-            stops.setText(editing ? "Arrêts ("+draft.size()+")" : "Réessayer"); stops.setContentDescription(editing ? "Voir les arrêts dans l'ordre et effacer la route" : "Recharger les tuiles de la carte");
-            gpx.setText("GPX"); gpx.setVisibility(editing ? View.VISIBLE : View.GONE);
-            clearRoute.setVisibility(editing ? View.VISIBLE : View.GONE);clearRoute.setEnabled(!draft.isEmpty());
-            add.setEnabled(!editing || draft.size()<LIMIT);undo.setEnabled(!editing || !draft.isEmpty());
-            loop.setVisibility(editing ? View.VISIBLE : View.GONE); // route-only toggle; defaults to stopping at the last stop
+            panel.setVisibility(editing ? View.VISIBLE : View.GONE); // the loop toggle defaults to stopping at the last stop
+            stops.setText("Arrêts ("+draft.size()+")");
+            clearRoute.setEnabled(!draft.isEmpty());
+            add.setEnabled(draft.size()<LIMIT);undo.setEnabled(!draft.isEmpty());
             if(title!=null)title.setText(editing ? "Créer une route" : "Carte du monde");
             if(action!=null) {
                 action.setText(editing ? "Démarrer la route" : "Téléporter");
@@ -534,8 +532,8 @@ public final class WorldMapDialog {
         private double centerX, centerY, latitude, longitude;
         private int zoom = 14;
         private double zoomScale=1;
-        private final ScaleGestureDetector pinch;
-        private float downX, downY, previousX, previousY;
+        /** Gesture state: where the touch began, and the fingers' midpoint and spread on the last event. */
+        private float downX, downY, focusX, focusY, spread;
         private boolean dragged, multiTouch;
         private final Runnable locationRefresh = new Runnable() {
             public void run() {
@@ -566,19 +564,6 @@ public final class WorldMapDialog {
             }, this::invalidate);
             setContentDescription("Carte du monde. Le point bleu est ta position actuelle ; l'épingle rouge est la destination. Glisse pour te déplacer, pince pour zoomer, touche pour choisir la destination.");
             // Use the activity hardware renderer; tile I/O stays on the worker.
-            pinch=new ScaleGestureDetector(activity,new ScaleGestureDetector.SimpleOnScaleGestureListener(){
-                public boolean onScaleBegin(ScaleGestureDetector detector){multiTouch=true;return true;}
-                public boolean onScale(ScaleGestureDetector detector){
-                    double old=world(),minimum=Math.max(1,Math.min(getWidth(),getHeight()));
-                    double next=Math.max(minimum,Math.min(tileSize*Math.pow(2,19),old*detector.getScaleFactor()));
-                    double dx=detector.getFocusX()-getWidth()/2.0,dy=detector.getFocusY()-getHeight()/2.0;
-                    double anchorX=MapProjection.offsetX(centerX,dx,old),anchorY=MapProjection.offsetY(centerY,dy,old);
-                    zoom=Math.max(0,Math.min(19,(int)Math.floor(Math.log(next/tileSize)/Math.log(2))));
-                    zoomScale=next/((zoom==0?minimum:tileSize)*(1<<zoom));
-                    centerX=MapProjection.offsetX(anchorX,-dx,next);centerY=MapProjection.offsetY(anchorY,-dy,next);
-                    viewportChanged();return true;
-                }
-            });
             updateSelection();
         }
 
@@ -592,7 +577,6 @@ public final class WorldMapDialog {
         private double displayedTileSize() { return (zoom == 0 ? Math.max(1, Math.min(getWidth(), getHeight())) : tileSize)*zoomScale; }
         private double world() { return MapProjection.worldPixels(zoom, displayedTileSize()); }
         void zoom(int amount) { int next = Math.max(0, Math.min(19, zoom + amount)); if (next != zoom) { zoom = next; viewportChanged(); } }
-        void worldView() { zoomScale=1; zoom = 0; centerX = .5; centerY = .5; viewportChanged(); }
         void centerCurrentLocation() {
             double lat=Control.engine.latitude,lon=Control.engine.longitude;
             if(!Double.isFinite(lat)||!Double.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)return;
@@ -605,7 +589,6 @@ public final class WorldMapDialog {
             zoomScale=1; zoom = 14; centerX = MapProjection.x(longitude); centerY = MapProjection.y(latitude);
             updateSelection(); viewportChanged();
         }
-        void retry() { tiles.clearFailures(); viewportChanged(); }
         void setRoute(List<double[]> points) {
             List<double[]> copy=new ArrayList<>(points.size());
             for(double[] point:points)copy.add(new double[]{point[0],point[1]});
@@ -719,23 +702,26 @@ public final class WorldMapDialog {
             canvas.restoreToCount(saved);
         }
 
+        /**
+         * One finger drags; two fingers zoom around their midpoint and pan with it in the same gesture.
+         * Every event re-reads the fingers, so lifting or adding one never makes the map jump.
+         */
         public boolean onTouchEvent(MotionEvent event) {
-            pinch.onTouchEvent(event);
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     getParent().requestDisallowInterceptTouchEvent(true);
-                    downX = previousX = event.getX(); downY = previousY = event.getY(); dragged = false; multiTouch = false; return true;
-                case MotionEvent.ACTION_POINTER_DOWN: multiTouch = true; return true;
-                case MotionEvent.ACTION_MOVE:
-                    if (multiTouch) return true;
-                    float x = event.getX(), y = event.getY();
-                    if (Math.hypot(x - downX, y - downY) > slop) dragged = true;
-                    if (dragged && (zoom != 0 || zoomScale>1)) {
-                        centerX = MapProjection.offsetX(centerX, previousX - x, world());
-                        centerY = MapProjection.offsetY(centerY, previousY - y, world());
-                        viewportChanged();
-                    }
-                    previousX = x; previousY = y; return true;
+                    track(event, -1); downX = focusX; downY = focusY; dragged = false; multiTouch = false; return true;
+                case MotionEvent.ACTION_POINTER_DOWN: multiTouch = true; track(event, -1); return true;
+                case MotionEvent.ACTION_POINTER_UP: track(event, event.getActionIndex()); return true;
+                case MotionEvent.ACTION_MOVE: {
+                    float lastX = focusX, lastY = focusY, lastSpread = spread;
+                    track(event, -1);
+                    if (!dragged && (multiTouch || Math.hypot(focusX - downX, focusY - downY) > slop)) dragged = true;
+                    if (!dragged) return true;
+                    if (event.getPointerCount() > 1 && lastSpread > 0 && spread > 0) moveAndZoom(lastX, lastY, focusX, focusY, spread / lastSpread);
+                    else if (zoom != 0 || zoomScale > 1) moveAndZoom(lastX, lastY, focusX, focusY, 1);
+                    return true;
+                }
                 case MotionEvent.ACTION_UP:
                     boolean insideWorld = zoom != 0 || (Math.abs(event.getX() - getWidth() / 2.0) <= world() / 2 && Math.abs(event.getY() - getHeight() / 2.0) <= world() / 2);
                     if (!dragged && !multiTouch) {
@@ -752,6 +738,30 @@ public final class WorldMapDialog {
                 case MotionEvent.ACTION_CANCEL: getParent().requestDisallowInterceptTouchEvent(false); return true;
                 default: return true;
             }
+        }
+        /** Midpoint and mean distance from it of the fingers still down, leaving out {@code skip} (a finger lifting). */
+        private void track(MotionEvent event, int skip) {
+            float sumX = 0, sumY = 0; int count = 0;
+            for (int i = 0; i < event.getPointerCount(); i++) if (i != skip) { sumX += event.getX(i); sumY += event.getY(i); count++; }
+            if (count == 0) return;
+            focusX = sumX / count; focusY = sumY / count;
+            float distance = 0;
+            for (int i = 0; i < event.getPointerCount(); i++) if (i != skip) distance += (float) Math.hypot(event.getX(i) - focusX, event.getY(i) - focusY);
+            spread = count > 1 ? distance / count : 0;
+        }
+        /** Keeps the map point that was under (fromX, fromY) under (toX, toY), scaled by {@code factor}. */
+        private void moveAndZoom(float fromX, float fromY, float toX, float toY, double factor) {
+            double old = world(), minimum = Math.max(1, Math.min(getWidth(), getHeight()));
+            double next = Math.max(minimum, Math.min(tileSize * Math.pow(2, 19), old * factor));
+            double anchorX = MapProjection.offsetX(centerX, fromX - getWidth() / 2.0, old);
+            double anchorY = MapProjection.offsetY(centerY, fromY - getHeight() / 2.0, old);
+            if (next != old) {
+                zoom = Math.max(0, Math.min(19, (int) Math.floor(Math.log(next / tileSize) / Math.log(2))));
+                zoomScale = next / ((zoom == 0 ? minimum : tileSize) * (1 << zoom));
+            }
+            centerX = MapProjection.offsetX(anchorX, -(toX - getWidth() / 2.0), next);
+            centerY = MapProjection.offsetY(anchorY, -(toY - getHeight() / 2.0), next);
+            viewportChanged();
         }
         public boolean performClick() { super.performClick(); return true; }
 

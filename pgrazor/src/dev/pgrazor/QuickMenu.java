@@ -1,7 +1,6 @@
 package dev.pgrazor;
 
 import android.app.Activity;
-import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.drawable.RippleDrawable;
 import android.text.TextUtils;
@@ -9,18 +8,15 @@ import android.view.*;
 import android.widget.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 /**
  * PGRazor's one and only menu, opened by the R launcher. It is part of the HUD card itself: the
  * launcher's line stays on top and the menu unfolds right under it, so the same R button closes it
  * (nothing else does: no outside-tap dismissal).
  *
- * <p>Layout, top to bottom: walking speed (tap to cycle); the "Raccourcis" grid
- * (map, teleport, walks, feeds, screen); then the "Réglages" grid, one tile per settings category,
- * each opening that category as a floating sheet. Shortcuts can be
- * hidden in Affichage → Raccourcis affichés (the grid re-flows, no gaps); settings tiles always show,
- * so every option of the mod stays reachable from here.
+ * <p>Layout: the walking speed (tap to cycle), then one grid holding everything: the map, the
+ * destinations, favourites, autowalk and feeds, followed by one tile per settings category, each opening
+ * that category as a floating sheet. Every option of the mod is reachable from here.
  */
 public final class QuickMenu {
     public interface Listener {
@@ -28,43 +24,25 @@ public final class QuickMenu {
         /** Cycles the walk speed and returns the new value (km/h); the header refreshes from it. */
         double onCycleWalkSpeed();
         void onAutoWalk();
-        void onGameRoutes();
         void onFeeds();
         void onFavorites();
-        void onHotspots();
-        void onTeleport();
+        /** Hotspots and ready-made GPS walks. */
+        void onDestinations();
         /** Opens one settings category (index into the pages the settings sheet was built with). */
         void onSettingsPage(int index);
-        /** Asks to hide every PGRazor overlay (three fingers on screen show them again). */
-        void onHideOverlays();
-        /** "Éteindre l'écran": the game keeps running while the screen is off. */
-        void onScreenOff();
     }
-
-    static final int MAP = MenuIcon.MAP, WALK = MenuIcon.WALK, AUTOWALK = MenuIcon.AUTOWALK, FEEDS = MenuIcon.FEEDS, FAVORITES = MenuIcon.FAVORITES, TELEPORT = MenuIcon.TELEPORT,
-        HIDE = MenuIcon.HIDE, ROUTES = MenuIcon.ROUTES, POWER = MenuIcon.POWER, HOTSPOT = MenuIcon.HOTSPOT;
-
-    /**
-     * Names shown in Affichage → Raccourcis affichés. Append-only order: the persisted visibility bit is
-     * the index; retired entries (old Accounts, Events, Automation, Research tiles, now settings
-     * categories) stay as null so the saved bits keep their meaning.
-     */
-    static final String[] CUSTOMIZABLE = {"Carte", "Vitesse de marche", "Autowalk", "Routes du jeu", "Flux", "Favoris", "Hotspots", "Téléporter", null, null, null, null, "Masquer l'overlay", "Écran éteint"};
 
     private static final int COLUMNS = 3;
 
     private final Activity activity;
     private final Listener listener;
-    private final LinearLayout card, shortcutGrid, settingsGrid, walk, header;
-    private final TextView walkSpeed, walkName, shortcutHead, settingsHead;
+    private final LinearLayout card, grid, walk;
+    private final TextView walkSpeed, walkName;
     private final MenuIcon walkIcon;
-    private final List<View> shortcuts = new ArrayList<>();
-    private final List<Integer> shortcutBits = new ArrayList<>();
-    private final List<View> settingTiles = new ArrayList<>();
+    private final List<View> tiles = new ArrayList<>();
     private final List<TextView> tileLabels = new ArrayList<>();
     private final List<MenuIcon> tileIcons = new ArrayList<>();
     private Runnable onToggle;
-    private int appliedHidden = -1;
 
     /**
      * Builds the menu; the host places {@link #view()} inside its card and calls {@link #toggle()}.
@@ -76,59 +54,38 @@ public final class QuickMenu {
         card.setPadding(0, dp(6), 0, dp(2));
 
         // Walking speed: tap cycles it, the menu stays open.
-        header = new LinearLayout(activity); header.setOrientation(LinearLayout.HORIZONTAL); header.setGravity(Gravity.CENTER_VERTICAL);
         walk = new LinearLayout(activity); walk.setOrientation(LinearLayout.HORIZONTAL); walk.setGravity(Gravity.CENTER_VERTICAL);
-        walk.setPadding(dp(10), 0, dp(10), 0); walk.setMinimumHeight(dp(36)); walk.setClickable(true); walk.setFocusable(true);
+        walk.setPadding(dp(10), 0, dp(10), 0); walk.setClickable(true); walk.setFocusable(true);
         walk.setContentDescription("Vitesse de marche. Touche pour changer.");
-        walkIcon = new MenuIcon(activity, WALK); walk.addView(walkIcon, new LinearLayout.LayoutParams(dp(16), dp(16)));
+        walkIcon = new MenuIcon(activity, MenuIcon.WALK); walk.addView(walkIcon, new LinearLayout.LayoutParams(dp(16), dp(16)));
         walkName = new TextView(activity); walkName.setText("Vitesse"); walkName.setTextSize(12); walkName.setPadding(dp(8), 0, dp(6), 0);
         walk.addView(walkName, new LinearLayout.LayoutParams(0, -2, 1f));
         walkSpeed = new TextView(activity); walkSpeed.setTextSize(12); walkSpeed.setTypeface(SettingsUi.mono()); walkSpeed.setSingleLine(true);
         walk.addView(walkSpeed, new LinearLayout.LayoutParams(-2, -2));
         walk.setOnClickListener(v -> { listener.onCycleWalkSpeed(); updateWalk(); });
-        header.addView(walk, new LinearLayout.LayoutParams(0, dp(36), 1f));
-        card.addView(header);
+        LinearLayout.LayoutParams walkParams = new LinearLayout.LayoutParams(-1, dp(36)); walkParams.bottomMargin = dp(6);
+        card.addView(walk, walkParams);
 
-        shortcutHead = sectionHead("Raccourcis");
-        shortcutGrid = new LinearLayout(activity); shortcutGrid.setOrientation(LinearLayout.VERTICAL);
-        card.addView(shortcutGrid, new LinearLayout.LayoutParams(-1, -2));
-        shortcut(MAP, "Carte", listener::onMap, 1);
-        shortcut(TELEPORT, "Téléporter", listener::onTeleport, 128);
-        shortcut(FAVORITES, "Favoris", listener::onFavorites, 32);
-        shortcut(HOTSPOT, "Hotspots", listener::onHotspots, 64);
-        shortcut(AUTOWALK, "Autowalk", listener::onAutoWalk, 4);
-        shortcut(ROUTES, "Routes", listener::onGameRoutes, 8);
-        shortcut(FEEDS, "Flux", listener::onFeeds, 16);
-        shortcut(HIDE, "Masquer", listener::onHideOverlays, 4096);
-        shortcut(POWER, "Écran off", listener::onScreenOff, 8192);
-
-        settingsHead = sectionHead("Réglages");
-        settingsGrid = new LinearLayout(activity); settingsGrid.setOrientation(LinearLayout.VERTICAL);
-        card.addView(settingsGrid, new LinearLayout.LayoutParams(-1, -2));
+        // Everything else in one grid: moving around first, then the settings categories.
+        grid = new LinearLayout(activity); grid.setOrientation(LinearLayout.VERTICAL);
+        card.addView(grid, new LinearLayout.LayoutParams(-1, -2));
+        tile(MenuIcon.MAP, "Carte", listener::onMap);
+        tile(MenuIcon.HOTSPOT, "Destinations", listener::onDestinations);
+        tile(MenuIcon.FAVORITES, "Favoris", listener::onFavorites);
+        tile(MenuIcon.AUTOWALK, "Autowalk", listener::onAutoWalk);
+        tile(MenuIcon.FEEDS, "Flux", listener::onFeeds);
         for (int i = 0; i < pageNames.length; i++) {
             final int index = i;
-            settingTiles.add(tile(pageIcons[i], pageNames[i], () -> listener.onSettingsPage(index)));
+            tile(pageIcons[i], pageNames[i], () -> listener.onSettingsPage(index));
         }
-        flow(settingsGrid, settingTiles);
+        flow();
 
         card.setVisibility(View.GONE);
         applyTheme();
     }
 
-    /** A small spaced caps label above a grid. */
-    private TextView sectionHead(String label) {
-        TextView head = new TextView(activity); head.setText(label.toUpperCase(Locale.FRANCE)); head.setTextSize(10);
-        head.setTypeface(SettingsUi.medium()); head.setLetterSpacing(0.08f); head.setPadding(dp(4), dp(8), 0, dp(2));
-        card.addView(head, new LinearLayout.LayoutParams(-1, -2));
-        return head;
-    }
-
-    private void shortcut(int kind, String label, Runnable action, int visibilityBit) {
-        shortcuts.add(tile(kind, label, action)); shortcutBits.add(visibilityBit);
-    }
-
     /** One grid tile: a centred icon above a short label; the whole tile is the hit target. */
-    private View tile(int kind, String label, Runnable action) {
+    private void tile(int kind, String label, Runnable action) {
         LinearLayout t = new LinearLayout(activity); t.setOrientation(LinearLayout.VERTICAL); t.setGravity(Gravity.CENTER);
         t.setMinimumHeight(dp(52)); t.setPadding(0, dp(6), 0, dp(5)); t.setClickable(true); t.setFocusable(true);
         t.setContentDescription(label);
@@ -138,16 +95,13 @@ public final class QuickMenu {
         name.setMaxLines(2); name.setEllipsize(TextUtils.TruncateAt.END); name.setPadding(0, dp(4), 0, 0);
         t.addView(name, new LinearLayout.LayoutParams(-1, -2));
         t.setOnClickListener(v -> action.run()); // the menu stays open: only the R button closes it
-        tileLabels.add(name); tileIcons.add(icon);
-        return t;
+        tiles.add(t); tileLabels.add(name); tileIcons.add(icon);
     }
 
-    /** Re-flows tiles into rows of three, so a hidden entry never leaves a hole. */
-    private void flow(LinearLayout grid, List<View> visible) {
-        grid.removeAllViews();
+    /** Lays the tiles out in rows of three; the last row keeps the same tile width. */
+    private void flow() {
         LinearLayout row = null; int inRow = 0;
-        for (View tile : visible) {
-            if (tile.getParent() instanceof ViewGroup) ((ViewGroup) tile.getParent()).removeView(tile);
+        for (View tile : tiles) {
             if (row == null || inRow == COLUMNS) {
                 row = new LinearLayout(activity); row.setOrientation(LinearLayout.HORIZONTAL);
                 grid.addView(row, new LinearLayout.LayoutParams(-1, -2)); inRow = 0;
@@ -155,7 +109,6 @@ public final class QuickMenu {
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1f); lp.setMargins(dp(1), dp(1), dp(1), dp(1));
             row.addView(tile, lp); inRow++;
         }
-        // Keep the last row's tiles the same width as the others.
         if (row != null) for (; inRow < COLUMNS; inRow++) row.addView(new View(activity), new LinearLayout.LayoutParams(0, 1, 1f));
     }
 
@@ -164,18 +117,7 @@ public final class QuickMenu {
         if (!text.contentEquals(walkSpeed.getText())) walkSpeed.setText(text);
     }
 
-    private void updateVisibility() {
-        int hidden = Control.quickMenuHidden(); if (hidden == appliedHidden) return;
-        appliedHidden = hidden;
-        walk.setVisibility((hidden & 2) == 0 ? View.VISIBLE : View.INVISIBLE);
-        List<View> visible = new ArrayList<>();
-        for (int i = 0; i < shortcuts.size(); i++) if ((hidden & shortcutBits.get(i)) == 0) visible.add(shortcuts.get(i));
-        for (View t : shortcuts) if (t.getParent() instanceof ViewGroup) ((ViewGroup) t.getParent()).removeView(t);
-        flow(shortcutGrid, visible);
-        int shown = visible.isEmpty() ? View.GONE : View.VISIBLE;
-        shortcutGrid.setVisibility(shown); shortcutHead.setVisibility(shown);
-    }
-    public void onRefresh() { if (isShowing()) { updateVisibility(); updateWalk(); } }
+    public void onRefresh() { if (isShowing()) updateWalk(); }
     /** The menu's view, placed by the host in its card right under the launcher line. */
     public View view() { return card; }
     /** Called after the menu opens or closes, so the host can re-sync the card around it. */
@@ -188,7 +130,6 @@ public final class QuickMenu {
         if (onToggle != null) onToggle.run();
     }
     public void show() {
-        updateVisibility();
         updateWalk();
         if (isShowing()) return;
         card.setVisibility(View.VISIBLE);
@@ -208,9 +149,7 @@ public final class QuickMenu {
         walkName.setTextColor(SettingsUi.muted());
         walkSpeed.setTextColor(SettingsUi.accent());
         walkIcon.accent = true; walkIcon.invalidate();
-        for (TextView head : new TextView[]{shortcutHead, settingsHead}) head.setTextColor(SettingsUi.faint());
-        for (View t : shortcuts) t.setBackground(pressable(0x00000000));
-        for (View t : settingTiles) t.setBackground(pressable(0x00000000));
+        for (View t : tiles) t.setBackground(pressable(0x00000000));
         for (TextView label : tileLabels) label.setTextColor(SettingsUi.ink());
         for (MenuIcon icon : tileIcons) icon.invalidate();
     }

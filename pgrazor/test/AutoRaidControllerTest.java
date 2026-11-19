@@ -51,7 +51,6 @@ public final class AutoRaidControllerTest {
         Control.engine = new MotionEngine();
         Control.ready = true;
         Control.battle = 1;
-        Control.gameRoute = false;
         Control.planning = false;
         Control.walkUnavailable = false;
         Control.vgp = true;
@@ -116,17 +115,13 @@ public final class AutoRaidControllerTest {
         requireThrows(() -> AutoRaid.start(prefs()), "automatisation en cours", "start refused with gym automation running");
         GymAutomationSettings.active = false;
 
-        Control.gameRoute = true;
-        requireThrows(() -> AutoRaid.start(prefs()), "marche ou la Route", "start refused during a game Route");
-        Control.gameRoute = false;
-
         Control.engine.walkRoute(new double[][]{{10.0, 10.0}});
         require(Control.engine.walking, "engine walking precondition");
-        requireThrows(() -> AutoRaid.start(prefs()), "marche ou la Route", "start refused while the engine walks");
+        requireThrows(() -> AutoRaid.start(prefs()), "marche en cours", "start refused while the engine walks");
         Control.engine = new MotionEngine();
 
         Control.planning = true;
-        requireThrows(() -> AutoRaid.start(prefs()), "marche ou la Route", "start refused while planning");
+        requireThrows(() -> AutoRaid.start(prefs()), "marche en cours", "start refused while planning");
         Control.planning = false;
 
         require(AutoRaid.config() == null, "no session survived the refusals");

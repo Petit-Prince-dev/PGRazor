@@ -7,12 +7,12 @@ import android.view.View;
 /**
  * Small canvas-drawn menu glyph shared by the quick menu and the settings home screen, so a
  * feature carries the same icon in both places. Drawn on a 24-unit grid and independent of emoji
- * fonts; Routes uses the image it shares with GameRoutesOverlay.
+ * fonts.
  */
 final class MenuIcon extends View {
-    static final int MAP = 0, WALK = 1, AUTOWALK = 2, FEEDS = 3, FAVORITES = 4, TELEPORT = 5, ACCOUNTS = 6, SETTINGS = 7,
-        EVENTS = 8, AUTOMATION = 9, HIDE = 10, ROUTES = 11, CATCH = 12, BOX = 13, BAG = 14, BATTLE = 15, HEART = 16, RESEARCH = 17, POWER = 18,
-        PIN = 19, HOTSPOT = 20, SEARCH = 21;
+    static final int MAP = 0, WALK = 1, AUTOWALK = 2, FEEDS = 3, FAVORITES = 4, ACCOUNTS = 6, SETTINGS = 7,
+        EVENTS = 8, AUTOMATION = 9, CATCH = 12, BOX = 13, BAG = 14, BATTLE = 15, HEART = 16, RESEARCH = 17,
+        PIN = 19, HOTSPOT = 20;
 
     private final int kind;
     /** Draws in the muted colour instead of ink. */
@@ -20,17 +20,9 @@ final class MenuIcon extends View {
     /** Draws in the theme accent colour instead of ink. */
     boolean accent;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-    private final Bitmap routeIcon;
 
     MenuIcon(Context c, int kind) {
         super(c); this.kind = kind; setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        Bitmap decoded = null;
-        if (kind == ROUTES) {
-            try (java.io.InputStream in = PgAssets.open(c,"pgrazor/map-icons/routes.png")) {
-                decoded = BitmapFactory.decodeStream(in);
-            } catch (Exception ignored) { }
-        }
-        routeIcon = decoded;
     }
 
     protected void onDraw(Canvas canvas) {
@@ -39,20 +31,6 @@ final class MenuIcon extends View {
         paint.setColor(disabled ? SettingsUi.muted() : accent ? SettingsUi.accent() : SettingsUi.ink());
         paint.setStrokeCap(Paint.Cap.ROUND); paint.setStrokeJoin(Paint.Join.ROUND);
         switch (kind) {
-            case ROUTES: {
-                if (routeIcon != null) {
-                    float ratio = Math.min(22f / routeIcon.getWidth(), 22f / routeIcon.getHeight());
-                    float w = routeIcon.getWidth() * ratio, h = routeIcon.getHeight() * ratio;
-                    paint.setColorFilter(new PorterDuffColorFilter(paint.getColor(), PorterDuff.Mode.SRC_IN));
-                    canvas.drawBitmap(routeIcon, null, new RectF(12-w/2, 12-h/2, 12+w/2, 12+h/2), paint);
-                    paint.setColorFilter(null);
-                } else {
-                    paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(1.5f);
-                    Path path = new Path(); path.moveTo(7,16); path.lineTo(16,16); path.lineTo(16,8.5f); path.lineTo(8.5f,8.5f);
-                    canvas.drawPath(path,paint); canvas.drawCircle(7,16,1.5f,paint); canvas.drawCircle(8.5f,8.5f,1.5f,paint);
-                }
-                break;
-            }
             case EVENTS: {
                 paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(1.8f);
                 canvas.drawRoundRect(4, 5, 20, 21, 2, 2, paint);
@@ -106,12 +84,6 @@ final class MenuIcon extends View {
                 star.close(); canvas.drawPath(star, paint);
                 break;
             }
-            case TELEPORT: {
-                paint.setStyle(Paint.Style.FILL);
-                Path nav = new Path(); nav.moveTo(12, 3.5f); nav.lineTo(19.5f, 19.5f); nav.lineTo(12, 15.5f); nav.lineTo(4.5f, 19.5f); nav.close();
-                canvas.drawPath(nav, paint);
-                break;
-            }
             case ACCOUNTS: {
                 // A person glyph paired with circular switch arrows: identity plus "change account".
                 paint.setStyle(Paint.Style.FILL); canvas.drawCircle(9, 7.5f, 3f, paint);
@@ -137,15 +109,6 @@ final class MenuIcon extends View {
                 Path bolt = new Path(); bolt.moveTo(13, 3); bolt.lineTo(6, 13.5f); bolt.lineTo(11, 13.5f);
                 bolt.lineTo(10, 21); bolt.lineTo(18, 10); bolt.lineTo(13, 10); bolt.close();
                 canvas.drawPath(bolt, paint);
-                break;
-            }
-            case HIDE: {
-                // An eye with a line through it.
-                paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(1.8f);
-                Path eye = new Path(); eye.moveTo(3, 12); eye.quadTo(12, 3, 21, 12); eye.quadTo(12, 21, 3, 12); eye.close();
-                canvas.drawPath(eye, paint);
-                canvas.drawCircle(12, 12, 3, paint);
-                paint.setStrokeWidth(2f); canvas.drawLine(5, 19, 19, 5, paint);
                 break;
             }
             case CATCH: {
@@ -202,18 +165,6 @@ final class MenuIcon extends View {
                 paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(1.8f);
                 canvas.drawCircle(12, 12, 8.5f, paint); canvas.drawCircle(12, 12, 4.8f, paint);
                 paint.setStyle(Paint.Style.FILL); canvas.drawCircle(12, 12, 1.8f, paint);
-                break;
-            }
-            case SEARCH: {
-                paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(2f);
-                canvas.drawCircle(10.5f, 10.5f, 6, paint); canvas.drawLine(15, 15, 20, 20, paint);
-                break;
-            }
-            case POWER: {
-                // A power symbol: an open ring with a bar through the gap.
-                paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(2f);
-                canvas.drawArc(4.5f, 5, 19.5f, 20, -55, 290, false, paint);
-                canvas.drawLine(12, 3, 12, 11.5f, paint);
                 break;
             }
             case RESEARCH: {

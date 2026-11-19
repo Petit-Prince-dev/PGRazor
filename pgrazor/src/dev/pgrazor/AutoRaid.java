@@ -31,7 +31,7 @@ public final class AutoRaid {
         if((Control.battleOptions()&1)==0)throw new IllegalStateException("Active d'abord l'attaque rapide auto en raid dans les réglages de combat.");
         if(OneShotAutomation.enabled()||GiftBatchSettings.running()||BatchEvolutionSettings.enabled()||ShundoSniper.active()||GymAutomationSettings.running())
             throw new IllegalStateException("Arrête l'automatisation en cours avant de lancer l'Auto-Raid.");
-        if(Control.engine.walking||Control.gameRoutesRunning()||Control.automationPlanning())throw new IllegalStateException("Arrête d'abord la marche ou la Route en cours.");
+        if(Control.engine.walking||Control.automationPlanning())throw new IllegalStateException("Arrête d'abord la marche en cours.");
         configure(value);
         synchronized(LOCK){session=preferences.copy();token++;completed=0;travelSerial=route=0;motionGeneration=Control.engine.routeGeneration();lastEvent=SystemClock.elapsedRealtime();running=true;stopping=false;message="Vérification du support des raids";}
         Control.event("auto-raid-session","Started; Premium passes "+(value.premiumPass?"allowed":"disabled"));

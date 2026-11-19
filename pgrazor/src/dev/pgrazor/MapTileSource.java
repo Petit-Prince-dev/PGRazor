@@ -64,6 +64,8 @@ final class MapTileSource {
     private volatile int generation;
     private Future<?> pending;
 
+    private static final String OFFLINE = "Carte incomplète : nouvel essai automatique…";
+
     MapTileSource(Host host, TextView status, File cacheDirectory) {
         this.host = host; this.status = status; this.cache = new MapTileCache(cacheDirectory);
     }
@@ -82,8 +84,10 @@ final class MapTileSource {
     List<Tile> tiles() { return visible; }
     /** Already decoded bitmap for a tile (or an ancestor key), or null when not resident. */
     Bitmap bitmap(String key) { return cache.memory(key); }
-    /** Forget transient per-tile failures so a retry re-requests them immediately. */
-    void clearFailures() { failures.clear(); }
+    /** A tile that failed is asked for again after this long, without any button. */
+    private static final long RETRY_MS = 8000;
+    private final Runnable retry = () -> { if (!closed) loadVisible(); };
+    private void scheduleRetry() { main.removeCallbacks(retry); main.postDelayed(retry, RETRY_MS + 200); }
 
     private void loadVisible() {
         // Keep ownership until the main-thread completion callback clears pending. Future.isDone()
@@ -96,10 +100,11 @@ final class MapTileSource {
         for (Tile tile : visible) {
             Long failedAt = failures.get(tile.key);
             if (cache.memory(tile.key) != null) continue;
-            if (failedAt != null && now - failedAt < 60000) { blocked++; continue; }
+            if (failedAt != null && now - failedAt < RETRY_MS) { blocked++; continue; }
             wanted.add(tile);
         }
-        status.setText(wanted.isEmpty() ? (blocked > 0 ? "Carte indisponible par endroits. Vérifie internet, puis Réessayer." : "Zoom " + host.zoom() + " · Touche la carte pour sélectionner") : "Chargement de la carte…");
+        status.setText(wanted.isEmpty() ? (blocked > 0 ? OFFLINE : "Zoom " + host.zoom() + " · Touche la carte pour sélectionner") : "Chargement de la carte…");
+        if (blocked > 0) scheduleRetry();
         if (wanted.isEmpty()) return;
         // Middle of the screen first: tiles nearest the centre of the placed ones load before the edges.
         float cx = 0, cy = 0; for (Tile tile : visible) { cx += tile.left; cy += tile.top; }
@@ -142,7 +147,7 @@ final class MapTileSource {
                 if (closed || Thread.currentThread().isInterrupted()) return;
                 cache.trim();
                 final int finalErrors = errors.get() + blockedTiles;
-                main.post(() -> { if (!closed && revision == generation) status.setText(finalErrors == 0 ? "Zoom " + host.zoom() + " · Touche la carte pour sélectionner" : "Carte indisponible par endroits. Vérifie internet, puis Réessayer."); });
+                main.post(() -> { if (!closed && revision == generation) { status.setText(finalErrors == 0 ? "Zoom " + host.zoom() + " · Touche la carte pour sélectionner" : OFFLINE); if (finalErrors > 0) scheduleRetry(); } });
             } catch (IOException | RuntimeException e) {
                 main.post(() -> { if (!closed && revision == generation) status.setText("Cache de la carte indisponible. Ferme la carte et réessaie."); });
             } finally { main.post(() -> { if (!closed) { pending = null; if (revision != generation) loadVisible(); } }); }

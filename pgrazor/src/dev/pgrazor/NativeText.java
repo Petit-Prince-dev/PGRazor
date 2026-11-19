@@ -116,7 +116,6 @@ final class NativeText {
             {"Catch refused: ", "Capture refusée : "},
             {"Auto swap stopped this time: ", "Changement auto arrêté cette fois : "},
             {"Rocket auto swap unavailable: ", "Changement auto Rocket indisponible : "},
-            {"Mateo gift exchange stopped: ", "Échange de cadeaux avec Mateo arrêté : "},
             {"Catch failed: ", "Capture échouée : "},
             {"Shiny Scanner stopped: ", "Scan shiny arrêté : "},
             {"Shundo Sniper: ", "Shundo Sniper : "},
@@ -615,7 +614,7 @@ final class NativeText {
             "Camera unavailable", "Caméra indisponible",
             "Camera reader stopped", "Lecture de la caméra arrêtée");
 
-        // ----- IV, research, shiny scan, Shundo, Mateo -----
+        // ----- IV, research, shiny scan, Shundo -----
         put("IV panel stopped: native failure", "Panneau IV arrêté : erreur native",
             "IV panel unavailable: native failure", "Panneau IV indisponible : erreur native",
             "PvP crest unavailable: native failure", "Écusson PvP indisponible : erreur native",
@@ -651,16 +650,6 @@ final class NativeText {
             "Not on the map here; it may have despawned", "Pas sur la carte ici ; il a peut-être disparu",
             "No encounter answer", "Pas de réponse de la rencontre",
             "Encounter failed", "Rencontre échouée",
-            "Starting Mateo's gift exchange", "Début de l'échange de cadeaux avec Mateo",
-            "Gift exchange with Mateo finished", "Échange de cadeaux avec Mateo terminé",
-            "Mateo's encounter ended", "Rencontre avec Mateo terminée",
-            "Exchanging gifts with Mateo", "Échange de cadeaux avec Mateo",
-            "Mateo gift exchange turned off", "Échange avec Mateo désactivé",
-            "Mateo gift exchange ready", "Échange avec Mateo prêt",
-            "Mateo gift exchange stopped: native failure", "Échange avec Mateo arrêté : erreur native",
-            "Mateo's gift exchange took too long; finish it yourself", "L'échange avec Mateo prend trop de temps ; termine-le toi-même",
-            "A Mateo screen did not respond; finish the exchange yourself", "Un écran de Mateo ne répond pas ; termine l'échange toi-même",
-            "Mateo kept talking; finish the exchange yourself", "Mateo parle encore ; termine l'échange toi-même",
             "Adventure Sync prompt declined", "Fenêtre Synchroextérieur refusée",
             "Adventure Sync result acknowledged", "Résultat Synchroextérieur confirmé",
             "Waiting for gym disc", "En attente du disque d'arène");

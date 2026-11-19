@@ -14,12 +14,8 @@ import java.util.Locale;
 public final class Pad {
     final Activity activity;
     private final FrameLayout parent;
-    // Every on-screen overlay lives in this full-screen layer so "Hide overlay" can hide them all at once;
-    // the three-finger watcher brings them back.
+    // Every on-screen overlay lives in this full-screen layer, above the game and under the settings sheet.
     private final FrameLayout overlays;
-    private View unhideWatcher;
-    private boolean overlaysHidden;
-    private AlertDialog hideOverlaysDialog;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Stick stick;
     // The full-screen settings body (switches, captions, sections) owns its own construction/refresh.
@@ -58,7 +54,6 @@ public final class Pad {
     private QuickMenu quickMenu;
     // Keep All / transfer-rules toggle, one line of the card.
     private TransferToggle transferToggle;
-    private GameRoutesOverlay gameRoutesOverlay;
 
     private int dp(float x){return SettingsUi.dp(activity,x);}
     private int ink(){return SettingsUi.ink();}
@@ -87,7 +82,6 @@ public final class Pad {
             if(line!=null){line.setBackground(null);line.setTextColor(line==encounterBadge?muted():ink());}
         }
         if(transferToggle!=null)transferToggle.invalidate();
-        if(gameRoutesOverlay!=null)gameRoutesOverlay.invalidate();
         if(quickMenu!=null)quickMenu.applyTheme();
     }
     private void draggable(View handle,View target,boolean clickable){draggable(handle,target,clickable,null);}
@@ -233,17 +227,15 @@ public final class Pad {
         overlays.addView(shinyBadge,shinyLayout);shinyBadge.setVisibility(View.GONE);shinyBadge.setOnClickListener(v->{ShinyScanner.showFound();refresh();});shinyDrag=OverlayDrag.attach(overlays,shinyBadge,"shiny");
         transferToggle=new TransferToggle(host);transferToggle.setOnClickListener(v->{Control.setTransferKeepAll(!Control.transferKeepAll());refresh();});
         transferToggle.setVisibility(View.GONE);transferLabel=dockText("");transferLabel.setOnClickListener(v->transferToggle.performClick());
-        gameRoutesOverlay=new GameRoutesOverlay(activity);gameRoutesOverlay.setVisibility(View.GONE);
         launcher=new RazorIcon(host);
         launcher.setContentDescription("Ouvrir le menu rapide PGRazor. Glisse pour déplacer. Appui long : éteindre l'écran.");
 
-        // The card: header (launcher, history timer, game routes), then one line per active feature.
+        // The card: header (launcher, history timer, encounter count), then one line per active feature.
         dock=new HudDock(host);dock.setPadding(dp(8),dp(4),dp(8),dp(4));
         dock.setShowDividers(LinearLayout.SHOW_DIVIDER_MIDDLE);
         // Header: logo, history timer and the 24 h encounter count on one line (the count keeps its width, the timer wraps if it must).
         dockHeader=dockRow(launcher,30,cooldownTimer);
         LinearLayout.LayoutParams countSlot=new LinearLayout.LayoutParams(-2,-2);countSlot.leftMargin=dp(6);dockHeader.addView(encounterBadge,countSlot);
-        LinearLayout.LayoutParams routesSlot=new LinearLayout.LayoutParams(dp(24),dp(24));routesSlot.leftMargin=dp(4);dockHeader.addView(gameRoutesOverlay,routesSlot);
         dockRow(null,0,localTime);
         dockRow(vgpToggle,30,vgpActivity);
         dockRow(gymFeedOverlay,30,gymAutomationStatus);
@@ -257,14 +249,10 @@ public final class Pad {
             public void onMap(){openWorldMap();}
             public double onCycleWalkSpeed(){double s=Control.cycleWalkSpeed();refresh();return s;}
             public void onAutoWalk(){stick.release(true);AutoWalkDialog.show(activity);}
-            public void onGameRoutes(){stick.release(true);GameRoutesDialog.show(activity);}
             public void onFeeds(){stick.release(true);FeedChooser.show(activity);}
             public void onFavorites(){QuickLocationDialogs.showFavorites(activity,Pad.this::quickTeleport);}
-            public void onTeleport(){stick.release(true);QuickLocationDialogs.showTeleport(activity,Pad.this::quickTeleport,Pad.this::quickWalk);}
-            public void onHotspots(){stick.release(true);HotspotsDialog.showQuick(activity,Pad.this::quickTeleport,Pad.this::quickWalk);}
+            public void onDestinations(){stick.release(true);DestinationsDialog.show(activity,Pad.this::quickTeleport,Pad.this::quickWalk,Pad.this::quickRoute);}
             public void onSettingsPage(int index){openSettings(index);}
-            public void onHideOverlays(){confirmHideOverlays();}
-            public void onScreenOff(){turnScreenOff();}
         },settings.pageNames(),settings.pageIcons());
         // The menu unfolds inside the card, right under the launcher line, so the R button stays visible to close it.
         dock.addView(quickMenu.view(),1,new LinearLayout.LayoutParams(-1,-2));
@@ -279,7 +267,6 @@ public final class Pad {
             pill.setTextSize(11);pill.setTypeface(SettingsUi.mono());
         }
         settings.hide();joystickOverlay.setVisibility(Control.joystickVisible()?View.VISIBLE:View.GONE);applyTheme();
-        unhideWatcher=new ThreeFingerWatcher(host);parent.addView(unhideWatcher,new FrameLayout.LayoutParams(-1,-1));
         parent.addView(blackScreen,new FrameLayout.LayoutParams(-1,-1));
         refresh();parent.post(this::applyMapScale); handler.post(tick);
     }
@@ -421,13 +408,10 @@ public final class Pad {
         if(transferToggle!=null){transferToggle.setVisibility(Control.transferOverlayVisible()&&!settings.isVisible()&&!(quickMenu!=null&&quickMenu.isShowing())?View.VISIBLE:View.GONE);transferToggle.setContentDescription(transferToggleDescription());transferToggle.invalidate();
             if(transferLabel!=null){transferLabel.setVisibility(transferToggle.getVisibility());setTextIfChanged(transferLabel,transferShort());}}
 
-        String routeReward=Control.takeGameRoutesRewardNotice();
-        if(!routeReward.isEmpty()&&!overlaysHidden)Toast.makeText(activity,routeReward,Toast.LENGTH_LONG).show();
-        if(gameRoutesOverlay!=null)gameRoutesOverlay.refresh(!settings.isVisible());
         if(cooldownTimer!=null){cooldownTimer.setVisibility(Control.cooldownOverlay()?View.VISIBLE:View.GONE);setTextIfChanged(cooldownTimer,Cooldown.label());int cooldownColor=Cooldown.remaining()>0?SettingsUi.warn():accent();if(cooldownTimer.getCurrentTextColor()!=cooldownColor)cooldownTimer.setTextColor(cooldownColor);}
         // The view combines this Pad-side gate with Control.localTimeOverlay()/desiredEnabled() and its own throttle;
-        // a false gate (settings open, quick menu up, or overlays hidden) stops its clock work entirely.
-        if(localTime!=null){localTime.refresh(!overlaysHidden&&!settings.isVisible()&&!(quickMenu!=null&&quickMenu.isShowing()));}
+        // a false gate (settings open or quick menu up) stops its clock work entirely.
+        if(localTime!=null){localTime.refresh(!settings.isVisible()&&!(quickMenu!=null&&quickMenu.isShowing()));}
         syncDock();
         if (lastEnabled != Control.engine.enabled) { lastEnabled = Control.engine.enabled; stick.invalidate(); }
         // The launcher's status dot shows whether spoofing is on; redraw it only when that changes.
@@ -450,7 +434,6 @@ public final class Pad {
             boolean wasWalking = Control.engine.walking;
             MotionEngine.RouteProgress before=Control.engine.routeProgress();
             Control.stepMotion((now-lastTick)/1000.0,stick.pointer>=0); lastTick = now;
-            Control.tickGameRoutes();
             MotionEngine.RouteProgress after=Control.engine.routeProgress();
             if (before.total>1 && after.total==before.total && after.visited>before.visited)
                 Control.event("route-progress", "visited=" + after.visited + "/" + after.total);
@@ -499,55 +482,6 @@ public final class Pad {
                 });
             } catch (IllegalArgumentException error) { speed.setError("Entre des coordonnées et une vitesse valides (0,5–30)."); }
         })); dialog.show();styleTree(form);
-    }
-    /** "Hide overlay": confirm first, naming the three-finger tap that shows the overlays again. */
-    void confirmHideOverlays() {
-        if(closed||overlaysHidden||activity.isFinishing()||activity.isDestroyed()||hideOverlaysDialog!=null)return;
-        AlertDialog dialog=new AlertDialog.Builder(dialogContext())
-            .setTitle("Masquer l'overlay ?")
-            .setMessage("Tous les boutons, barres d'état, messages et textes d'IV de PGRazor seront masqués pour que le jeu ait l'air d'origine. Pour les réafficher, touche l'écran avec trois doigts en même temps.")
-            .setNegativeButton("Annuler",null)
-            .setPositiveButton("Masquer",(d,w)->setOverlaysHidden(true)).create();
-        hideOverlaysDialog=dialog;
-        DialogLifecycle.bind(activity,dialog,()->{if(hideOverlaysDialog==dialog)hideOverlaysDialog=null;});
-        dialog.setOnShowListener(d->MapTheme.styleButtons(dialog));
-        dialog.show();
-    }
-    private void setOverlaysHidden(boolean hidden){
-        if(closed||overlaysHidden==hidden)return;
-        overlaysHidden=hidden;Control.setOverlaysHidden(hidden);
-        if(hidden){stick.release(true);if(quickMenu!=null&&quickMenu.isShowing())quickMenu.hide();}
-        overlays.setVisibility(hidden?View.GONE:View.VISIBLE);
-        Control.event("overlays",hidden?"hidden":"shown");
-        if(!hidden){Toast.makeText(activity,"Overlay PGRazor affiché",Toast.LENGTH_SHORT).show();refresh();}
-    }
-    /**
-     * Sees every finger that touches down anywhere on screen and never takes the touch, so the game
-     * and the overlays behave as before. The decor view splits multi-finger touches, so each finger
-     * arrives here as its own down event. While the overlay is hidden, three fingers landing within
-     * 250 ms at least 24dp apart show it again; one finger tapping the same spot quickly does not.
-     */
-    private final class ThreeFingerWatcher extends View {
-        private final long[] times=new long[3];
-        private final float[] xs=new float[3],ys=new float[3];
-        private int next;
-        ThreeFingerWatcher(Context context){super(context);setClickable(false);setFocusable(false);setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);}
-        @Override public boolean dispatchTouchEvent(MotionEvent e){
-            int action=e.getActionMasked();
-            if(!overlaysHidden||(action!=MotionEvent.ACTION_DOWN&&action!=MotionEvent.ACTION_POINTER_DOWN))return false;
-            if(e.getPointerCount()>=3){unhide();return false;}
-            int index=e.getActionIndex();
-            times[next]=e.getEventTime();xs[next]=e.getX(index);ys[next]=e.getY(index);next=(next+1)%3;
-            long newest=e.getEventTime();float apart=dp(24);
-            boolean together=true;
-            for(int i=0;i<3&&together;i++){
-                together=times[i]!=0&&newest-times[i]<=250;
-                for(int j=i+1;j<3&&together;j++)together=Math.hypot(xs[i]-xs[j],ys[i]-ys[j])>=apart;
-            }
-            if(together)unhide();
-            return false;
-        }
-        private void unhide(){java.util.Arrays.fill(times,0);post(()->setOverlaysHidden(false));}
     }
     /** A ground tap must never silently replace a planned route. */
     void confirmStopRoute() {
@@ -604,7 +538,7 @@ public final class Pad {
         Control.event("settings-open", "Full-screen panel; runtime unaffected");
         refresh();
     }
-    /** Shared quick teleport for the Favorites and Teleport modals; validates readiness. */
+    /** Shared quick teleport for Favoris and Destinations; validates readiness. */
     private boolean quickTeleport(double latitude, double longitude) {
         if (!Control.canEnable()) { Toast.makeText(activity,"L'adaptateur de position n'est pas prêt",Toast.LENGTH_SHORT).show(); return false; }
         try {
@@ -621,6 +555,15 @@ public final class Pad {
             if(!quickTeleport(lat,lon))return false;
             Control.event("map-tap-applied",String.format(Locale.US,"mode=%d lat=%.7f lon=%.7f",mode,lat,lon));return true;
         });
+    }
+    /** Starts a preset GPS route from Destinations, at the current walking speed. */
+    private boolean quickRoute(double[][] points,boolean loop) {
+        if(!Control.canEnable()){Toast.makeText(activity,"L'adaptateur de position n'est pas prêt",Toast.LENGTH_SHORT).show();return false;}
+        try {
+            stick.release();Control.walkRoute(points,loop);
+            Control.event("preset-route","stops="+points.length+" loop="+loop);
+            refresh();return true;
+        } catch(IllegalArgumentException error){Toast.makeText(activity,"Ce trajet est invalide",Toast.LENGTH_SHORT).show();return false;}
     }
     private boolean quickWalk(double latitude,double longitude) {
         if(!Control.canEnable()){Toast.makeText(activity,"L'adaptateur de position n'est pas prêt",Toast.LENGTH_SHORT).show();return false;}
@@ -644,9 +587,9 @@ public final class Pad {
         if(shundoDrag!=null){shundoDrag.detach();shundoDrag=null;}if(shundoOverlay!=null){shundoOverlay.close();overlays.removeView(shundoOverlay);shundoOverlay=null;}
         gymAutomationStatus=null;
         if(gymFeedOverlay!=null){gymFeedOverlay.close();gymFeedOverlay=null;}
-        settings.close();if(hideOverlaysDialog!=null)hideOverlaysDialog.dismiss();
-        parent.removeView(settings.view());if(dock!=null){overlays.removeView(dock);dock=null;}overlays.removeView(joystickOverlay);if(encounterBerry!=null){encounterBerry.close();overlays.removeView(encounterBerry);}if(vgpMarker!=null)overlays.removeView(vgpMarker);if(mapCatchBadge!=null){overlays.removeView(mapCatchBadge);mapCatchBadge=null;}if(gameRoutesOverlay!=null)gameRoutesOverlay.close();
-        parent.removeView(overlays);if(unhideWatcher!=null)parent.removeView(unhideWatcher);
+        settings.close();
+        parent.removeView(settings.view());if(dock!=null){overlays.removeView(dock);dock=null;}overlays.removeView(joystickOverlay);if(encounterBerry!=null){encounterBerry.close();overlays.removeView(encounterBerry);}if(vgpMarker!=null)overlays.removeView(vgpMarker);if(mapCatchBadge!=null){overlays.removeView(mapCatchBadge);mapCatchBadge=null;}
+        parent.removeView(overlays);
         if(blackScreen!=null){blackScreen.setOnTouchListener(null);parent.removeView(blackScreen);blackScreen=null;blackHint=null;}
         ShundoSniper.setDark(false);
         ScreenPower.turnOn(activity);  // leaving the game always brings the screen back; it stays on when the game returns

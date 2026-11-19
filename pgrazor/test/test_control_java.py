@@ -250,7 +250,7 @@ class ControlJavaTests(unittest.TestCase):
                 source.write_text(text, encoding='utf-8')
                 sources.append(source)
             sources.extend(ROOT / 'src/dev/pgrazor' / name for name in (
-                'Control.java', 'NativeText.java', 'MapCatchStatus.java', 'MotionEngine.java', 'LocationState.java', 'GameRoutesController.java',
+                'Control.java', 'NativeText.java', 'MapCatchStatus.java', 'MotionEngine.java', 'LocationState.java',
                 'CameraHeadingState.java', 'CameraSteering.java',
                 'BerryPriority.java', 'MapTapSequence.java', 'CooldownState.java',
                 'VgpController.java', 'CatchOutcomeController.java', 'SettingsWriter.java', 'SmartCatchPreferences.java', 'GymAutomationPreferences.java', 'BuddyEmotionPreferences.java', 'ResearchPreferences.java'))

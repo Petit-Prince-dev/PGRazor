@@ -155,12 +155,11 @@ public final class ShinyScanner {
         }
     }
 
-    /** Ends the current walk, autowalk route or in-game Route so the player stays next to the shiny. */
+    /** Ends the current walk or autowalk route so the player stays next to the shiny. */
     private static void stopWalking() {
         try {
             if (Control.engine.walking) Control.event("walk-cancelled", "Shiny found");
             Control.engine.stop();
-            if (Control.gameRoutesRunning()) Control.stopGameRoutes();
             Control.saveState();
         } catch (RuntimeException error) { Control.event("shiny-scan-diagnostic", "Could not stop walking: " + error.getClass().getSimpleName()); }
     }

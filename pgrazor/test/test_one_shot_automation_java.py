@@ -40,11 +40,10 @@ public class JSONObject {
     'dev/pgrazor/Control.java': '''package dev.pgrazor;
 public class Control {
  public static MotionEngine engine=new MotionEngine();
- public static boolean ready=true,gameRoute,planning,vgp=true;
+ public static boolean ready=true,planning,vgp=true;
  public static int saves,walks;
  public static boolean automationReady(){return ready;}
  public static boolean giftsAllowed(){return ready;}
- public static boolean gameRoutesRunning(){return gameRoute;}
  public static boolean automationPlanning(){return planning;}
  public static double currentLatitude(){return engine.latitude;}
  public static double currentLongitude(){return engine.longitude;}
@@ -52,7 +51,6 @@ public class Control {
  public static void saveState(){saves++;}
  public static void setVgpEnabled(boolean value){vgp=value;}
  public static android.app.Activity accountActivity(){return new android.app.Activity();}
- public static boolean overlaysHidden(){return false;}
 }''',
 }
 

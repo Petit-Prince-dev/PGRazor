@@ -38,7 +38,7 @@ public final class OneShotAutomation {
     public static synchronized void startIncense(double heading){
         if(!Double.isFinite(heading)||heading<0||heading>=360)throw new IllegalArgumentException("La direction doit être entre 0 et 359 degrés.");
         ready();
-        if(Control.engine.walking||Control.gameRoutesRunning()||Control.automationPlanning())throw new IllegalStateException("Arrête d'abord ta marche ou ta Route en cours.");
+        if(Control.engine.walking||Control.automationPlanning())throw new IllegalStateException("Arrête d'abord ta marche en cours.");
         double lat=Math.toRadians(Control.currentLatitude()),lon=Math.toRadians(Control.currentLongitude());
         double b=Math.toRadians(heading),d=2625.0/6371008.8;
         double target=Math.asin(Math.sin(lat)*Math.cos(d)+Math.cos(lat)*Math.sin(d)*Math.cos(b));
@@ -103,7 +103,7 @@ public final class OneShotAutomation {
         new android.os.Handler(android.os.Looper.getMainLooper()).post(()->{
             android.app.Activity activity=Control.accountActivity();
             if(activity==null||activity.isFinishing())return;
-            if(!Control.overlaysHidden())android.widget.Toast.makeText(activity,"Oiseau de Galar trouvé — marche et VGP arrêtés",android.widget.Toast.LENGTH_LONG).show();
+            android.widget.Toast.makeText(activity,"Oiseau de Galar trouvé — marche et VGP arrêtés",android.widget.Toast.LENGTH_LONG).show();
             try{
                 final android.media.ToneGenerator tone=new android.media.ToneGenerator(android.media.AudioManager.STREAM_NOTIFICATION,90);
                 tone.startTone(android.media.ToneGenerator.TONE_PROP_BEEP2,1000);

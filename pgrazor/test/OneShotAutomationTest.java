@@ -10,7 +10,7 @@ public final class OneShotAutomationTest {
     }
     private static void clean(){
         OneShotAutomation.reset();Control.engine=new MotionEngine();Control.ready=true;
-        Control.gameRoute=Control.planning=false;Control.vgp=true;Control.saves=Control.walks=0;
+        Control.planning=false;Control.vgp=true;Control.saves=Control.walks=0;
         AutoRaid.active=BatchEvolutionSettings.active=GymAutomationSettings.active=SmartCatchSettings.active=false;
         SystemClock.now=1000;
     }
@@ -31,9 +31,7 @@ public final class OneShotAutomationTest {
         AutoRaid.active=false;BatchEvolutionSettings.active=true;
         rejects(IllegalStateException.class,()->OneShotAutomation.startIncense(0));
         rejects(IllegalStateException.class,()->OneShotAutomation.startRemoteFeed(0,0,false,0));
-        BatchEvolutionSettings.active=false;Control.gameRoute=true;
-        rejects(IllegalStateException.class,()->OneShotAutomation.startIncense(0));
-        Control.gameRoute=false;Control.planning=true;
+        BatchEvolutionSettings.active=false;Control.planning=true;
         rejects(IllegalStateException.class,()->OneShotAutomation.startIncense(0));Control.planning=false;
         Control.engine.walkTo(38,-122);rejects(IllegalStateException.class,()->OneShotAutomation.startIncense(0));
 

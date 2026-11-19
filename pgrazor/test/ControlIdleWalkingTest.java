@@ -17,7 +17,7 @@ public final class ControlIdleWalkingTest {
             double lat=Control.engine.latitude,lon=Control.engine.longitude;idle();check(lat==Control.engine.latitude&&lon==Control.engine.longitude,"Closed gate moved position");
             flag(gate,true);idle();check(Control.engine.idleWalkingActive(),"Gate recovery failed: "+gate);
         }
-        for(String gate:new String[]{"autoWalkPlanning","gameRoutesPlanning"}){
+        for(String gate:new String[]{"autoWalkPlanning"}){
             flag(gate,true);Control.stepMotion(.1,false);stopped();flag(gate,false);idle();
             check(Control.engine.idleWalkingActive(),"Planning recovery failed");
         }

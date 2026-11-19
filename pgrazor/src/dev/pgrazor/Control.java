@@ -53,37 +53,12 @@ public final class Control {
     public static void setMapPoiSnapshot(String value){if((mapPoiOpen||autoWalkPlanning)&&value!=null&&value.length()<160000){mapPoiSnapshot=value;mapPoiAt=SystemClock.elapsedRealtime();}}
     public static String mapPoiSnapshot(){return SystemClock.elapsedRealtime()-mapPoiAt<10000?mapPoiSnapshot:"";}
     public static final MotionEngine engine = new MotionEngine();
-    private static final GameRoutesController gameRoutes = new GameRoutesController(
-        engine, SystemClock::elapsedRealtime, System::currentTimeMillis);
-    private static volatile boolean gameRoutesPlanning;
-    private static String gameRoutesLastStatus="";
-    private static volatile String gameRoutesReadiness="En attente du support des Routes";
-    public static void setGameRoutesPlanning(boolean open) { gameRoutesPlanning=open; gameRoutes.setPlanning(open); }
-    public static boolean gameRoutesReady() { return gameRoutes.ready(); }
-    public static boolean gameRoutesRunning() { return gameRoutes.running(); }
-    public static String gameRoutesStatus() { return gameRoutes.ready()?gameRoutes.status():gameRoutesReadiness; }
-    public static String gameRoutesSnapshot() { return gameRoutes.snapshot(); }
-    public static String gameRoutesLastReward() { return gameRoutes.lastReward(); }
-    public static String takeGameRoutesRewardNotice() { return gameRoutes.takeRewardNotice(); }
-    public static String gameRoutesDetails() { return gameRoutes.details(); }
-    public static String gameRoutesCommand() { return gameRoutes.command(); }
-    public static boolean gameRoutesAllowed() { return hostLive() && desiredEnabled && (gameRoutesPlanning || gameRoutes.running()); }
-    public static void setGameRoutesReady(boolean value,String reason) {
-        gameRoutesReadiness=reason==null||reason.isEmpty()?"En attente du support des Routes":reason;
-        gameRoutes.setReady(value);
-    }
-    public static void setGameRoutesSnapshot(String value) { gameRoutes.acceptSnapshot(value); }
-    public static void gameRoutesAction(String value) { gameRoutes.acceptAction(value); }
-    public static void startGameRoutes(int count) {
-        if(!hostLive()||!canEnable())throw new IllegalArgumentException("L'adaptateur de position n'est pas prêt");
-        gameRoutes.start(count); saveState();
-    }
-    public static void stopGameRoutes() { gameRoutes.stop("Stopped"); saveState(); }
-    public static void tickGameRoutes() {
-        gameRoutes.tick(hostLive()&&canEnable());
-        String status=gameRoutes.status();
-        if(!status.equals(gameRoutesLastStatus)){gameRoutesLastStatus=status;event("game-routes",status);}
-    }
+    // The native runtime still asks for the game's Routes by name; PGRazor no longer drives them.
+    public static boolean gameRoutesAllowed() { return false; }
+    public static String gameRoutesCommand() { return ""; }
+    public static void setGameRoutesReady(boolean value,String reason) {}
+    public static void setGameRoutesSnapshot(String value) {}
+    public static void gameRoutesAction(String value) {}
     public static volatile String connection = "APERÇU - jeu non connecté";
     public static volatile long latitudeReads, longitudeReads;
     private static PrintWriter log;
@@ -273,7 +248,7 @@ public final class Control {
     public static String gymAutomationConfig(){return GymAutomationSettings.config();}
     public static String buddyEmotionConfig(){return BuddyEmotionSettings.config();}
     public static boolean automationReady(){return hostLive()&&active()&&itemAccessAllowed();}
-    public static boolean automationPlanning(){return autoWalkPlanning||gameRoutesPlanning;}
+    public static boolean automationPlanning(){return autoWalkPlanning;}
     public static String oneShotAutomationConfig(){String raid=AutoRaid.config();if(raid!=null)return raid;String gift=GiftBatchSettings.config();return gift!=null?gift:OneShotAutomation.config();}
     public static String batchEvolutionConfig(){return BatchEvolutionSettings.config();}
     public static String researchConfig(){return ResearchSettings.config();}
@@ -421,7 +396,6 @@ public final class Control {
     // Explicit export/import block until durable; a shorter bound keeps a background flush from stalling.
     private static final long SETTINGS_FLUSH_MS = 5000, SETTINGS_BACKGROUND_FLUSH_MS = 1000;
     public static void embedded(String status) {
-        setGameRoutesReady(false,"En attente du jeu");
         engine.pause(); preview = false; backendReady = false; connection = status;
         setQuickSummaryReady(false,"En attente du support du résumé de capture");
         setQuickBallReady(false,"En attente du support de l'animation de Ball");
@@ -568,13 +542,8 @@ public final class Control {
     }
     // IV/level overlay preferences. The stored choice is surfaced to the UI and the
     // agent; the agent itself fails closed when owned-details metadata is absent.
-    // "Hide overlay" (Pad) makes the game look stock: the in-game IV text is off while it is set. These
-    // getters feed the native transport; the saved preferences are unchanged.
-    private static volatile boolean overlaysHidden;
-    public static boolean overlaysHidden(){return overlaysHidden;}
-    public static void setOverlaysHidden(boolean hidden){overlaysHidden=hidden;}
-    public static boolean ivCatchEnabled(){return ivCatchEnabled&&!overlaysHidden;}
-    public static boolean ivOwnedEnabled(){return ivOwnedEnabled&&!overlaysHidden;}
+    public static boolean ivCatchEnabled(){return ivCatchEnabled;}
+    public static boolean ivOwnedEnabled(){return ivOwnedEnabled;}
     public static boolean ivOwnedReady(){return ivOwnedReady;}
     public static boolean ivDisplayAllowed(){return quickBallReady&&hostLive();}
     public static void setIvCatchEnabled(boolean enabled){ivCatchEnabled=enabled;saveSettings();event("iv-catch-overlay",enabled?"ON":"OFF");}
@@ -600,7 +569,7 @@ public final class Control {
     public static int nextIvMode(int mode){return (mode+4)%5;}
     // "S2|<storage mode>|<encounter format>|<details format>"; whether the encounter and details
     // panels show at all travels separately as ivCatchEnabled/ivOwnedEnabled.
-    public static String storageIvConfig(){return "S2|"+(overlaysHidden?0:storageIvMode)+"|"+ivCatchFormat+"|"+ivOwnedFormat;}
+    public static String storageIvConfig(){return "S2|"+storageIvMode+"|"+ivCatchFormat+"|"+ivOwnedFormat;}
     public static String storageIvStatus(){return storageIvMode==0?"":storageIvStatus;}
     // Catch chance overlay (on by default) and auto ball (off by default) for manual encounters.
     // autoBallTarget is the chance the cheapest ball must reach, in percent.
@@ -635,7 +604,7 @@ public final class Control {
         Application app=hostApplication;
         boolean safari=app!=null&&dev.pgrazor.events.EventSettings.wildAutoBallSafari(app);
         long cooldownMs=Math.max(0,Cooldown.remaining());
-        return "C4|"+(catchChanceShown&&!overlaysHidden?1:0)+"|"+(autoBall?1:0)+"|"+autoBallTarget+"|"+autoBerry()+"|"+(safari?1:0)+"|"+(autoThrow?1:0)+"|"+cooldownMs+"|"+(autoThrowOnMap?1:0);
+        return "C4|"+(catchChanceShown?1:0)+"|"+(autoBall?1:0)+"|"+autoBallTarget+"|"+autoBerry()+"|"+(safari?1:0)+"|"+(autoThrow?1:0)+"|"+cooldownMs+"|"+(autoThrowOnMap?1:0);
     }
     // PvP keep for auto-transfer, per league (0 Great, 1 Ultra, 2 Master): a catch is kept when its
     // stat-product rank is at or below that league's rank for a species in PvPoke's top PVP_META.
@@ -661,11 +630,8 @@ public final class Control {
     public static String cutsceneSkipStatus(){return skipCutscenes?cutsceneSkipStatus:"";}
     /** Raw settings for slot 17; native egg presentation uses skipCutscenes OR autoIncubate. */
     public static String cutsceneSkipConfig(){return "K2|"+(skipCutscenes?1:0)+"|"+(autoIncubate?1:0);}
-    private static volatile boolean routeGiftExchange;
-    public static boolean routeGiftExchange(){return routeGiftExchange;}
-    public static void setRouteGiftExchange(boolean on){routeGiftExchange=on;saveSettings();event("route-gift-setting",on?"ON":"OFF");}
-    /** Raw setting for transport string slot 24 (native route_gift). */
-    public static String routeGiftConfig(){return "M1|"+(routeGiftExchange?1:0);}
+    /** Transport string slot 24 (native route_gift): always off, PGRazor no longer handles the game's Routes. */
+    public static String routeGiftConfig(){return "M1|0";}
     // Battery usage (each off by default): the native module draws the 3D view at a lower resolution, caps
     // the game at 20 fps, and turns off shadows, anti-aliasing and far detail, putting the game's own
     // values back when a setting is turned off.
@@ -827,7 +793,6 @@ public final class Control {
     public static boolean takeInteractionStopRequest() { return interactionStopRequest.getAndSet(false) || (interactionDiagnosticRunning && !interactionDiagnosticsReady()); }
     public static boolean desiredEnabled() { return desiredEnabled; }
     public static synchronized void setLocationSpoofing(boolean enabled) {
-        gameRoutes.stop("Mode de position modifié");
         desiredEnabled=enabled; if(!enabled){realLocation=null;realLatitude=Double.NaN;realLongitude=Double.NaN;} mapTapEpoch++; autoWalkPlanning=false;
         engine.pause(); invalidateCameraHeading("Mode de position modifié");
         restoreRuntime("location-setting"); saveSettings(); saveState();
@@ -1020,13 +985,11 @@ public final class Control {
         synchronized(stateLock) { AutoRaid.travel(session,travel,latitude,longitude); }
     }
     public static void teleport(double latitude, double longitude) {
-        gameRoutes.stop("Destination modifiée");
         engine.position(latitude, longitude); engine.stop();
         engine.enabled = foreground && canEnable();
         saveState();
     }
     public static void walkTo(double latitude, double longitude) {
-        gameRoutes.stop("Marche manuelle lancée");
         engine.walkTo(latitude, longitude);
         if (!foreground || !canEnable()) engine.pause();
         saveState();
@@ -1034,14 +997,12 @@ public final class Control {
     public static void walkRoute(double[][] waypoints) { walkRoute(waypoints, false); }
     /** As {@link #walkRoute(double[][])}, but a looping route repeats from its first stop; same lifecycle/save/readiness. */
     public static void walkRoute(double[][] waypoints, boolean loop) {
-        gameRoutes.stop("Autre route lancée");
         engine.walkRoute(waypoints, loop);
         if (!foreground || !canEnable()) engine.pause();
         saveState();
     }
     public static void startAutoWalk(double[][] waypoints,boolean loop) {
         if(!foreground||!canEnable())throw new IllegalArgumentException("L'adaptateur de position n'est pas prêt");
-        gameRoutes.stop("Autowalk lancé");
         engine.walkRoute(waypoints,loop);saveState();
         event("autowalk-started","stops="+waypoints.length+" loop="+loop+" speed="+engine.speedKmh);
     }
@@ -1051,8 +1012,6 @@ public final class Control {
         saveState();return next;
     }
     public static void suspendForBackground() {
-        gameRoutes.stop("L'appli n'est plus au premier plan ; vérifie la Route en cours dans le jeu avant de relancer");
-        gameRoutesPlanning=false;gameRoutes.setPlanning(false);
         requestInteractionStop();
         OneShotAutomation.reset();
         AutoRaid.reset();
@@ -1126,15 +1085,6 @@ public final class Control {
         saveState();
     }
     private static boolean joystickVisible=true;
-    // Visibility only. Bits are stable menu-entry IDs, independent of feature settings.
-    private static volatile int quickMenuHidden;
-    public static int quickMenuHidden(){return quickMenuHidden;}
-    public static boolean quickMenuVisible(int bit){return (quickMenuHidden&bit)==0;}
-    public static void setQuickMenuVisible(int bit,boolean visible){
-        if(bit<=0||bit>4096||(bit&(bit-1))!=0)return;
-        quickMenuHidden=visible?quickMenuHidden&~bit:quickMenuHidden|bit;
-        saveSettings();
-    }
     private static volatile int uiScalePercent=100;
     public static int uiScalePercent(){return uiScalePercent;}
     public static void setUiScalePercent(int value){if(value!=25&&value!=50&&value!=75&&value!=100)return;uiScalePercent=value;saveSettings();}
@@ -1154,7 +1104,7 @@ public final class Control {
         OneShotAutomation.tick(joystickHeld);
         AutoRaid.tick(joystickHeld);
         engine.setIdleWalkingAllowed(hostLive()&&desiredEnabled&&!joystickHeld&&!OneShotAutomation.idleBlocked()&&!AutoRaid.running()
-            &&!autoWalkPlanning&&!gameRoutesPlanning&&!gameRoutes.running()
+            &&!autoWalkPlanning
             &&!cameraSamplePending()&&!interactionDiagnosticRunning());
         engine.step(seconds);
     }
@@ -1178,7 +1128,6 @@ public final class Control {
             try { settingsWriter.flush(SETTINGS_FLUSH_MS); }
             catch(IOException pending) { event("settings-load-error","Pending save not flushed: "+pending); return; }
             StrictMode.ThreadPolicy policy=StrictMode.allowThreadDiskReads();
-            quickMenuHidden=0;
             idleWalking=false;engine.setIdleWalking(false);
             SmartCatchSettings.read(new Properties());
             GymAutomationSettings.read(new Properties());
@@ -1197,7 +1146,6 @@ public final class Control {
                 ShundoSniper.read(p);
                 ShinyScanner.read(p);
                 desiredEnabled=Boolean.parseBoolean(p.getProperty("locationSpoofing","true"));
-                quickMenuHidden=boundedSetting(p,"quickMenuHidden",16383);
                 try{uiScalePercent=Integer.parseInt(p.getProperty("uiScalePercent","100"));}catch(NumberFormatException invalid){uiScalePercent=100;}
                 if(uiScalePercent!=25&&uiScalePercent!=50&&uiScalePercent!=75&&uiScalePercent!=100)uiScalePercent=100;
                 uiTheme=boundedSetting(p,"uiTheme",3);
@@ -1269,7 +1217,6 @@ public final class Control {
                 int target=boundedSetting(p,"autoBallTarget",99);autoBallTarget=target>0?target:75;
                 pvpKeepLeagues=p.getProperty("pvpKeepLeagues")==null?3:boundedSetting(p,"pvpKeepLeagues",7);
                 skipCutscenes=Boolean.parseBoolean(p.getProperty("skipCutscenes","false"));
-                routeGiftExchange=Boolean.parseBoolean(p.getProperty("routeGiftExchange","false"));
                 batteryLowRes=Boolean.parseBoolean(p.getProperty("batteryLowRes","false"));
                 batteryFps20=Boolean.parseBoolean(p.getProperty("batteryFps20","false"));
                 batteryLowQuality=Boolean.parseBoolean(p.getProperty("batteryLowQuality","false"));
@@ -1356,7 +1303,6 @@ public final class Control {
         p.setProperty("locationSpoofing",String.valueOf(desiredEnabled));
         p.setProperty("darkTheme","true");p.setProperty("uiScalePercent",String.valueOf(uiScalePercent));p.setProperty("uiTheme",String.valueOf(uiTheme));
         p.setProperty("joystickVisible",String.valueOf(joystickVisible));
-        p.setProperty("quickMenuHidden",String.valueOf(quickMenuHidden));
         p.setProperty("idleWalking",String.valueOf(idleWalking));
         p.setProperty("spawnBooster",String.valueOf(spawnBooster));
         p.setProperty("giftOptions",String.valueOf(giftOptions));
@@ -1378,7 +1324,7 @@ public final class Control {
         p.setProperty("evolveTransferEnabled",String.valueOf(evolveTransferEnabled)); p.setProperty("evolveTransferMode",String.valueOf(evolveTransferMode)); p.setProperty("evolveTransferStages",String.valueOf(evolveTransferStages)); p.setProperty("evolveTransferSpecies",evolveTransferSpecies);
         p.setProperty("ivCatch",String.valueOf(ivCatchEnabled)); p.setProperty("ivOwned",String.valueOf(ivOwnedEnabled)); p.setProperty("ivCatchFormat",String.valueOf(ivCatchFormat)); p.setProperty("ivOwnedFormat",String.valueOf(ivOwnedFormat)); p.setProperty("storageIv",String.valueOf(storageIvMode)); p.setProperty("storageIvFormat",String.valueOf(storageIvFormat));
         p.setProperty("catchChance",String.valueOf(catchChanceShown)); p.setProperty("autoBall",String.valueOf(autoBall)); p.setProperty("autoBallTarget",String.valueOf(autoBallTarget)); p.setProperty("autoThrow",String.valueOf(autoThrow)); p.setProperty("autoThrowOnMap",String.valueOf(autoThrowOnMap));
-        p.setProperty("pvpKeepLeagues",String.valueOf(pvpKeepLeagues)); p.setProperty("skipCutscenes",String.valueOf(skipCutscenes)); p.setProperty("routeGiftExchange",String.valueOf(routeGiftExchange));
+        p.setProperty("pvpKeepLeagues",String.valueOf(pvpKeepLeagues)); p.setProperty("skipCutscenes",String.valueOf(skipCutscenes));
         p.setProperty("batteryLowRes",String.valueOf(batteryLowRes)); p.setProperty("batteryFps20",String.valueOf(batteryFps20)); p.setProperty("batteryLowQuality",String.valueOf(batteryLowQuality));
         p.setProperty("smartBattle",String.valueOf(smartBattle));
         p.setProperty("smartHealEnabled",String.valueOf(healEnabled)); p.setProperty("smartHealRevive",String.valueOf(healRevive)); p.setProperty("smartHealFull",String.valueOf(healFull));

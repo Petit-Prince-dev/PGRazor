@@ -13,13 +13,12 @@ package dev.pgrazor;
  */
 public class Control {
     public static MotionEngine engine = new MotionEngine();
-    public static boolean ready = true, gameRoute, planning, vgp = true, walkUnavailable;
+    public static boolean ready = true, planning, vgp = true, walkUnavailable;
     public static int saves, walks, teleports, events, battle = 1;
     public static String lastEvent = "";
 
     public static boolean automationReady() { return ready; }
     public static int battleOptions() { return battle; }
-    public static boolean gameRoutesRunning() { return gameRoute; }
     public static boolean automationPlanning() { return planning; }
 
     public static void walkRoute(double[][] points) {
