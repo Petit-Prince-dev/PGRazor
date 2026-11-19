@@ -89,16 +89,18 @@ public final class OverlayDrag implements View.OnTouchListener {
         int w = visualWidth(view), h = visualHeight(view);
         if (w == 0 || h == 0 || parent.getWidth() == 0 || parent.getHeight() == 0) return;
         android.graphics.Rect safe=UiViewport.bounds(parent);
-        view.setX(clampX(safe.left+Math.max(0,safe.width()-w)*clampUnit(prefs.getFloat(key+".fx",0f))));
-        view.setY(clampY(safe.top+Math.max(0,safe.height()-h)*clampUnit(prefs.getFloat(key+".fy",0f))));
+        // The top-left corner is what is remembered, so a card that grows or shrinks (the quick menu opening
+        // inside the panel, a status line appearing) keeps its place instead of sliding; it only moves when
+        // it would otherwise leave the screen.
+        view.setX(clampX(safe.left+safe.width()*clampUnit(prefs.getFloat(key+".fx",0f))));
+        view.setY(clampY(safe.top+safe.height()*clampUnit(prefs.getFloat(key+".fy",0f))));
         positionFollower();
     }
 
     private void save() {
         android.graphics.Rect safe=UiViewport.bounds(parent);
-        int trackW=safe.width()-visualWidth(view),trackH=safe.height()-visualHeight(view);
-        float fx=trackW>0?clampUnit((view.getX()-safe.left)/trackW):0f;
-        float fy=trackH>0?clampUnit((view.getY()-safe.top)/trackH):0f;
+        float fx=safe.width()>0?clampUnit((view.getX()-safe.left)/safe.width()):0f;
+        float fy=safe.height()>0?clampUnit((view.getY()-safe.top)/safe.height()):0f;
         prefs.edit().putFloat(key + ".fx", fx).putFloat(key + ".fy", fy).apply();
     }
 

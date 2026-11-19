@@ -103,7 +103,7 @@ public final class Pad {
         });
     }
     /** Fixed card width: long texts wrap onto more lines instead of widening the card. */
-    private static final int DOCK_WIDTH_DP=210;
+    private static final int DOCK_WIDTH_DP=216;
     /** A status line inside the card: small monospace text, no pill of its own, never cut (it wraps). */
     private TextView dockText(String label){
         TextView t=text(label,11,ink());t.setTypeface(SettingsUi.mono());t.setGravity(Gravity.CENTER_VERTICAL);
@@ -122,6 +122,7 @@ public final class Pad {
     private void syncDock(){
         if(dock==null)return;
         for(int i=0;i<dock.getChildCount();i++){
+            if(quickMenu!=null&&dock.getChildAt(i)==quickMenu.view())continue; // shown or hidden by the R button only
             ViewGroup row=(ViewGroup)dock.getChildAt(i);boolean any=false;
             for(int j=0;j<row.getChildCount()&&!any;j++)any=row.getChildAt(j).getVisibility()==View.VISIBLE;
             int want=any?View.VISIBLE:View.GONE;if(row.getVisibility()!=want)row.setVisibility(want);
@@ -252,7 +253,7 @@ public final class Pad {
         FrameLayout.LayoutParams dockLayout=new FrameLayout.LayoutParams(dp(DOCK_WIDTH_DP),-2,Gravity.TOP|Gravity.LEFT);dockLayout.leftMargin=dp(12);dockLayout.topMargin=dp(100);
         overlays.addView(dock,dockLayout);dockDrag=OverlayDrag.attach(overlays,dock,"hud");dock.setDrag(dockDrag);
         // The R launcher now toggles the compact quick menu; Settings there opens this panel full screen.
-        quickMenu=new QuickMenu(host,parent,launcher,new QuickMenu.Listener(){
+        quickMenu=new QuickMenu(host,new QuickMenu.Listener(){
             public void onMap(){openWorldMap();}
             public double onCycleWalkSpeed(){double s=Control.cycleWalkSpeed();refresh();return s;}
             public void onAutoWalk(){stick.release(true);AutoWalkDialog.show(activity);}
@@ -265,6 +266,9 @@ public final class Pad {
             public void onHideOverlays(){confirmHideOverlays();}
             public void onScreenOff(){turnScreenOff();}
         });
+        // The menu unfolds inside the card, right under the launcher line, so the R button stays visible to close it.
+        dock.addView(quickMenu.view(),1,new LinearLayout.LayoutParams(-1,-2));
+        quickMenu.setOnToggle(this::refresh);
         // Tap opens the quick menu, a long press turns the screen off; dragging moves the whole card (HudDock).
         launcher.setOnClickListener(v->{if(quickMenu!=null)quickMenu.toggle();});
         launcher.setOnLongClickListener(v->{turnScreenOff();return true;});
@@ -363,7 +367,6 @@ public final class Pad {
         }
         if(dockDrag!=null)dockDrag.refreshBounds();
         if(encounterBerry!=null)encounterBerry.applyUiScale(scale);
-        if(quickMenu!=null)quickMenu.applyScale(scale);
     }
     private void refresh() {
         applyMapScale();
@@ -380,7 +383,7 @@ public final class Pad {
             blackHint.setText(blackIssue.isEmpty()?BLACK_HINT:BLACK_HINT+"\n\n"+blackIssue);
             if(!blackIssue.isEmpty()){blackHint.setVisibility(View.VISIBLE);handler.postDelayed(()->{if(blackHint!=null)blackHint.setVisibility(View.GONE);},8000);}
         }
-        if(encounterBadge!=null){String count=!Control.encounterOverlay()||settings.isVisible()||(quickMenu!=null&&quickMenu.isShowing())?"":EncounterCounter.shortLabel();
+        if(encounterBadge!=null){String count=!Control.encounterOverlay()||settings.isVisible()?"":EncounterCounter.shortLabel();
             encounterBadge.setVisibility(count.isEmpty()?View.GONE:View.VISIBLE);
             if(!count.isEmpty()){setTextIfChanged(encounterBadge,count);encounterBadge.setContentDescription(EncounterCounter.label());}}
         if(shinyMark!=null){boolean mark=ShinyScanner.targetVisible()&&!settings.isVisible();shinyMark.setVisibility(mark?View.VISIBLE:View.GONE);
@@ -413,7 +416,7 @@ public final class Pad {
 
         String routeReward=Control.takeGameRoutesRewardNotice();
         if(!routeReward.isEmpty()&&!overlaysHidden)Toast.makeText(activity,routeReward,Toast.LENGTH_LONG).show();
-        if(gameRoutesOverlay!=null)gameRoutesOverlay.refresh(!settings.isVisible()&&!(quickMenu!=null&&quickMenu.isShowing()));
+        if(gameRoutesOverlay!=null)gameRoutesOverlay.refresh(!settings.isVisible());
         if(cooldownTimer!=null){cooldownTimer.setVisibility(Control.cooldownOverlay()?View.VISIBLE:View.GONE);setTextIfChanged(cooldownTimer,Cooldown.label());int cooldownColor=Cooldown.remaining()>0?SettingsUi.warn():accent();if(cooldownTimer.getCurrentTextColor()!=cooldownColor)cooldownTimer.setTextColor(cooldownColor);}
         // The view combines this Pad-side gate with Control.localTimeOverlay()/desiredEnabled() and its own throttle;
         // a false gate (settings open, quick menu up, or overlays hidden) stops its clock work entirely.
@@ -560,7 +563,6 @@ public final class Pad {
 
     /** Shared World map handler for both the settings list and the quick menu Map row. */
     private void openWorldMap() {
-        if(quickMenu!=null)quickMenu.hide();
         stick.release(true);
         Control.event("map-open", "Browsing does not apply a destination; current walk=" + Control.engine.walking);
         WorldMapDialog.show(activity, Control.engine.latitude, Control.engine.longitude, (lat, lon) -> {
