@@ -39,29 +39,18 @@ final class SettingsPanel {
     private final Host host;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final java.util.List<AlertDialog> itemDialogs = new java.util.ArrayList<>();
-    private final LinearLayout panel, content, body, home, results;
+    private final LinearLayout panel, content, body, home;
     private final ScrollView bodyScroll;
     private TextView coords, speedReadout, homeStatus, homeCounts;
     private View closeIcon, backIcon;
     private TextView title, versionLabel, discord;
     private SettingsUi.Dot homeDot;
-    // Settings search: the index is built once on first use, after every page has painted its labels.
-    private SettingsSearch searchIndex;
-    private final java.util.List<View> searchTargets=new java.util.ArrayList<>();
-    private final java.util.HashSet<String> searchSeen=new java.util.HashSet<>();
-    private LinearLayout searchBar;
-    private EditText searchField;
-    private View clearSearch;
-    private String searchQuery="";
-    private boolean suppressSearch;
     private int lastContentWidth=-1;
     // Category navigation: one home row and one page per category; current is -1 on the home screen.
     private final java.util.List<LinearLayout> pages=new java.util.ArrayList<>(), homeRows=new java.util.ArrayList<>();
     private final java.util.List<RowList> rowLists=new java.util.ArrayList<>();
     private final java.util.List<String> pageTitles=new java.util.ArrayList<>(), pageShorts=new java.util.ArrayList<>();
     private final java.util.List<Integer> pageIcons=new java.util.ArrayList<>();
-    /** A page opened from a search hit shows a back arrow to the results; opened from the menu it does not. */
-    private boolean fromSearch;
     private LinearLayout telemetry;
     private final java.util.List<TextView> pageSummaries=new java.util.ArrayList<>(), homeNames=new java.util.ArrayList<>();
     private final java.util.List<MenuIcon> homeIcons=new java.util.ArrayList<>();
@@ -261,17 +250,14 @@ final class SettingsPanel {
     /** Shows the home screen (index -1) or one category page, keeping the home scroll position for the way back. */
     private void open(int index){
         hideKeyboard();
-        if(current<0&&index>=0)homeScroll=bodyScroll.getScrollY();
-        clearQuery();
+        index=Math.max(0,Math.min(pages.size()-1,index));
         current=index;refreshHome();
-        results.setVisibility(View.GONE);
-        home.setVisibility(index<0?View.VISIBLE:View.GONE);
+        home.setVisibility(View.GONE);
         for(int i=0;i<pages.size();i++)pages.get(i).setVisibility(i==index?View.VISIBLE:View.GONE);
-        searchBar.setVisibility(index<0?View.VISIBLE:View.GONE);
-        set(title,index<0?"Rechercher":pageTitles.get(index));
-        backIcon.setVisibility(index>=0&&fromSearch?View.VISIBLE:View.GONE);
+        set(title,pageTitles.get(index));
+        backIcon.setVisibility(View.GONE);
         versionLabel.setVisibility(View.GONE);
-        final int y=index<0?homeScroll:0;bodyScroll.post(()->bodyScroll.scrollTo(0,y));
+        bodyScroll.post(()->bodyScroll.scrollTo(0,0));
     }
 
     SettingsPanel(Activity activity, Host host) {
@@ -284,7 +270,6 @@ final class SettingsPanel {
         // Header: back (on a category page), title, version (home only) and close.
         LinearLayout header = new LinearLayout(activity); header.setOrientation(LinearLayout.HORIZONTAL); header.setGravity(Gravity.CENTER_VERTICAL);
         backIcon = new BackIcon(activity); backIcon.setVisibility(View.GONE); header.addView(backIcon, new LinearLayout.LayoutParams(dp(44), dp(44)));
-        backIcon.setOnClickListener(v -> { fromSearch=false; open(-1); });
         title = text("PGRazor", 18, ink()); title.setTypeface(SettingsUi.medium()); title.setPadding(dp(4), 0, 0, 0);
         title.setSingleLine(true); title.setEllipsize(android.text.TextUtils.TruncateAt.END); title.setGravity(Gravity.CENTER_VERTICAL);
         header.addView(title, new LinearLayout.LayoutParams(0, dp(44), 1f));
@@ -297,30 +282,6 @@ final class SettingsPanel {
         header.addView(versionLabel, new LinearLayout.LayoutParams(-2, dp(44)));
         closeIcon = new CloseIcon(activity); header.addView(closeIcon, new LinearLayout.LayoutParams(dp(44), dp(44)));
         content.addView(header);
-
-        // Search sits at the top of the home screen, above the scrolling body.
-        searchBar = new LinearLayout(activity); searchBar.setOrientation(LinearLayout.HORIZONTAL); searchBar.setGravity(Gravity.CENTER_VERTICAL);
-        searchBar.setBackground(SettingsUi.fieldBackground(activity)); searchBar.setMinimumHeight(dp(42)); searchBar.setPadding(dp(12),0,dp(2),0);
-        SettingsUi.SearchGlyph glass = new SettingsUi.SearchGlyph(activity);
-        LinearLayout.LayoutParams glassParams=new LinearLayout.LayoutParams(dp(18),dp(18));glassParams.rightMargin=dp(10);searchBar.addView(glass,glassParams);
-        searchField = new EditText(activity);
-        searchField.setTag(SettingsUi.TAG_PLAIN_FIELD,Boolean.TRUE);
-        searchField.setBackground(null);
-        searchField.setTextSize(14); searchField.setTextColor(ink()); searchField.setHintTextColor(SettingsUi.faint());
-        searchField.setHint("Rechercher un réglage"); searchField.setSingleLine(true); searchField.setPadding(0,0,0,0);
-        searchField.setInputType(InputType.TYPE_CLASS_TEXT);
-        searchField.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
-        searchField.setContentDescription("Rechercher un réglage par nom ou par catégorie");
-        searchBar.addView(searchField,new LinearLayout.LayoutParams(0,dp(42),1f));
-        clearSearch = new SettingsUi.ClearGlyph(activity); clearSearch.setVisibility(View.GONE);
-        searchBar.addView(clearSearch,new LinearLayout.LayoutParams(dp(40),dp(42)));
-        clearSearch.setOnClickListener(v -> searchField.setText(""));
-        searchField.addTextChangedListener(new android.text.TextWatcher(){
-            public void beforeTextChanged(CharSequence s,int start,int count,int after){}
-            public void onTextChanged(CharSequence s,int start,int before,int count){}
-            public void afterTextChanged(android.text.Editable s){if(!suppressSearch)applySearch(s.toString());}
-        });
-        LinearLayout.LayoutParams searchParams=new LinearLayout.LayoutParams(-1,-2);searchParams.bottomMargin=dp(10);content.addView(searchBar,searchParams);
 
         body = new LinearLayout(activity); body.setOrientation(LinearLayout.VERTICAL);
         bodyScroll = new ScrollView(activity); bodyScroll.setFillViewport(false); bodyScroll.setVerticalScrollBarEnabled(false);
@@ -339,9 +300,7 @@ final class SettingsPanel {
         buildAutomationPage();
         buildDisplayPage();
         buildAccountsPage();   // last: its Diagnostics group collects status lines created by the pages above
-        // The categories live in the R menu; the sheet's own start screen is only the search.
-        caption(home,"Tape le nom d'un réglage ou un mot-clé : Ball auto, cooldown, IV, œufs…");
-        results = new LinearLayout(activity); results.setOrientation(LinearLayout.VERTICAL); results.setVisibility(View.GONE); body.addView(results);
+        home.setVisibility(View.GONE); // the categories live in the R menu
 
         // Closing the full-screen settings panel simply returns to the game (or the quick menu on the next tap).
         closeIcon.setOnClickListener(v -> { hideKeyboard(); hide(); });
@@ -365,8 +324,7 @@ final class SettingsPanel {
     private void hideKeyboard(){
         try{
             android.view.inputmethod.InputMethodManager keyboard=(android.view.inputmethod.InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE);
-            if(keyboard!=null&&searchField!=null)keyboard.hideSoftInputFromWindow(searchField.getWindowToken(),0);
-            if(searchField!=null)searchField.clearFocus();
+            if(keyboard!=null)keyboard.hideSoftInputFromWindow(panel.getWindowToken(),0);
         }catch(RuntimeException ignored){}
     }
 
@@ -378,7 +336,7 @@ final class SettingsPanel {
         homeDot=new SettingsUi.Dot(activity,SettingsUi.success());top.addView(homeDot,new LinearLayout.LayoutParams(dp(8),dp(8)));
         homeStatus=text("Démarrage",13,ink());homeStatus.setTypeface(SettingsUi.medium());homeStatus.setSingleLine(true);homeStatus.setEllipsize(android.text.TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams statusParams=new LinearLayout.LayoutParams(0,-2,1f);statusParams.leftMargin=dp(8);top.addView(homeStatus,statusParams);
-        speedReadout=text("0,0 km/h",12,accent());speedReadout.setTypeface(SettingsUi.mono());top.addView(speedReadout);
+        speedReadout=text(SettingsUi.speedLabel(0),12,accent());speedReadout.setTypeface(SettingsUi.mono());top.addView(speedReadout);
         card.addView(top);
         coords=text(String.format(Locale.US,"%.6f, %.6f",Control.engine.latitude,Control.engine.longitude),12,muted());coords.setTypeface(SettingsUi.mono());coords.setSingleLine(true);
         LinearLayout.LayoutParams coordsParams=new LinearLayout.LayoutParams(-1,-2);coordsParams.topMargin=dp(6);card.addView(coords,coordsParams);
@@ -793,15 +751,10 @@ final class SettingsPanel {
     View view(){return panel;}
     boolean isVisible(){return panel.getVisibility()==View.VISIBLE;}
     /** Bring the full-screen panel up; Pad applies current insets immediately after. */
-    void show(){showPage(-1);}
-    /** Opens the sheet on one category (or the search screen for -1), over the game. */
+    void show(){showPage(0);}
+    /** Opens the sheet on one category, over the game. */
     void showPage(int index){
-        fromSearch=false;homeScroll=0;open(index);panel.setVisibility(View.VISIBLE);panel.bringToFront();panel.requestApplyInsets();syncSystemBars();
-        if(index<0)searchField.post(()->{
-            searchField.requestFocus();
-            android.view.inputmethod.InputMethodManager keyboard=(android.view.inputmethod.InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE);
-            if(keyboard!=null)keyboard.showSoftInput(searchField,0);
-        });
+        open(index);panel.setVisibility(View.VISIBLE);panel.bringToFront();panel.requestApplyInsets();syncSystemBars();
     }
     int pageCount(){return pages.size();}
     String[] pageNames(){return pageShorts.toArray(new String[0]);}
@@ -824,160 +777,6 @@ final class SettingsPanel {
         if(berryPicker!=null)berryPicker.close();
         for(AlertDialog dialog:new java.util.ArrayList<>(itemDialogs))dialog.dismiss();
         itemDialogs.clear();handler.removeCallbacksAndMessages(null);
-    }
-
-    // ------------------------------------------------------------------ settings search
-    /** Applies a query immediately: the catalogue is small, so each keystroke filters the same list. */
-    private void applySearch(String raw){
-        String query=raw==null?"":raw.trim();
-        if(query.contentEquals(searchQuery))return;
-        searchQuery=query;
-        clearSearch.setVisibility(query.isEmpty()?View.GONE:View.VISIBLE);
-        if(query.isEmpty()){
-            results.setVisibility(View.GONE);
-            if(current<0)home.setVisibility(View.VISIBLE);
-            else pages.get(current).setVisibility(View.VISIBLE);
-            return;
-        }
-        ensureSearchIndex();
-        java.util.List<SettingsSearch.Entry> hits=searchIndex.find(query);
-        renderResults(hits);
-        home.setVisibility(View.GONE);
-        for(int i=0;i<pages.size();i++)pages.get(i).setVisibility(View.GONE);
-        results.setVisibility(View.VISIBLE);
-        bodyScroll.scrollTo(0,0);
-    }
-
-    /** Empties the field without letting the watcher fight the page transition that is about to happen. */
-    private void clearQuery(){
-        if(searchField==null)return;
-        if(searchField.length()>0){suppressSearch=true;searchField.setText("");suppressSearch=false;}
-        searchQuery="";
-        if(clearSearch!=null)clearSearch.setVisibility(View.GONE);
-        if(results!=null)results.setVisibility(View.GONE);
-    }
-
-    private void ensureSearchIndex(){
-        if(searchIndex!=null)return;
-        searchIndex=new SettingsSearch();searchTargets.clear();searchSeen.clear();
-        for(int i=0;i<pages.size();i++)collectSearch(pages.get(i),pageTitles.get(i),"",i);
-    }
-
-    /**
-     * Scans one page once. Rows are recognised by their control, not by a second registry: a switch
-     * row contributes its label, a checkbox or button contributes its own text. Group cards carry
-     * their display label in {@link SettingsUi#TAG_GROUP}, so every hit can name its category.
-     */
-    private void collectSearch(View view,String category,String group,int pageIndex){
-        Object tag=view.getTag(SettingsUi.TAG_GROUP);
-        if(tag instanceof String)group=(String)tag;
-        if(view instanceof ViewGroup){
-            ViewGroup list=(ViewGroup)view;
-            if(hasSwitch(list)){
-                String label=firstText(list);
-                if(label!=null)registerSearch(label,group,category,pageIndex,view);
-                return;
-            }
-            for(int i=0;i<list.getChildCount();i++)collectSearch(list.getChildAt(i),category,group,pageIndex);
-        }else if(view instanceof CheckBox){
-            registerSearch(((CheckBox)view).getText().toString(),group,category,pageIndex,view);
-        }else if(view instanceof Button){
-            registerSearch(((Button)view).getText().toString(),group,category,pageIndex,view);
-        }
-    }
-
-    private static boolean hasSwitch(ViewGroup group){
-        for(int i=0;i<group.getChildCount();i++)if(group.getChildAt(i) instanceof Switch)return true;
-        return false;
-    }
-
-    private static String firstText(ViewGroup group){
-        for(int i=0;i<group.getChildCount();i++){
-            View child=group.getChildAt(i);
-            if(child instanceof CompoundButton)continue;
-            if(child instanceof TextView){
-                CharSequence text=((TextView)child).getText();
-                if(text!=null&&text.length()>0)return text.toString();
-            }else if(child instanceof ViewGroup){
-                String nested=firstText((ViewGroup)child);
-                if(nested!=null)return nested;
-            }
-        }
-        return null;
-    }
-
-    private void registerSearch(String raw,String group,String category,int pageIndex,View target){
-        String name=SettingsSearch.cleanName(raw);
-        if(name.isEmpty())return;
-        String key=pageIndex+"|"+name.toLowerCase(Locale.ROOT);
-        if(!searchSeen.add(key))return;
-        int id=searchIndex.add(name,group==null?"":group,category,pageIndex);
-        while(searchTargets.size()<=id)searchTargets.add(null);
-        searchTargets.set(id,target);
-    }
-
-    private void renderResults(java.util.List<SettingsSearch.Entry> hits){
-        results.removeAllViews();
-        if(hits.isEmpty()){
-            LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);
-            card.setBackground(SettingsUi.cardBackground(activity));card.setTag(SettingsUi.TAG_CARD,Boolean.TRUE);card.setPadding(dp(16),dp(16),dp(16),dp(12));
-            TextView empty=text("Aucun réglage trouvé",14,ink());empty.setTypeface(SettingsUi.medium());card.addView(empty);
-            TextView hint=text("Essaie un mot-clé : Ball auto, cooldown, IV…",12,muted());
-            hint.setPadding(0,dp(4),0,dp(10));card.addView(hint);
-            Button clear=button("Effacer la recherche");clear.setOnClickListener(v->searchField.setText(""));card.addView(clear);
-            results.addView(card);
-            return;
-        }
-        TextView count=text(hits.size()==1?"1 réglage":hits.size()<=60?hits.size()+" réglages":hits.size()+" réglages · 60 premiers",11,SettingsUi.faint());
-        count.setTypeface(SettingsUi.mono());
-        results.addView(count);
-        int limit=Math.min(hits.size(),60);
-        for(int i=0;i<limit;i++){
-            final SettingsSearch.Entry entry=hits.get(i);
-            final View target=searchTargets.get(entry.id);
-            LinearLayout row=new LinearLayout(activity);row.setOrientation(LinearLayout.HORIZONTAL);row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setBackground(SettingsUi.ripple(SettingsUi.cardBackground(activity)));
-            row.setTag(SettingsUi.TAG_CARD_ROW,Boolean.TRUE);
-            row.setClickable(true);row.setFocusable(true);row.setPadding(dp(14),dp(10),dp(10),dp(10));
-            LinearLayout texts=new LinearLayout(activity);texts.setOrientation(LinearLayout.VERTICAL);
-            TextView name=text(entry.name,14,ink());name.setTypeface(SettingsUi.medium());texts.addView(name);
-            String meta=entry.group==null||entry.group.isEmpty()?entry.category:entry.group+" · "+entry.category;
-            TextView where=text(meta,11,muted());where.setSingleLine(true);where.setEllipsize(android.text.TextUtils.TruncateAt.END);texts.addView(where);
-            row.addView(texts,new LinearLayout.LayoutParams(0,-2,1f));
-            SettingsUi.Chevron chevron=new SettingsUi.Chevron(activity);row.addView(chevron,new LinearLayout.LayoutParams(dp(20),dp(20)));
-            row.setOnClickListener(v->jumpTo(entry.page,target));
-            LinearLayout.LayoutParams rowParams=new LinearLayout.LayoutParams(-1,-2);rowParams.topMargin=i==0?dp(8):dp(6);results.addView(row,rowParams);
-        }
-    }
-
-    /** Opens the owning page, scrolls the target row to the top of the body and flashes an accent wash. */
-    private void jumpTo(int pageIndex,View target){
-        fromSearch=true;open(pageIndex);
-        if(target==null)return;
-        bodyScroll.post(()->{
-            // A match can live in a collapsed group: open it, then measure once layout has settled.
-            for(View parent=target;parent!=null&&parent!=body;){
-                Object header=parent.getTag(SettingsUi.TAG_SECTION_HEAD);
-                if(header instanceof View&&parent.getVisibility()!=View.VISIBLE)((View)header).performClick();
-                ViewParent next=parent.getParent();
-                parent=next instanceof View?(View)next:null;
-            }
-            bodyScroll.post(()->reveal(pageIndex,target));
-        });
-    }
-
-    private void reveal(int pageIndex,View target){
-        if(current!=pageIndex||target.getParent()==null)return;
-        int y=0;View view=target;
-        while(view!=null&&view!=body){
-            y+=view.getTop();
-            ViewParent parent=view.getParent();
-            view=parent instanceof View?(View)parent:null;
-        }
-        if(view!=body)return;
-        bodyScroll.scrollTo(0,Math.max(0,y-dp(16)));
-        target.setForeground(SettingsUi.rounded(activity,SettingsUi.accentSoft(),SettingsUi.RADIUS_CONTROL));
-        handler.postDelayed(()->target.setForeground(null),900);
     }
 
     /** Pads the full-screen settings panel inside the status bar, navigation bar, and IME. */
@@ -1012,8 +811,6 @@ final class SettingsPanel {
         for(RowList rows:rowLists)rows.setDividerDrawable(SettingsUi.hairline(activity));
         for(TextView name:homeNames){name.setTextColor(ink());name.setTypeface(SettingsUi.medium());}
         for(TextView summary:pageSummaries)summary.setTextColor(muted());
-        if(searchBar!=null)searchBar.setBackground(SettingsUi.fieldBackground(activity));
-        if(searchField!=null){searchField.setTextColor(ink());searchField.setHintTextColor(SettingsUi.faint());}
         if(homeDot!=null)homeDot.setColor(telemetryColor());
         for(MenuIcon icon:homeIcons){icon.invalidate();if(icon.getParent() instanceof View)((View)icon.getParent()).setBackground(SettingsUi.rounded(activity,SettingsUi.accentSoft(),12));}
         styleThemeChips();
@@ -1128,7 +925,7 @@ final class SettingsPanel {
     private void refreshLocationStatus() {
         if(uiScale!=null)set(uiScale,"Taille des overlays : "+Control.uiScalePercent()+" %");
         set(coords,String.format(Locale.US,"%.6f, %.6f",Control.engine.latitude,Control.engine.longitude));
-        set(speedReadout,String.format(Locale.FRANCE,"%.1f km/h",Control.engine.speedKmh));
+        set(speedReadout,SettingsUi.speedLabel(Control.engine.speedKmh));
         MotionEngine.RouteProgress route=Control.engine.routeProgress();
         locationSwitch.setChecked(Control.desiredEnabled());
         String movement=!Control.desiredEnabled()?"Position réelle":Control.engine.enabled ? (Control.engine.walking ? "En marche" : "Spoof actif") : "En attente du jeu";

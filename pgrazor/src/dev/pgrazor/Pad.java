@@ -263,7 +263,6 @@ public final class Pad {
             public void onTeleport(){stick.release(true);QuickLocationDialogs.showTeleport(activity,Pad.this::quickTeleport,Pad.this::quickWalk);}
             public void onHotspots(){stick.release(true);HotspotsDialog.showQuick(activity,Pad.this::quickTeleport,Pad.this::quickWalk);}
             public void onSettingsPage(int index){openSettings(index);}
-            public void onSearch(){openSettings(-1);}
             public void onHideOverlays(){confirmHideOverlays();}
             public void onScreenOff(){turnScreenOff();}
         },settings.pageNames(),settings.pageIcons());

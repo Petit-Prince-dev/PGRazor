@@ -16,9 +16,9 @@ import java.util.Locale;
  * launcher's line stays on top and the menu unfolds right under it, so the same R button closes it
  * (nothing else does: no outside-tap dismissal).
  *
- * <p>Layout, top to bottom: walking speed (tap to cycle) with a search button; the "Raccourcis" grid
- * (map, teleport, walks, feeds, screen); the "Réglages" grid, one tile per settings category, each
- * opening that category as a floating sheet; then the version and the Discord link. Shortcuts can be
+ * <p>Layout, top to bottom: walking speed (tap to cycle); the "Raccourcis" grid
+ * (map, teleport, walks, feeds, screen); then the "Réglages" grid, one tile per settings category,
+ * each opening that category as a floating sheet. Shortcuts can be
  * hidden in Affichage → Raccourcis affichés (the grid re-flows, no gaps); settings tiles always show,
  * so every option of the mod stays reachable from here.
  */
@@ -35,8 +35,6 @@ public final class QuickMenu {
         void onTeleport();
         /** Opens one settings category (index into the pages the settings sheet was built with). */
         void onSettingsPage(int index);
-        /** Opens the settings sheet on its search field. */
-        void onSearch();
         /** Asks to hide every PGRazor overlay (three fingers on screen show them again). */
         void onHideOverlays();
         /** "Éteindre l'écran": the game keeps running while the screen is off. */
@@ -44,7 +42,7 @@ public final class QuickMenu {
     }
 
     static final int MAP = MenuIcon.MAP, WALK = MenuIcon.WALK, AUTOWALK = MenuIcon.AUTOWALK, FEEDS = MenuIcon.FEEDS, FAVORITES = MenuIcon.FAVORITES, TELEPORT = MenuIcon.TELEPORT,
-        HIDE = MenuIcon.HIDE, ROUTES = MenuIcon.ROUTES, POWER = MenuIcon.POWER, HOTSPOT = MenuIcon.HOTSPOT, SEARCH = MenuIcon.SEARCH;
+        HIDE = MenuIcon.HIDE, ROUTES = MenuIcon.ROUTES, POWER = MenuIcon.POWER, HOTSPOT = MenuIcon.HOTSPOT;
 
     /**
      * Names shown in Affichage → Raccourcis affichés. Append-only order: the persisted visibility bit is
@@ -58,9 +56,8 @@ public final class QuickMenu {
     private final Activity activity;
     private final Listener listener;
     private final LinearLayout card, shortcutGrid, settingsGrid, walk, header;
-    private final TextView walkSpeed, walkName, shortcutHead, settingsHead, version, discord;
-    private final MenuIcon walkIcon, searchIcon;
-    private final View search;
+    private final TextView walkSpeed, walkName, shortcutHead, settingsHead;
+    private final MenuIcon walkIcon;
     private final List<View> shortcuts = new ArrayList<>();
     private final List<Integer> shortcutBits = new ArrayList<>();
     private final List<View> settingTiles = new ArrayList<>();
@@ -78,7 +75,7 @@ public final class QuickMenu {
         card = new LinearLayout(activity); card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(0, dp(6), 0, dp(2));
 
-        // Walking speed (tap cycles it, the menu stays open) and the settings search.
+        // Walking speed: tap cycles it, the menu stays open.
         header = new LinearLayout(activity); header.setOrientation(LinearLayout.HORIZONTAL); header.setGravity(Gravity.CENTER_VERTICAL);
         walk = new LinearLayout(activity); walk.setOrientation(LinearLayout.HORIZONTAL); walk.setGravity(Gravity.CENTER_VERTICAL);
         walk.setPadding(dp(10), 0, dp(10), 0); walk.setMinimumHeight(dp(36)); walk.setClickable(true); walk.setFocusable(true);
@@ -90,13 +87,6 @@ public final class QuickMenu {
         walk.addView(walkSpeed, new LinearLayout.LayoutParams(-2, -2));
         walk.setOnClickListener(v -> { listener.onCycleWalkSpeed(); updateWalk(); });
         header.addView(walk, new LinearLayout.LayoutParams(0, dp(36), 1f));
-        LinearLayout searchBox = new LinearLayout(activity); searchBox.setGravity(Gravity.CENTER); searchBox.setClickable(true); searchBox.setFocusable(true);
-        searchBox.setContentDescription("Rechercher un réglage");
-        searchIcon = new MenuIcon(activity, SEARCH); searchBox.addView(searchIcon, new LinearLayout.LayoutParams(dp(18), dp(18)));
-        searchBox.setOnClickListener(v -> listener.onSearch());
-        search = searchBox;
-        LinearLayout.LayoutParams searchParams = new LinearLayout.LayoutParams(dp(36), dp(36)); searchParams.leftMargin = dp(6);
-        header.addView(search, searchParams);
         card.addView(header);
 
         shortcutHead = sectionHead("Raccourcis");
@@ -120,22 +110,6 @@ public final class QuickMenu {
             settingTiles.add(tile(pageIcons[i], pageNames[i], () -> listener.onSettingsPage(index)));
         }
         flow(settingsGrid, settingTiles);
-
-        // Footer: version on the left, the community link on the right.
-        LinearLayout footer = new LinearLayout(activity); footer.setOrientation(LinearLayout.HORIZONTAL); footer.setGravity(Gravity.CENTER_VERTICAL);
-        footer.setPadding(dp(4), dp(4), 0, 0);
-        version = new TextView(activity); version.setText(BuildVersion.NAME); version.setTextSize(10); version.setTypeface(SettingsUi.mono());
-        version.setSingleLine(true); version.setEllipsize(TextUtils.TruncateAt.END);
-        footer.addView(version, new LinearLayout.LayoutParams(0, -2, 1f));
-        discord = new TextView(activity); discord.setText("Discord"); discord.setTextSize(11); discord.setTypeface(SettingsUi.medium());
-        discord.setGravity(Gravity.CENTER); discord.setPadding(dp(8), dp(4), dp(8), dp(4)); discord.setClickable(true); discord.setFocusable(true);
-        discord.setContentDescription("Rejoindre la communauté Discord de PGRazor");
-        discord.setOnClickListener(v -> {
-            try { activity.startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://discord.gg/9QqfkDSQX3"))); }
-            catch (android.content.ActivityNotFoundException unavailable) { Toast.makeText(activity, "Aucune appli pour ouvrir les liens Discord", Toast.LENGTH_SHORT).show(); }
-        });
-        footer.addView(discord, new LinearLayout.LayoutParams(-2, -2));
-        card.addView(footer, new LinearLayout.LayoutParams(-1, -2));
 
         card.setVisibility(View.GONE);
         applyTheme();
@@ -186,7 +160,7 @@ public final class QuickMenu {
     }
 
     private void updateWalk() {
-        String text = String.format(Locale.FRANCE, "%.1f km/h", Control.engine.speedKmh);
+        String text = SettingsUi.speedLabel(Control.engine.speedKmh);
         if (!text.contentEquals(walkSpeed.getText())) walkSpeed.setText(text);
     }
 
@@ -231,17 +205,14 @@ public final class QuickMenu {
 
     public void applyTheme() {
         walk.setBackground(pressable(SettingsUi.raised()));
-        search.setBackground(pressable(SettingsUi.raised()));
         walkName.setTextColor(SettingsUi.muted());
         walkSpeed.setTextColor(SettingsUi.accent());
-        walkIcon.accent = true; walkIcon.invalidate(); searchIcon.invalidate();
+        walkIcon.accent = true; walkIcon.invalidate();
         for (TextView head : new TextView[]{shortcutHead, settingsHead}) head.setTextColor(SettingsUi.faint());
         for (View t : shortcuts) t.setBackground(pressable(0x00000000));
         for (View t : settingTiles) t.setBackground(pressable(0x00000000));
         for (TextView label : tileLabels) label.setTextColor(SettingsUi.ink());
         for (MenuIcon icon : tileIcons) icon.invalidate();
-        version.setTextColor(SettingsUi.faint());
-        discord.setTextColor(SettingsUi.accent()); discord.setBackground(pressable(0x00000000));
     }
 
     private int dp(float x) { return Math.round(x * activity.getResources().getDisplayMetrics().density); }

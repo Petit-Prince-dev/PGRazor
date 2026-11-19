@@ -85,6 +85,10 @@ final class SettingsUi {
     static int danger()  { return dark() ? 0xfff07a72 : 0xffb3261e; }
     static int rippleColor() { return (accent() & 0x00ffffff) | 0x33000000; }
 
+    /** The walking speed as shown to the player: 0 is a pause, not a speed. */
+    static String speedLabel(double kmh) {
+        return kmh <= 0 ? "À l'arrêt" : String.format(java.util.Locale.FRANCE, "%.1f km/h", kmh);
+    }
     static int dp(Context context, float x) { return Math.round(x * context.getResources().getDisplayMetrics().density); }
 
     /**

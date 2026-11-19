@@ -68,104 +68,133 @@ public final class WorldMapDialog {
         if (!Double.isFinite(latitude) || !Double.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)
             throw new IllegalArgumentException("Coordonnées de carte invalides");
         Context ui = MapTheme.wrap(activity); // themed chrome; the map view itself keeps the real Activity
+        // One full-screen column: header, search, map, pin line, layers, tools, then the action bar.
+        // The actions are part of the layout (not the dialog's own button bar), so the map shrinks to
+        // make room for them and they can never be pushed off screen.
         ResponsiveLayout layout = new ResponsiveLayout(activity);
         layout.setOrientation(LinearLayout.VERTICAL);
         int pad = dp(activity, 12);
-        layout.setPadding(pad, pad, pad, pad);
-        TextView hint = label(ui, "Touche la carte pour placer l'épingle · glisse pour bouger · pince pour zoomer.", 12);
-        layout.addView(hint);
-        TextView selected = label(ui, "", 13);
-        selected.setTypeface(SettingsUi.medium());
-        selected.setPadding(0, dp(activity, 4), 0, dp(activity, 6));
-        LinearLayout selectionRow = new LinearLayout(ui);
-        selectionRow.setGravity(Gravity.CENTER_VERTICAL);
-        layout.addView(selected);
-        Button saved = button(ui, "Mes lieux");
-        selectionRow.addView(saved, new LinearLayout.LayoutParams(0, dp(activity, 40), 1));
-        Button hotspots = button(ui, "Hotspots");
-        selectionRow.addView(hotspots, new LinearLayout.LayoutParams(0, dp(activity, 40), 1));
-        Button routeMode = button(ui, "Route"); routeMode.setContentDescription("Ouvrir le créateur de route");
+        layout.setPadding(pad, dp(activity, 4), pad, dp(activity, 8));
+
+        LinearLayout header = new LinearLayout(ui); header.setGravity(Gravity.CENTER_VERTICAL);
+        TextView title = label(ui, "Carte du monde", 17); title.setTypeface(SettingsUi.medium()); title.setSingleLine(true);
+        header.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+        Button routeMode = toolButton(ui, "Route"); routeMode.setContentDescription("Ouvrir le créateur de route");
         routeMode.setVisibility(route == null ? View.GONE : View.VISIBLE);
-        selectionRow.addView(routeMode,new LinearLayout.LayoutParams(dp(activity, 64),dp(activity, 40)));
-        layout.addView(selectionRow);
-        TextView attribution = label(ui, "", 12);
-        attribution.setGravity(Gravity.RIGHT);
-        attribution.setPadding(0, 0, 0, dp(activity, 6));
-        attribution.setText(Html.fromHtml("© <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap contributors</a>", Html.FROM_HTML_MODE_LEGACY));
-        attribution.setMovementMethod(LinkMovementMethod.getInstance());
-        layout.addView(attribution);
-        TextView status = label(ui, "Chargement de la carte…", 12);
+        LinearLayout.LayoutParams routeParams = new LinearLayout.LayoutParams(-2, dp(activity, 34)); routeParams.rightMargin = dp(activity, 6);
+        header.addView(routeMode, routeParams);
+        TextView close = label(ui, "✕", 18); close.setGravity(Gravity.CENTER); close.setClickable(true); close.setFocusable(true);
+        close.setContentDescription("Fermer la carte"); close.setTag(DialogStyle.KEEP);
+        header.addView(close, new LinearLayout.LayoutParams(dp(activity, 40), dp(activity, 40)));
+        layout.addView(header, new LinearLayout.LayoutParams(-1, dp(activity, 48)));
+
+        Button search = toolButton(ui, "Chercher un lieu ou des coordonnées");
+        search.setGravity(Gravity.CENTER_VERTICAL | Gravity.START); search.setPadding(dp(activity, 14), 0, dp(activity, 14), 0);
+        search.setTag(DialogStyle.KEEP);
+        LinearLayout.LayoutParams searchParams = new LinearLayout.LayoutParams(-1, dp(activity, 40)); searchParams.bottomMargin = dp(activity, 8);
+        layout.addView(search, searchParams);
+
+        TextView selected = label(ui, "", 12);
+        TextView status = label(ui, "Chargement de la carte…", 11);
         MapView map = new MapView(activity, latitude, longitude, selected, status);
-        final AlertDialog[] hotspotsDialog = {null}, cooldownDialog = {null};
-        hotspots.setOnClickListener(v -> {
-            if(hotspotsDialog[0]!=null && hotspotsDialog[0].isShowing())return;
-            hotspotsDialog[0]=HotspotsDialog.show(activity,spot->{map.select(spot.latitude,spot.longitude);});
-        });
-        Button search = button(ui, "Chercher un lieu ou des coordonnées");
-        layout.addView(search, new LinearLayout.LayoutParams(-1, dp(activity, 40)));
-        final AlertDialog[] searchDialog = {null};
-        search.setOnClickListener(v -> {
-            if(searchDialog[0]!=null && searchDialog[0].isShowing()) return;
-            searchDialog[0]=MapSearchDialog.show(activity, MapProjection.latitude(map.centerY),
-                MapProjection.longitude(map.centerX), (lat,lon) -> map.select(lat,lon));
-        });
-        LinearLayout layers=new LinearLayout(ui);
-        SharedPreferences preferences=AccountProfiles.preferences(activity,"pgrazor-map");
-        String[] names={"Stops","Gyms","Raids"},labels={"PokéStops","Arènes","Raids"};
-        for(int i=0;i<names.length;i++){
-            final int bit=1<<i;CheckBox toggle=new CheckBox(ui);toggle.setText(labels[i]);toggle.setTextSize(12);
-            boolean enabled=preferences.getBoolean(names[i],false);if(enabled)map.setPoiLayer(bit,true);toggle.setChecked(enabled);
-            final String key=names[i];toggle.setOnCheckedChangeListener((b,on)->{map.setPoiLayer(bit,on);preferences.edit().putBoolean(key,on).apply();map.refreshPois();});
-            layers.addView(toggle,new LinearLayout.LayoutParams(0,-2,1));
-        }
-        layout.addView(layers);
-        TextView coverage=label(ui,"Lieux proches chargés par le jeu",11);layout.addView(coverage);map.setPoiStatus(coverage);
-        map.refreshPois();
-        PlaceUi places = new PlaceUi(activity, ui, map, saved);
-        saved.setOnClickListener(v -> places.openLibrary());
         layout.map = map;
         // The map fills the space left by the controls (see ResponsiveLayout); this is only a baseline height.
         layout.addView(map, new LinearLayout.LayoutParams(-1, dp(activity, 240)));
-        CheckBox loop = new CheckBox(ui); loop.setText("Route en boucle"); loop.setTextSize(13);
-        loop.setContentDescription("Répéter la route depuis le premier arrêt après le dernier"); loop.setVisibility(View.GONE);
-        LinearLayout routeTools = new LinearLayout(ui);
-        routeTools.setGravity(Gravity.CENTER_VERTICAL);
-        routeTools.addView(loop,new LinearLayout.LayoutParams(0,dp(activity,40),1));
-        Button clearRoute=button(ui,"Effacer la route");
-        clearRoute.setContentDescription("Effacer tous les arrêts du brouillon de route");
-        clearRoute.setVisibility(View.GONE);
-        routeTools.addView(clearRoute,new LinearLayout.LayoutParams(dp(activity,112),dp(activity,40)));
-        layout.addView(routeTools);
-        // Each centers the map on its location and copies the coordinates.
-        LinearLayout copyRow = new LinearLayout(ui);
-        Button current=button(ui,"Copier ma position"), pin=button(ui,"Copier l'épingle");
+
+        // Pin coordinates, then the hint (route progress in route mode).
+        selected.setTypeface(SettingsUi.mono()); selected.setPadding(0, dp(activity, 6), 0, 0);
+        layout.addView(selected);
+        TextView hint = label(ui, "", 11);
+        layout.addView(hint);
+
+        // Map layers on one line.
+        LinearLayout layers = new LinearLayout(ui); layers.setGravity(Gravity.CENTER_VERTICAL);
+        SharedPreferences preferences = AccountProfiles.preferences(activity, "pgrazor-map");
+        String[] names = {"Stops", "Gyms", "Raids"}, labels = {"PokéStops", "Arènes", "Raids"};
+        for (int i = 0; i < names.length; i++) {
+            final int bit = 1 << i; CheckBox toggle = new CheckBox(ui); toggle.setText(labels[i]); toggle.setTextSize(12);
+            boolean enabled = preferences.getBoolean(names[i], false); if (enabled) map.setPoiLayer(bit, true); toggle.setChecked(enabled);
+            final String key = names[i];
+            toggle.setOnCheckedChangeListener((b, on) -> { map.setPoiLayer(bit, on); preferences.edit().putBoolean(key, on).apply(); map.refreshPois(); });
+            layers.addView(toggle, new LinearLayout.LayoutParams(0, dp(activity, 40), 1));
+        }
+        layout.addView(layers);
+
+        // Map tools (route mode turns them into Ajouter / Annuler / Arrêts / GPX).
+        LinearLayout tools = new LinearLayout(ui);
+        Button globe = toolButton(ui, "Monde"), center = toolButton(ui, "Centrer"), retry = toolButton(ui, "Réessayer");
+        Button gpx = route == null ? null : toolButton(ui, "GPX");
+        if (gpx != null) { gpx.setContentDescription("Enregistrer, importer ou exporter une route GPX"); gpx.setVisibility(View.GONE); }
+        for (Button b : gpx == null ? new Button[]{globe, center, retry} : new Button[]{globe, center, retry, gpx}) tools.addView(b, toolParams(activity));
+        layout.addView(tools);
+        // Places: saved spots, hotspots, and copying coordinates (each also centres the map).
+        LinearLayout places = new LinearLayout(ui);
+        Button saved = toolButton(ui, "Mes lieux"), hotspots = toolButton(ui, "Hotspots");
+        Button current = toolButton(ui, "Ma position"), pin = toolButton(ui, "Copier l'épingle");
         current.setContentDescription("Centrer la carte sur ta position en jeu et copier ses coordonnées");
-        pin.setContentDescription("Centrer la carte sur l'épingle rouge et copier ses coordonnées");
+        pin.setContentDescription("Centrer la carte sur l'épingle et copier ses coordonnées");
+        for (Button b : new Button[]{saved, hotspots, current, pin}) places.addView(b, toolParams(activity));
+        layout.addView(places);
+        // Route-only line: loop and clear.
+        LinearLayout routeTools = new LinearLayout(ui); routeTools.setGravity(Gravity.CENTER_VERTICAL);
+        CheckBox loop = new CheckBox(ui); loop.setText("Route en boucle"); loop.setTextSize(12);
+        loop.setContentDescription("Répéter la route depuis le premier arrêt après le dernier"); loop.setVisibility(View.GONE);
+        routeTools.addView(loop, new LinearLayout.LayoutParams(0, dp(activity, 40), 1));
+        Button clearRoute = toolButton(ui, "Effacer la route");
+        clearRoute.setContentDescription("Effacer tous les arrêts du brouillon de route"); clearRoute.setVisibility(View.GONE);
+        routeTools.addView(clearRoute, new LinearLayout.LayoutParams(dp(activity, 120), dp(activity, 36)));
+        layout.addView(routeTools);
+
+        // Status and the tile attribution share one small line.
+        LinearLayout foot = new LinearLayout(ui); foot.setGravity(Gravity.CENTER_VERTICAL); foot.setPadding(0, dp(activity, 2), 0, dp(activity, 6));
+        status.setSingleLine(true); status.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        foot.addView(status, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView coverage = label(ui, "", 11); coverage.setVisibility(View.GONE);
+        map.setPoiStatus(coverage);
+        TextView attribution = label(ui, "", 10);
+        attribution.setText(Html.fromHtml("© <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a>", Html.FROM_HTML_MODE_LEGACY));
+        attribution.setMovementMethod(LinkMovementMethod.getInstance());
+        foot.addView(attribution, new LinearLayout.LayoutParams(-2, -2));
+        layout.addView(foot);
+        layout.addView(coverage);
+
+        // The action bar: Marcher ici (when walking is available) and the primary Téléporter.
+        LinearLayout actions = new LinearLayout(ui);
+        Button walkHere = toolButton(ui, "Marcher ici"), teleport = toolButton(ui, "Téléporter");
+        walkHere.setTextSize(14); teleport.setTextSize(14); teleport.setTypeface(SettingsUi.medium()); walkHere.setTypeface(SettingsUi.medium());
+        teleport.setTag(DialogStyle.KEEP); walkHere.setTag(DialogStyle.KEEP);
+        walkHere.setVisibility(walk == null ? View.GONE : View.VISIBLE);
+        LinearLayout.LayoutParams walkParams = new LinearLayout.LayoutParams(0, dp(activity, 44), 1); walkParams.rightMargin = dp(activity, 8);
+        actions.addView(walkHere, walkParams);
+        actions.addView(teleport, new LinearLayout.LayoutParams(0, dp(activity, 44), 1));
+        layout.addView(actions);
+
+        map.refreshPois();
+        final AlertDialog[] hotspotsDialog = {null}, cooldownDialog = {null}, searchDialog = {null};
+        hotspots.setOnClickListener(v -> {
+            if (hotspotsDialog[0] != null && hotspotsDialog[0].isShowing()) return;
+            hotspotsDialog[0] = HotspotsDialog.show(activity, spot -> { map.select(spot.latitude, spot.longitude); });
+        });
+        search.setOnClickListener(v -> {
+            if (searchDialog[0] != null && searchDialog[0].isShowing()) return;
+            searchDialog[0] = MapSearchDialog.show(activity, MapProjection.latitude(map.centerY),
+                MapProjection.longitude(map.centerX), (lat, lon) -> map.select(lat, lon));
+        });
+        PlaceUi placeUi = new PlaceUi(activity, ui, map, saved);
+        saved.setOnClickListener(v -> placeUi.openLibrary());
         current.setOnClickListener(v -> {
             map.centerCurrentLocation();
             CoordinateClipboard.copy(activity, Control.engine.latitude, Control.engine.longitude, "Ta position est copiée");
         });
         pin.setOnClickListener(v -> { map.centerSelection(); CoordinateClipboard.copy(activity, map.latitude, map.longitude, "Position de l'épingle copiée"); });
-        copyRow.addView(current, new LinearLayout.LayoutParams(0, dp(activity, 40), 1));
-        copyRow.addView(pin, new LinearLayout.LayoutParams(0, dp(activity, 40), 1));
-        layout.addView(copyRow);
-        LinearLayout actions = new LinearLayout(ui);
-        Button globe = button(ui, "Monde"), center = button(ui, "Centrer"), retry = button(ui, "Réessayer");
-        // The GPX menu button only exists when the route builder is available, and stays hidden until route mode.
-        Button gpx = route == null ? null : button(ui, "GPX");
-        if (gpx != null) { gpx.setContentDescription("Enregistrer, importer ou exporter une route GPX"); gpx.setVisibility(View.GONE); }
-        Button[] row = gpx == null ? new Button[] {globe, center, retry} : new Button[] {globe, center, retry, gpx};
-        for (Button b : row) actions.addView(b, new LinearLayout.LayoutParams(0, dp(activity, 40), 1));
         globe.setOnClickListener(v -> map.worldView());
         center.setOnClickListener(v -> map.centerSelection()); retry.setOnClickListener(v -> map.retry());
-        layout.addView(actions);
-        layout.addView(status);
-        RouteUi routes = route == null ? null : new RouteUi(activity,ui,map,routeMode,hint,globe,center,retry,gpx,clearRoute,loop,route,walk != null);
-        if(routes!=null)routes.reopen=()->WorldMapDialog.show(activity,Control.engine.latitude,Control.engine.longitude,listener,walk,route);
-        AlertDialog.Builder builder = new AlertDialog.Builder(ui).setTitle("Carte du monde").setView(layout)
-            .setNegativeButton("Annuler", null).setPositiveButton("Téléporter", null);
-        if (walk != null) builder.setNeutralButton("Marcher ici", null);
-        AlertDialog dialog = builder.create();
+
+        RouteUi routes = route == null ? null : new RouteUi(activity, ui, map, routeMode, hint, globe, center, retry, gpx, clearRoute, loop, route, walk != null);
+        if (routes != null) { routes.reopen = () -> WorldMapDialog.show(activity, Control.engine.latitude, Control.engine.longitude, listener, walk, route); routes.title = title; routes.action = teleport; routes.walkAction = walkHere; }
+        else hint.setText(MAP_HINT);
+        AlertDialog dialog = new AlertDialog.Builder(ui).setView(layout).create();
+        close.setOnClickListener(v -> dialog.dismiss());
         map.poiLayer.setDestinationActions(walk == null ? null : (lat, lon) -> {
             if (!walk.onDestination(lat, lon)) return false;
             dialog.dismiss(); return true;
@@ -177,30 +206,48 @@ public final class WorldMapDialog {
             });
             return false; // Keep details visible if the cooldown confirmation is cancelled.
         });
-        DialogLifecycle.bind(activity, dialog, () -> { if(hotspotsDialog[0]!=null)hotspotsDialog[0].dismiss(); if(cooldownDialog[0]!=null)cooldownDialog[0].dismiss(); if(searchDialog[0]!=null)searchDialog[0].dismiss(); if(routes!=null)routes.close(); places.close(); map.close(); });
+        teleport.setOnClickListener(v -> {
+            if (routes != null && routes.editing) { routes.start(); return; }
+            if (cooldownDialog[0] != null && cooldownDialog[0].isShowing()) return;
+            cooldownDialog[0] = TeleportDialog.confirm(activity, map.latitude, map.longitude, (lat, lon) -> {
+                if (!listener.onDestination(lat, lon)) return false;
+                dialog.dismiss(); return true;
+            });
+        });
+        if (walk != null) walkHere.setOnClickListener(v -> { if (walk.onDestination(map.latitude, map.longitude)) dialog.dismiss(); });
+        DialogLifecycle.bind(activity, dialog, () -> { if (hotspotsDialog[0] != null) hotspotsDialog[0].dismiss(); if (cooldownDialog[0] != null) cooldownDialog[0].dismiss(); if (searchDialog[0] != null) searchDialog[0].dismiss(); if (routes != null) routes.close(); placeUi.close(); map.close(); });
         dialog.setOnShowListener(d -> {
-            MapTheme.fullScreen(dialog); MapTheme.style(layout); MapTheme.styleButtons(dialog);
-            hint.setTextColor(SettingsUi.muted()); coverage.setTextColor(SettingsUi.faint()); status.setTextColor(SettingsUi.faint()); selected.setTextColor(SettingsUi.accent());
-            if(routes!=null)routes.attach(dialog);
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                if(routes!=null && routes.editing) { routes.start(); return; }
-                if(cooldownDialog[0]!=null && cooldownDialog[0].isShowing())return;
-                cooldownDialog[0]=TeleportDialog.confirm(activity,map.latitude,map.longitude,(lat,lon)->{
-                    if(!listener.onDestination(lat,lon))return false;
-                    dialog.dismiss();return true;
-                });
-            });
-            if (walk != null) dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
-                if (walk.onDestination(map.latitude, map.longitude)) dialog.dismiss();
-            });
+            MapTheme.fullScreen(dialog); MapTheme.style(layout);
+            // Colours after the generic pass: quiet secondary text, accent pin line, field-like search, filled primary.
+            title.setTextColor(SettingsUi.ink()); close.setTextColor(SettingsUi.muted());
+            close.setBackground(SettingsUi.ripple(SettingsUi.rounded(ui, 0x00000000, 20)));
+            selected.setTextColor(SettingsUi.accent());
+            for (TextView quiet : new TextView[]{hint, status, coverage}) quiet.setTextColor(SettingsUi.muted());
+            attribution.setTextColor(SettingsUi.faint());
+            search.setTextColor(SettingsUi.faint()); search.setBackground(SettingsUi.ripple(SettingsUi.fieldBackground(ui)));
+            teleport.setTextColor(SettingsUi.accentInk()); teleport.setBackground(SettingsUi.ripple(SettingsUi.rounded(ui, SettingsUi.accentFill(), 12)));
+            walkHere.setTextColor(SettingsUi.ink()); walkHere.setBackground(SettingsUi.ripple(SettingsUi.shape(ui, SettingsUi.raised(), 12, SettingsUi.border())));
+            if (routes != null) routes.attach(dialog);
         });
         dialog.show();
         return dialog;
     }
 
+    static final String MAP_HINT = "Touche la carte pour placer l'épingle · glisse pour bouger · pince pour zoomer.";
+
+    private static LinearLayout.LayoutParams toolParams(Context c) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(c, 36), 1); lp.setMargins(dp(c, 2), dp(c, 2), dp(c, 2), dp(c, 2)); return lp;
+    }
+    /** A compact tool button; colours and background come from MapTheme.style when the dialog shows. */
+    private static Button toolButton(Context c, String text) {
+        Button b = new Button(c); b.setText(text); b.setAllCaps(false); b.setTextSize(12); b.setSingleLine(true);
+        b.setEllipsize(android.text.TextUtils.TruncateAt.END); b.setStateListAnimator(null);
+        b.setMinHeight(0); b.setMinimumHeight(0); b.setMinWidth(0); b.setMinimumWidth(0); b.setPadding(dp(c, 6), 0, dp(c, 6), 0);
+        return b;
+    }
+
     private static int dp(Context c, float value) { return Math.round(value * c.getResources().getDisplayMetrics().density); }
     private static TextView label(Context c, String text, int size) { TextView v = new TextView(c); v.setText(text); v.setTextSize(size); return v; }
-    private static Button button(Context c, String text) { Button b = new Button(c); b.setText(text); b.setAllCaps(false); b.setTextSize(12); b.setPadding(0, 0, 0, 0); return b; }
 
     /** Route mode reuses the map toolbar and dialog action rather than consuming another row. */
     private static final class RouteUi {
@@ -218,6 +265,9 @@ public final class WorldMapDialog {
         final List<double[]> draft=new ArrayList<>();
         final List<AlertDialog> dialogs=new ArrayList<>();
         AlertDialog parent;
+        /** The map's own title and action buttons (the dialog has no built-in title or button bar). */
+        TextView title;
+        Button action, walkAction;
         boolean editing;
         /** The current draft came from a GPX import/selection, so it may exceed the manual LIMIT. */
         boolean imported;
@@ -240,7 +290,7 @@ public final class WorldMapDialog {
             boolean big=draft.size()>LIMIT;
             mode.setText(editing ? "Carte" : "Route");
             mode.setContentDescription(editing ? "Quitter le créateur de route sans démarrer" : "Ouvrir le créateur de route");
-            hint.setText(!editing ? "Touche la carte pour placer l'épingle · glisse pour bouger · pince pour zoomer."
+            hint.setText(!editing ? MAP_HINT
                 : big ? "Route GPX : "+draft.size()+" arrêts. Touche Démarrer pour la parcourir dans l'ordre."
                 : "Route : "+draft.size()+"/"+LIMIT+" arrêts. Touche la carte, puis Ajouter un arrêt.");
             add.setText(editing ? "Ajouter un arrêt" : "Monde"); add.setContentDescription(editing ? "Ajouter la destination choisie comme prochain arrêt" : "Afficher la carte du monde");
@@ -250,14 +300,12 @@ public final class WorldMapDialog {
             clearRoute.setVisibility(editing ? View.VISIBLE : View.GONE);clearRoute.setEnabled(!draft.isEmpty());
             add.setEnabled(!editing || draft.size()<LIMIT);undo.setEnabled(!editing || !draft.isEmpty());
             loop.setVisibility(editing ? View.VISIBLE : View.GONE); // route-only toggle; defaults to stopping at the last stop
-            if(parent!=null) {
-                parent.setTitle(editing ? "Créer une route" : "Carte du monde");
-                Button action=parent.getButton(AlertDialog.BUTTON_POSITIVE);
+            if(title!=null)title.setText(editing ? "Créer une route" : "Carte du monde");
+            if(action!=null) {
                 action.setText(editing ? "Démarrer la route" : "Téléporter");
                 action.setContentDescription(editing ? "Démarrer la route dans l'ordre des arrêts" : "Se téléporter à la destination choisie");
                 action.setEnabled(!editing || (draft.size()>=(imported?1:2) && draft.size()<=MAX));
-                Button walk=parent.getButton(AlertDialog.BUTTON_NEUTRAL);
-                if(walk!=null && hasWalk)walk.setVisibility(editing ? View.GONE : View.VISIBLE);
+                if(walkAction!=null && hasWalk)walkAction.setVisibility(editing ? View.GONE : View.VISIBLE);
             }
             map.setRoute(draft);
         }

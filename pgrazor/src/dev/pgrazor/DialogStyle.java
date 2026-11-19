@@ -25,6 +25,8 @@ public final class DialogStyle {
 
     /** Windows that draw their own chrome (the feed's game-style cards) and must not be restyled. */
     private static final java.util.Map<Window, Boolean> OWN_STYLE = new java.util.WeakHashMap<>();
+    /** Tag a view with this to leave it (and its children) exactly as its dialog styled it. */
+    public static final Object KEEP = new Object();
     static void keep(Window window) { if (window != null) OWN_STYLE.put(window, true); }
 
     /** Styles the dialog each time it is shown; safe to call before {@code show()}. */
@@ -89,6 +91,7 @@ public final class DialogStyle {
 
     /** Theme colours for a dialog body that may not have styled itself. */
     private static void recolor(View view) {
+        if (view.getTag() == KEEP) return;
         if (view instanceof EditText) {
             EditText field = (EditText) view;
             field.setTextColor(SettingsUi.ink()); field.setHintTextColor(SettingsUi.faint());

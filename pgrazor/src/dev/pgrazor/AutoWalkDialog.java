@@ -247,7 +247,7 @@ public final class AutoWalkDialog {
 
         private void updateRunning() {
             MotionEngine.RouteProgress progress = Control.engine.routeProgress();
-            running.setText(Control.engine.speedKmh==0 ? "La vitesse est de 0 km/h. Utilise l'icône de marche pour reprendre." : progress.active
+            running.setText(Control.engine.speedKmh==0 ? "Tu es à l'arrêt : choisis une vitesse dans le menu R pour repartir." : progress.active
                 ? String.format(Locale.US, "Une route est en cours : %d arrêts sur %d faits.", progress.visited, progress.total)
                 : "");
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setEnabled(progress.active);
