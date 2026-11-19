@@ -115,6 +115,43 @@ final class MapTheme {
         decor.setOnApplyWindowInsetsListener((v, insets) -> { applyInsets(v, insets); return insets; });
         decor.requestApplyInsets();
     }
+    /**
+     * Edge to edge with the status and navigation bars hidden (a swipe shows them for a moment), for a window
+     * that keeps its own controls clear of a display cutout: {@code safe} receives the cutout's safe insets.
+     */
+    static void immersive(AlertDialog dialog, Safe safe) {
+        Window w = dialog.getWindow();
+        if (w == null) return;
+        if (Build.VERSION.SDK_INT >= 28) {
+            android.view.WindowManager.LayoutParams lp = w.getAttributes();
+            lp.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            w.setAttributes(lp);
+        }
+        View decor = w.getDecorView();
+        if (Build.VERSION.SDK_INT >= 30) {
+            android.view.WindowInsetsController bars = w.getInsetsController();
+            if (bars != null) {
+                bars.hide(WindowInsets.Type.systemBars());
+                bars.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
+        } else {
+            decor.setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+        }
+        decor.setOnApplyWindowInsetsListener((v, insets) -> {
+            v.setPadding(0, 0, 0, 0);
+            int left = 0, top = 0, right = 0, bottom = 0;
+            if (Build.VERSION.SDK_INT >= 28 && insets.getDisplayCutout() != null) {
+                android.view.DisplayCutout cut = insets.getDisplayCutout();
+                left = cut.getSafeInsetLeft(); top = cut.getSafeInsetTop(); right = cut.getSafeInsetRight(); bottom = cut.getSafeInsetBottom();
+            }
+            safe.insets(left, top, right, bottom);
+            return insets;
+        });
+        decor.requestApplyInsets();
+    }
+    interface Safe { void insets(int left, int top, int right, int bottom); }
+
     private static void applyInsets(View v, WindowInsets insets) {
         if (insets == null) return;
         int top, bottom, left, right;

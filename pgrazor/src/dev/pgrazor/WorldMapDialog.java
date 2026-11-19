@@ -46,6 +46,8 @@ public final class WorldMapDialog {
         /** Return true after applying the destination, or false to keep the picker open. */
         boolean onDestination(double latitude, double longitude);
     }
+    /** A finger held still on the map, at that point (a marker's own point when on one). */
+    interface LongPress { void at(double latitude, double longitude); }
     /** A touch on the map: the point, and what is there ("PokéStop", "Arène", "Raid") or null for a plain spot. */
     interface Pick { void at(double latitude, double longitude, String kind); }
     public interface RouteListener {
@@ -61,18 +63,18 @@ public final class WorldMapDialog {
         return show(activity,latitude,longitude,listener,walk,null);
     }
 
-    /** The hub's tabs; {@link #show} with -1 reopens the tab used last. */
+    /** What {@link #show} opens over the map: nothing, Lieux or Autowalk. */
     public static final int TAB_MAP = 0, TAB_PLACES = 1, TAB_WALK = 2;
-    private static int lastTab = TAB_MAP;
 
     public static AlertDialog show(Activity activity, double latitude, double longitude, DestinationListener listener, DestinationListener walk, RouteListener route) {
-        return show(activity, latitude, longitude, listener, walk, route, -1);
+        return show(activity, latitude, longitude, listener, walk, route, TAB_MAP);
     }
 
     /**
-     * With walking and routes available this is the travel hub: one full-screen window with three tabs,
-     * Carte (the map; ✎ switches it to drawing a route), Lieux (favourites, hotspots, saved and ready-made walks)
-     * and Autowalk. Opened from elsewhere just to look at a spot, it is the map alone.
+     * The world map, edge to edge, with everything floating on it: the search and ✕ at the top, Calques (and, in
+     * the travel hub, Lieux and Autowalk) on the right, ◎ and the route bar at the bottom. A touch opens the
+     * point's bubble; a finger held on the map starts a route, and every touch then adds a point. Lieux and
+     * Autowalk open as panels over the map. Opened from elsewhere just to look at a spot, it has no panels.
      */
     public static AlertDialog show(Activity activity, double latitude, double longitude, DestinationListener listener, DestinationListener walk, RouteListener route, int tab) {
         if (!Double.isFinite(latitude) || !Double.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)
@@ -81,78 +83,65 @@ public final class WorldMapDialog {
         final boolean hub = walk != null && route != null;
         final AlertDialog[] self = {null}, cooldownDialog = {null}, searchDialog = {null};
 
-        // The whole window: a top bar (tabs, or a title), then the pages filling the rest.
-        HubRoot root = new HubRoot(activity); root.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout top = new LinearLayout(ui); top.setGravity(Gravity.CENTER_VERTICAL); top.setTag(DialogStyle.KEEP);
-        top.setPadding(dp(activity, 12), dp(activity, 6), dp(activity, 4), dp(activity, 6));
-        LinearLayout tabBar = new LinearLayout(ui); tabBar.setPadding(dp(activity, 3), dp(activity, 3), dp(activity, 3), dp(activity, 3));
-        TextView[] tabs = new TextView[3];
-        if (hub) {
-            String[] names = {"Carte", "Lieux", "Autowalk"};
-            for (int i = 0; i < tabs.length; i++) {
-                TextView t = label(ui, names[i], 13); t.setGravity(Gravity.CENTER); t.setTypeface(SettingsUi.medium());
-                t.setClickable(true); t.setFocusable(true); t.setSingleLine(true);
-                tabs[i] = t; tabBar.addView(t, new LinearLayout.LayoutParams(0, -1, 1));
-            }
-            top.addView(tabBar, new LinearLayout.LayoutParams(0, dp(activity, 40), 1));
-        } else {
-            TextView title = label(ui, "Carte du monde", 17); title.setTypeface(SettingsUi.medium()); title.setSingleLine(true);
-            title.setTextColor(SettingsUi.ink()); title.setPadding(dp(activity, 4), 0, 0, 0);
-            top.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
-        }
-        TextView close = label(ui, "✕", 18); close.setGravity(Gravity.CENTER); close.setClickable(true); close.setFocusable(true);
-        close.setContentDescription("Fermer"); close.setTextColor(SettingsUi.muted());
-        close.setBackground(SettingsUi.ripple(SettingsUi.rounded(ui, 0x00000000, 20)));
-        top.addView(close, new LinearLayout.LayoutParams(dp(activity, 44), dp(activity, 44)));
-        root.addView(top, new LinearLayout.LayoutParams(-1, -2));
-        android.widget.FrameLayout pages = new android.widget.FrameLayout(activity);
-        root.addView(pages, new LinearLayout.LayoutParams(-1, 0, 1));
-
-        // ----- Page Carte: the map fills the page. Floating on it: the search and the layer chips at the top,
-        // ◎ and the route mode ✎ on the right, the bubble of the touched point, the route bar at the bottom.
-        android.widget.FrameLayout layout = new android.widget.FrameLayout(activity);
-        pages.addView(layout, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        FullRoot root = new FullRoot(activity);
         TextView status = label(ui, "", 12);
         MapView map = new MapView(activity, latitude, longitude, status);
-        layout.addView(map, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        root.addView(map, new android.widget.FrameLayout.LayoutParams(-1, -1));
 
-        LinearLayout overlay = new LinearLayout(ui); overlay.setOrientation(LinearLayout.VERTICAL);
-        overlay.setPadding(dp(activity, 10), dp(activity, 10), dp(activity, 10), 0);
+        // ----- The controls on the map (kept clear of a display cutout by FullRoot).
+        android.widget.FrameLayout controls = new android.widget.FrameLayout(activity);
+        root.controls = controls; root.safe(0, 0, 0, 0);
+        root.addView(controls, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        LinearLayout topRow = new LinearLayout(ui); topRow.setGravity(Gravity.CENTER_VERTICAL);
         TextView search = floating(ui, "Chercher un lieu ou des coordonnées", 14);
         search.setGravity(Gravity.CENTER_VERTICAL); search.setPadding(dp(activity, 18), 0, dp(activity, 18), 0);
-        overlay.addView(search, new LinearLayout.LayoutParams(-1, dp(activity, 44)));
-        LinearLayout chips = new LinearLayout(ui); chips.setPadding(0, dp(activity, 8), 0, 0);
+        topRow.addView(search, new LinearLayout.LayoutParams(0, dp(activity, 44), 1));
+        TextView close = floating(ui, "✕", 17); close.setContentDescription("Fermer la carte");
+        LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(dp(activity, 44), dp(activity, 44)); closeParams.leftMargin = dp(activity, 8);
+        topRow.addView(close, closeParams);
+        controls.addView(topRow, new android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
+
+        // On the right, under the search: Calques (its list unfolds under it), then Lieux and Autowalk.
+        LinearLayout side = new LinearLayout(ui); side.setOrientation(LinearLayout.VERTICAL); side.setGravity(Gravity.END);
+        android.widget.FrameLayout.LayoutParams sideParams = new android.widget.FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END);
+        sideParams.topMargin = dp(activity, 54);
+        controls.addView(side, sideParams);
+        LinearLayout layersButton = pill(ui, MenuIcon.MAP, "Calques");
+        side.addView(layersButton, pillParams(ui, 0));
+        LinearLayout layersCard = new LinearLayout(ui); layersCard.setOrientation(LinearLayout.VERTICAL); layersCard.setTag(DialogStyle.KEEP);
+        layersCard.setPadding(dp(activity, 6), dp(activity, 6), dp(activity, 6), dp(activity, 6)); layersCard.setClickable(true); layersCard.setVisibility(View.GONE);
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(dp(activity, 190), -2); cardParams.topMargin = dp(activity, 8);
+        side.addView(layersCard, cardParams);
         SharedPreferences preferences = AccountProfiles.preferences(activity, "pgrazor-map");
         String[] layerKeys = {"Stops", "Gyms", "Raids"}, layerNames = {"PokéStops", "Arènes", "Raids"};
-        TextView[] layerChips = new TextView[layerKeys.length];
+        TextView[] layerRows = new TextView[layerKeys.length];
         for (int i = 0; i < layerKeys.length; i++) {
             final int bit = 1 << i; final String key = layerKeys[i];
-            TextView chip = floating(ui, layerNames[i], 12); chip.setPadding(dp(activity, 14), 0, dp(activity, 14), 0);
-            chip.setSelected(preferences.getBoolean(key, false)); if (chip.isSelected()) map.setPoiLayer(bit, true);
-            chip.setOnClickListener(v -> {
-                boolean on = !v.isSelected(); v.setSelected(on); paintFloating(ui, (TextView) v, on);
+            TextView row = label(ui, layerNames[i], 14); row.setTypeface(SettingsUi.medium()); row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(activity, 12), 0, dp(activity, 12), 0); row.setClickable(true); row.setFocusable(true);
+            row.setSelected(preferences.getBoolean(key, false)); if (row.isSelected()) map.setPoiLayer(bit, true);
+            row.setOnClickListener(v -> {
+                boolean on = !v.isSelected(); v.setSelected(on); paintLayer(ui, (TextView) v);
                 map.setPoiLayer(bit, on); preferences.edit().putBoolean(key, on).apply(); map.refreshPois();
             });
-            LinearLayout.LayoutParams chipParams = new LinearLayout.LayoutParams(-2, dp(activity, 34)); chipParams.rightMargin = dp(activity, 6);
-            chips.addView(chip, chipParams); layerChips[i] = chip;
+            layersCard.addView(row, new LinearLayout.LayoutParams(-1, dp(activity, 42)));
+            layerRows[i] = row;
         }
-        overlay.addView(chips);
-        LinearLayout side = new LinearLayout(ui); side.setOrientation(LinearLayout.VERTICAL); side.setGravity(Gravity.END);
-        side.setPadding(0, dp(activity, 10), 0, 0);
-        TextView current = floating(ui, "◎", 20); current.setContentDescription("Centrer la carte sur ta position en jeu");
-        side.addView(current, new LinearLayout.LayoutParams(dp(activity, 44), dp(activity, 44)));
-        TextView routeMode = floating(ui, "✎", 18); routeMode.setContentDescription("Mode trajet : chaque touche pose un point");
-        LinearLayout.LayoutParams modeParams = new LinearLayout.LayoutParams(dp(activity, 44), dp(activity, 44)); modeParams.topMargin = dp(activity, 8);
-        if (route != null) side.addView(routeMode, modeParams);
-        overlay.addView(side, new LinearLayout.LayoutParams(-1, -2));
-        layout.addView(overlay, new android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
+        LinearLayout placesButton = pill(ui, MenuIcon.FAVORITES, "Lieux"), walkButton = pill(ui, MenuIcon.AUTOWALK, "Autowalk");
+        if (hub) { side.addView(placesButton, pillParams(ui, 8)); side.addView(walkButton, pillParams(ui, 8)); }
+        layersButton.setOnClickListener(v -> {
+            boolean open = layersCard.getVisibility() != View.VISIBLE;
+            layersCard.setVisibility(open ? View.VISIBLE : View.GONE); paintFloating(ui, layersButton, open);
+        });
+        final Runnable closeLayers = () -> { if (layersCard.getVisibility() == View.VISIBLE) { layersCard.setVisibility(View.GONE); paintFloating(ui, layersButton, false); } };
 
-        Bubble bubble = new Bubble(activity, ui, map, walk != null);
-        layout.addView(bubble.view, new android.widget.FrameLayout.LayoutParams(dp(activity, 288), -2));
-
-        // Bottom: a map problem (only when there is one), then the route bar in route mode.
+        // At the bottom: ◎ on the right, a map problem when there is one, then the route bar while drawing a route.
         LinearLayout bottom = new LinearLayout(ui); bottom.setOrientation(LinearLayout.VERTICAL); bottom.setGravity(Gravity.CENTER_HORIZONTAL);
-        bottom.setPadding(dp(activity, 10), 0, dp(activity, 10), dp(activity, 10));
+        controls.addView(bottom, new android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
+        TextView current = floating(ui, "◎", 20); current.setContentDescription("Centrer la carte sur ta position en jeu");
+        LinearLayout.LayoutParams currentParams = new LinearLayout.LayoutParams(dp(activity, 48), dp(activity, 48)); currentParams.gravity = Gravity.END;
+        currentParams.bottomMargin = dp(activity, 10);
+        bottom.addView(current, currentParams);
         status.setPadding(dp(activity, 14), dp(activity, 8), dp(activity, 14), dp(activity, 8)); status.setVisibility(View.GONE);
         status.addTextChangedListener(new android.text.TextWatcher() {
             public void beforeTextChanged(CharSequence text, int start, int count, int after) {}
@@ -168,10 +157,8 @@ public final class WorldMapDialog {
         TextView routeSummary = label(ui, "", 13); routeSummary.setTypeface(SettingsUi.medium()); routeSummary.setSingleLine(true);
         routeSummary.setEllipsize(android.text.TextUtils.TruncateAt.END);
         routeHead.addView(routeSummary, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView clearRoute = chip(ui, "Effacer"); clearRoute.setContentDescription("Effacer tous les points de la route");
-        routeHead.addView(clearRoute);
         TextView exitRoute = label(ui, "✕", 16); exitRoute.setGravity(Gravity.CENTER); exitRoute.setClickable(true);
-        exitRoute.setContentDescription("Quitter le mode trajet");
+        exitRoute.setContentDescription("Fermer le trajet");
         routeHead.addView(exitRoute, new LinearLayout.LayoutParams(dp(activity, 40), dp(activity, 40)));
         routeBar.addView(routeHead);
         Button undo = HubUi.button(ui, "↶ Annuler", false), saveRoute = HubUi.button(ui, "Enregistrer", false), startRoute = HubUi.button(ui, "Démarrer", true);
@@ -179,19 +166,29 @@ public final class WorldMapDialog {
         LinearLayout routeButtons = HubUi.actions(ui, undo, saveRoute, startRoute); routeButtons.setPadding(0, dp(activity, 6), dp(activity, 8), 0);
         routeBar.addView(routeButtons);
         bottom.addView(routeBar, new LinearLayout.LayoutParams(-1, -2));
-        layout.addView(bottom, new android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
 
-        // Two modes: exploring (a touch opens the point's bubble) and, with ✎, drawing a route (a touch adds a point).
-        RouteDraft draft = route == null ? null : new RouteDraft(activity, ui, map, routeSummary, routeButtons, undo, saveRoute, startRoute, clearRoute, route);
+        // The bubble shares the map's coordinates, so it sits on the root, above the controls.
+        Bubble bubble = new Bubble(activity, ui, map, walk != null);
+        root.addView(bubble.view, new android.widget.FrameLayout.LayoutParams(dp(activity, 288), -2));
+
+        // Two modes: exploring (a touch opens the bubble) and drawing a route, started by holding a finger on the
+        // map; every touch then adds a point until ✕ closes the route.
+        RouteDraft draft = route == null ? null : new RouteDraft(activity, ui, map, routeSummary, routeButtons, undo, saveRoute, startRoute, route);
         final boolean[] routing = {false};
         final Runnable applyMode = () -> {
-            paintFloating(ui, routeMode, routing[0]);
             routeBar.setVisibility(routing[0] ? View.VISIBLE : View.GONE);
             if (routing[0]) bubble.hide();
         };
-        routeMode.setOnClickListener(v -> { routing[0] = !routing[0]; applyMode.run(); });
-        exitRoute.setOnClickListener(v -> { routing[0] = false; applyMode.run(); });
-        map.onPick = (lat, lon, kind) -> { if (routing[0] && draft != null) draft.add(lat, lon); else bubble.show(lat, lon, kind); };
+        exitRoute.setOnClickListener(v -> { routing[0] = false; if (draft != null) draft.clear(); applyMode.run(); });
+        if (draft != null) map.onLongPress = (lat, lon) -> {
+            closeLayers.run();
+            if (!routing[0]) { routing[0] = true; applyMode.run(); }
+            draft.add(lat, lon);
+        };
+        map.onPick = (lat, lon, kind) -> {
+            if (layersCard.getVisibility() == View.VISIBLE) { closeLayers.run(); return; }
+            if (routing[0] && draft != null) draft.add(lat, lon); else bubble.show(lat, lon, kind);
+        };
         map.refreshPois();
         search.setOnClickListener(v -> {
             if (searchDialog[0] != null && searchDialog[0].isShowing()) return;
@@ -200,29 +197,67 @@ public final class WorldMapDialog {
         });
         current.setOnClickListener(v -> map.centerCurrentLocation());
 
-        // ----- Pages Lieux and Autowalk (hub only).
-        final Tabs pager = hub ? new Tabs(ui, tabs, new View[3]) : null;
+        // ----- Lieux and Autowalk: panels over the map (hub only); ‹ or Back returns to the map.
+        final View[] panel = {null};
+        final View[] panelViews = new View[3];
+        final AutoWalkPanel[] walkerRef = {null};
+        final Runnable closePanel = () -> {
+            if (panel[0] == null) return;
+            panel[0].setVisibility(View.GONE);
+            if (panel[0] == panelViews[TAB_WALK] && walkerRef[0] != null) walkerRef[0].pause();
+            panel[0] = null;
+        };
         final PlacesPanel places = !hub ? null : new PlacesPanel(activity, ui, new PlacesPanel.Host() {
-            public void showOnMap(double lat, double lon) { pager.select(TAB_MAP); routing[0] = false; applyMode.run(); map.centerOn(lat, lon); bubble.show(lat, lon, null); }
-            public void openRoute(GpxRoute chosen, boolean stored) { pager.select(TAB_MAP); routing[0] = true; applyMode.run(); draft.load(chosen, stored); }
+            public void showOnMap(double lat, double lon) { closePanel.run(); routing[0] = false; applyMode.run(); map.centerOn(lat, lon); bubble.show(lat, lon, null); }
+            public void openRoute(GpxRoute chosen, boolean stored) { closePanel.run(); routing[0] = true; applyMode.run(); draft.load(chosen, stored); }
             public boolean teleport(double lat, double lon) { return listener.onDestination(lat, lon); }
             public boolean walk(double lat, double lon) { return walk.onDestination(lat, lon); }
             public boolean walkRoute(double[][] points, boolean looping) { return route.onRoute(points, looping); }
             public void done() { if (self[0] != null) self[0].dismiss(); }
         }, () -> WorldMapDialog.show(activity, Control.engine.latitude, Control.engine.longitude, listener, walk, route, TAB_PLACES));
         final AutoWalkPanel walker = !hub ? null : new AutoWalkPanel(activity, ui, () -> { if (self[0] != null) self[0].dismiss(); });
+        walkerRef[0] = walker;
+        final TextView[] panelHeads = new TextView[3];
+        final Runnable[] openPanel = new Runnable[3];
         if (hub) {
-            pages.addView(places.view(), new android.widget.FrameLayout.LayoutParams(-1, -1));
-            pages.addView(walker.view(), new android.widget.FrameLayout.LayoutParams(-1, -1));
-            pager.pages[TAB_MAP] = layout; pager.pages[TAB_PLACES] = places.view(); pager.pages[TAB_WALK] = walker.view();
-            pager.onSelect = index -> { if (index == TAB_PLACES) places.reload(); if (index == TAB_WALK) walker.resume(); else walker.pause(); };
-            for (int i = 0; i < tabs.length; i++) { final int index = i; tabs[i].setOnClickListener(v -> pager.select(index)); }
+            String[] titles = {null, "Lieux", "Autowalk"};
+            View[] contents = {null, places.view(), walker.view()};
+            for (int index = TAB_PLACES; index <= TAB_WALK; index++) {
+                LinearLayout page = new LinearLayout(ui); page.setOrientation(LinearLayout.VERTICAL); page.setTag(DialogStyle.KEEP);
+                page.setClickable(true); page.setVisibility(View.GONE);
+                LinearLayout head = new LinearLayout(ui); head.setGravity(Gravity.CENTER_VERTICAL);
+                head.setPadding(dp(activity, 6), dp(activity, 6), dp(activity, 12), dp(activity, 4));
+                TextView back = label(ui, "‹", 26); back.setGravity(Gravity.CENTER); back.setClickable(true); back.setContentDescription("Retour à la carte");
+                back.setOnClickListener(v -> closePanel.run());
+                head.addView(back, new LinearLayout.LayoutParams(dp(activity, 44), dp(activity, 44)));
+                TextView title = label(ui, titles[index], 18); title.setTypeface(SettingsUi.medium());
+                head.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+                page.addView(head);
+                page.addView(contents[index], new LinearLayout.LayoutParams(-1, 0, 1));
+                root.addView(page, new android.widget.FrameLayout.LayoutParams(-1, -1));
+                root.panels.add(page);
+                panelViews[index] = page; panelHeads[index] = title;
+                final int which = index;
+                openPanel[index] = () -> {
+                    closeLayers.run(); closePanel.run();
+                    panel[0] = panelViews[which]; panel[0].setVisibility(View.VISIBLE);
+                    if (which == TAB_PLACES) places.reload(); else walker.resume();
+                };
+            }
+            placesButton.setOnClickListener(v -> openPanel[TAB_PLACES].run());
+            walkButton.setOnClickListener(v -> openPanel[TAB_WALK].run());
         }
 
         AlertDialog dialog = new AlertDialog.Builder(ui).setView(root).create();
         self[0] = dialog;
         if (draft != null) { draft.parent = dialog; draft.saved = places == null ? null : places::reload; }
         close.setOnClickListener(v -> dialog.dismiss());
+        // Back closes a panel first, then the map.
+        dialog.setOnKeyListener((d, keyCode, event) -> {
+            if (keyCode != android.view.KeyEvent.KEYCODE_BACK || panel[0] == null) return false;
+            if (event.getAction() == android.view.KeyEvent.ACTION_UP) closePanel.run();
+            return true;
+        });
         bubble.saved = places == null ? null : places::reload;
         bubble.teleport.setOnClickListener(v -> {
             if (cooldownDialog[0] != null && cooldownDialog[0].isShowing()) return;
@@ -244,53 +279,70 @@ public final class WorldMapDialog {
         });
         dialog.setOnShowListener(d -> {
             MapTheme.fullScreen(dialog);
-            root.setBackgroundColor(SettingsUi.surface()); top.setBackgroundColor(SettingsUi.surface());
-            tabBar.setBackground(SettingsUi.shape(ui, SettingsUi.raised(), 12, SettingsUi.border()));
+            MapTheme.immersive(dialog, root::safe);
+            root.setBackgroundColor(SettingsUi.surface());
             paintFloating(ui, search, false); search.setTextColor(SettingsUi.muted());
-            for (TextView chip : layerChips) paintFloating(ui, chip, chip.isSelected());
-            paintFloating(ui, current, false);
+            paintFloating(ui, close, false); paintFloating(ui, current, false);
+            paintFloating(ui, layersButton, false); paintFloating(ui, placesButton, false); paintFloating(ui, walkButton, false);
+            layersCard.setBackground(SettingsUi.cardBackground(ui)); layersCard.setElevation(dp(activity, 4));
+            for (TextView row : layerRows) paintLayer(ui, row);
             status.setTextColor(SettingsUi.ink()); status.setBackground(SettingsUi.shape(ui, SettingsUi.surface(), 16, SettingsUi.border()));
             status.setElevation(dp(activity, 3));
             bubble.paint();
-            paintChip(ui, clearRoute); exitRoute.setTextColor(SettingsUi.muted());
-            exitRoute.setBackground(SettingsUi.ripple(SettingsUi.rounded(ui, 0x00000000, 20)));
+            exitRoute.setTextColor(SettingsUi.muted()); exitRoute.setBackground(SettingsUi.ripple(SettingsUi.rounded(ui, 0x00000000, 20)));
             routeBar.setBackground(SettingsUi.cardBackground(ui)); routeBar.setElevation(dp(activity, 4)); routeSummary.setTextColor(SettingsUi.ink());
             HubUi.paint(undo, false); HubUi.paint(saveRoute, false); HubUi.paint(startRoute, true);
+            for (View page : root.panels) page.setBackgroundColor(SettingsUi.surface());
+            for (TextView head : panelHeads) if (head != null) {
+                head.setTextColor(SettingsUi.ink());
+                TextView back = (TextView) ((LinearLayout) head.getParent()).getChildAt(0);
+                back.setTextColor(SettingsUi.ink()); back.setBackground(SettingsUi.ripple(SettingsUi.rounded(ui, 0x00000000, 22)));
+            }
             applyMode.run();
-            if (pager != null) pager.select(tab >= 0 ? tab : lastTab);
+            if (hub && (tab == TAB_PLACES || tab == TAB_WALK)) openPanel[tab].run();
         });
         dialog.show();
         return dialog;
     }
 
-    /** The hub's tab strip: one page visible at a time, the chosen tab filled with the accent. */
-    private static final class Tabs {
-        interface OnSelect { void selected(int index); }
-        final Context ui;
-        final TextView[] labels;
-        final View[] pages;
-        OnSelect onSelect;
-        Tabs(Context ui, TextView[] labels, View[] pages) { this.ui = ui; this.labels = labels; this.pages = pages; }
-        void select(int index) {
-            lastTab = index;
-            for (int i = 0; i < labels.length; i++) {
-                boolean on = i == index;
-                if (pages[i] != null) pages[i].setVisibility(on ? View.VISIBLE : View.GONE);
-                labels[i].setTextColor(on ? SettingsUi.accentInk() : SettingsUi.muted());
-                labels[i].setBackground(on ? SettingsUi.rounded(ui, SettingsUi.accentFill(), 10) : SettingsUi.ripple(SettingsUi.rounded(ui, 0x00000000, 10)));
-                labels[i].setSelected(on);
-            }
-            if (onSelect != null) onSelect.selected(index);
+    /**
+     * The window's root: as tall as the window, the map under everything. The controls and the panels are padded
+     * clear of a display cutout (the map itself runs under it).
+     */
+    private static final class FullRoot extends android.widget.FrameLayout {
+        View controls;
+        final List<View> panels = new ArrayList<>();
+        private final int gap;
+        FullRoot(Context c) { super(c); gap = dp(c, 10); safe(0, 0, 0, 0); }
+        void safe(int left, int top, int right, int bottom) {
+            if (controls != null) controls.setPadding(gap + left, gap + top, gap + right, gap + bottom);
+            for (View page : panels) page.setPadding(left, top, right, bottom);
         }
-    }
-
-    /** Always measured to the full window height, so the pages fill it and the map page can size itself. */
-    private static final class HubRoot extends LinearLayout {
-        HubRoot(Context c) { super(c); }
         @Override protected void onMeasure(int widthSpec, int heightSpec) {
             int size = MeasureSpec.getMode(heightSpec) == MeasureSpec.UNSPECIFIED ? getResources().getDisplayMetrics().heightPixels : MeasureSpec.getSize(heightSpec);
             super.onMeasure(widthSpec, MeasureSpec.makeMeasureSpec(size, MeasureSpec.EXACTLY));
         }
+    }
+
+    /** A floating button with an icon and a short name (Calques, Lieux, Autowalk). */
+    private static LinearLayout pill(Context c, int icon, String text) {
+        LinearLayout pill = new LinearLayout(c); pill.setGravity(Gravity.CENTER_VERTICAL); pill.setTag(DialogStyle.KEEP);
+        pill.setPadding(dp(c, 12), 0, dp(c, 16), 0); pill.setClickable(true); pill.setFocusable(true); pill.setContentDescription(text);
+        MenuIcon glyph = new MenuIcon(c, icon);
+        pill.addView(glyph, new LinearLayout.LayoutParams(dp(c, 18), dp(c, 18)));
+        TextView name = label(c, text, 13); name.setTypeface(SettingsUi.medium()); name.setPadding(dp(c, 8), 0, 0, 0);
+        pill.addView(name);
+        return pill;
+    }
+    private static LinearLayout.LayoutParams pillParams(Context c, int top) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(c, 40)); lp.topMargin = dp(c, top); lp.gravity = Gravity.END; return lp;
+    }
+    /** A layer row: ✓ and the accent when shown. */
+    private static void paintLayer(Context c, TextView row) {
+        boolean on = row.isSelected();
+        row.setText((on ? "✓  " : "      ") + row.getText().toString().replace("✓  ", "").trim());
+        row.setTextColor(on ? SettingsUi.accent() : SettingsUi.muted());
+        row.setBackground(SettingsUi.ripple(SettingsUi.rounded(c, on ? SettingsUi.accentSoft() : 0x00000000, 10)));
     }
 
     /**
@@ -321,23 +373,25 @@ public final class WorldMapDialog {
             view = new LinearLayout(ui); view.setOrientation(LinearLayout.VERTICAL); view.setTag(DialogStyle.KEEP);
             view.setBackground(background); view.setClickable(true); view.setVisibility(View.GONE);
             pad();
-            LinearLayout head = new LinearLayout(ui); head.setGravity(Gravity.CENTER_VERTICAL);
-            LinearLayout texts = new LinearLayout(ui); texts.setOrientation(LinearLayout.VERTICAL);
-            title = label(ui, "", 15); title.setTypeface(SettingsUi.medium()); title.setSingleLine(true);
+            // The texts are centred across the whole bubble; ✕ sits in the corner over them.
+            android.widget.FrameLayout head = new android.widget.FrameLayout(ui);
+            LinearLayout texts = new LinearLayout(ui); texts.setOrientation(LinearLayout.VERTICAL); texts.setGravity(Gravity.CENTER_HORIZONTAL);
+            texts.setPadding(dp(ui, 30), dp(ui, 4), dp(ui, 30), 0);
+            title = label(ui, "", 15); title.setTypeface(SettingsUi.medium()); title.setSingleLine(true); title.setGravity(Gravity.CENTER);
             title.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            detail = label(ui, "", 12); detail.setSingleLine(true); detail.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            detail = label(ui, "", 12); detail.setSingleLine(true); detail.setEllipsize(android.text.TextUtils.TruncateAt.END); detail.setGravity(Gravity.CENTER);
             detail.setClickable(true); detail.setContentDescription("Copier les coordonnées");
             detail.setOnClickListener(v -> CoordinateClipboard.copy(activity, latitude, longitude, "Coordonnées copiées"));
-            texts.addView(title); texts.addView(detail);
-            head.addView(texts, new LinearLayout.LayoutParams(0, -2, 1));
-            dismiss = label(ui, "✕", 15); dismiss.setGravity(Gravity.CENTER); dismiss.setClickable(true); dismiss.setContentDescription("Fermer");
+            texts.addView(title, new LinearLayout.LayoutParams(-1, -2)); texts.addView(detail, new LinearLayout.LayoutParams(-1, -2));
+            head.addView(texts, new android.widget.FrameLayout.LayoutParams(-1, -2));
+            dismiss = label(ui, "✕", 14); dismiss.setGravity(Gravity.CENTER); dismiss.setClickable(true); dismiss.setContentDescription("Fermer");
             dismiss.setOnClickListener(v -> hide());
-            head.addView(dismiss, new LinearLayout.LayoutParams(dp(ui, 36), dp(ui, 36)));
+            head.addView(dismiss, new android.widget.FrameLayout.LayoutParams(dp(ui, 30), dp(ui, 30), Gravity.TOP | Gravity.END));
             view.addView(head);
 
             favorite = HubUi.button(ui, "☆", false); favorite.setTextSize(16); favorite.setContentDescription("Ajouter aux favoris");
             walk = HubUi.button(ui, "Marcher", false); teleport = HubUi.button(ui, "Téléporter", true);
-            buttons = new LinearLayout(ui); buttons.setPadding(0, dp(ui, 8), dp(ui, 8), 0);
+            buttons = new LinearLayout(ui); buttons.setPadding(0, dp(ui, 10), 0, 0);
             LinearLayout.LayoutParams starParams = new LinearLayout.LayoutParams(dp(ui, 42), dp(ui, 38)); starParams.rightMargin = dp(ui, 6);
             buttons.addView(favorite, starParams);
             LinearLayout.LayoutParams walkParams = new LinearLayout.LayoutParams(0, dp(ui, 38), 1); walkParams.rightMargin = dp(ui, 6);
@@ -347,8 +401,8 @@ public final class WorldMapDialog {
             favorite.setOnClickListener(v -> edit());
             view.addView(buttons);
 
-            form = new LinearLayout(ui); form.setOrientation(LinearLayout.VERTICAL); form.setPadding(0, dp(ui, 8), dp(ui, 8), 0); form.setVisibility(View.GONE);
-            name = new EditText(ui); name.setHint("Nom du favori"); name.setSingleLine(true); name.setTextSize(14);
+            form = new LinearLayout(ui); form.setOrientation(LinearLayout.VERTICAL); form.setPadding(0, dp(ui, 10), 0, 0); form.setVisibility(View.GONE);
+            name = new EditText(ui); name.setHint("Nom du favori"); name.setSingleLine(true); name.setTextSize(14); name.setGravity(Gravity.CENTER);
             name.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
             name.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
             name.setFilters(new InputFilter[]{new InputFilter.LengthFilter(SavedPlaces.NAME_LIMIT)});
@@ -405,7 +459,7 @@ public final class WorldMapDialog {
         }
 
         private void pad() {
-            view.setPadding(dp(ui, 14), dp(ui, 8) + (background.flipped ? tail : 0), dp(ui, 6), dp(ui, 12) + (background.flipped ? 0 : tail));
+            view.setPadding(dp(ui, 8), dp(ui, 6) + (background.flipped ? tail : 0), dp(ui, 8), dp(ui, 10) + (background.flipped ? 0 : tail));
         }
 
         /** Back to the actions. */
@@ -418,7 +472,7 @@ public final class WorldMapDialog {
         private void edit() {
             buttons.setVisibility(View.GONE); form.setVisibility(View.VISIBLE);
             name.setText(""); name.requestFocus(); keyboard(true);
-            view.post(() -> { if (shown) map.placeAt(latitude, longitude, dp(ui, 24) + view.getHeight() + dp(ui, 14)); });
+            view.post(() -> { if (shown) map.placeAt(latitude, longitude, dp(ui, 70) + view.getHeight() + dp(ui, 14)); });
         }
 
         private void save() {
@@ -500,34 +554,28 @@ public final class WorldMapDialog {
         return t;
     }
     /** Selected: filled with the accent; otherwise the surface colour with a thin border. */
-    private static void paintFloating(Context c, TextView view, boolean on) {
-        view.setTextColor(on ? SettingsUi.accentInk() : SettingsUi.ink());
+    private static void paintFloating(Context c, View view, boolean on) {
+        if (view instanceof TextView) ((TextView) view).setTextColor(on ? SettingsUi.accentInk() : SettingsUi.ink());
+        else if (view instanceof LinearLayout) {
+            LinearLayout pill = (LinearLayout) view;
+            for (int i = 0; i < pill.getChildCount(); i++) if (pill.getChildAt(i) instanceof TextView) ((TextView) pill.getChildAt(i)).setTextColor(on ? SettingsUi.accentInk() : SettingsUi.ink());
+        }
         view.setBackground(SettingsUi.ripple(on ? SettingsUi.rounded(c, SettingsUi.accentFill(), 22) : SettingsUi.shape(c, SettingsUi.surface(), 22, SettingsUi.border())));
         view.setElevation(dp(c, 3));
-    }
-
-    /** A small accent text button on the map page (Effacer). */
-    private static TextView chip(Context c, String text) {
-        TextView t = label(c, text, 12); t.setTypeface(SettingsUi.medium()); t.setSingleLine(true); t.setGravity(Gravity.CENTER);
-        t.setClickable(true); t.setFocusable(true); t.setPadding(dp(c, 10), dp(c, 6), dp(c, 10), dp(c, 6));
-        return t;
-    }
-    private static void paintChip(Context c, TextView chip) {
-        chip.setTextColor(SettingsUi.accent()); chip.setBackground(SettingsUi.ripple(SettingsUi.rounded(c, 0x00000000, 8)));
     }
 
     private static int dp(Context c, float value) { return Math.round(value * c.getResources().getDisplayMetrics().density); }
     private static TextView label(Context c, String text, int size) { TextView v = new TextView(c); v.setText(text); v.setTextSize(size); return v; }
 
     /**
-     * The route drawn on the map in route mode: each touch adds a point. The bar at the bottom takes the last
-     * point back, saves the route (it then shows in Lieux, Mes trajets) or walks it in order.
+     * The route being drawn: a finger held on the map starts it, then every touch adds a point. The bar at the
+     * bottom takes the last point back, saves the route (it then shows in Lieux, Mes trajets) or walks it in order.
      */
     private static final class RouteDraft {
         final Activity activity;
         final Context ui;
         final MapView map;
-        final View buttons, clear;
+        final View buttons;
         final TextView summary;
         final Button undo, save, start;
         final RouteListener listener;
@@ -539,11 +587,10 @@ public final class WorldMapDialog {
         String name;
         /** Something to save: false right after a saved walk is opened or this one is saved. */
         boolean changed;
-        RouteDraft(Activity activity, Context ui, MapView map, TextView summary, View buttons, Button undo, Button save, Button start, TextView clear, RouteListener listener) {
-            this.activity = activity; this.ui = ui; this.map = map; this.summary = summary; this.buttons = buttons; this.clear = clear;
+        RouteDraft(Activity activity, Context ui, MapView map, TextView summary, View buttons, Button undo, Button save, Button start, RouteListener listener) {
+            this.activity = activity; this.ui = ui; this.map = map; this.summary = summary; this.buttons = buttons;
             this.undo = undo; this.save = save; this.start = start; this.listener = listener;
             undo.setOnClickListener(v -> undo());
-            clear.setOnClickListener(v -> { points.clear(); name = null; changed = false; refresh(); });
             save.setOnClickListener(v -> save());
             start.setOnClickListener(v -> start());
             refresh();
@@ -552,6 +599,8 @@ public final class WorldMapDialog {
             if (points.size() >= GpxCodec.MAX_POINTS) { Toast.makeText(activity, "Une route peut avoir au plus " + GpxCodec.MAX_POINTS + " points.", Toast.LENGTH_SHORT).show(); return; }
             points.add(new double[]{latitude, longitude}); changed = true; refresh();
         }
+        /** Forgets the route (the saved copy, if any, stays in Mes trajets). */
+        void clear() { points.clear(); name = null; changed = false; refresh(); }
         void undo() {
             if (points.isEmpty()) return;
             points.remove(points.size() - 1); changed = true;
@@ -567,10 +616,10 @@ public final class WorldMapDialog {
         }
         void refresh() {
             boolean empty = points.isEmpty();
-            buttons.setVisibility(empty ? View.GONE : View.VISIBLE); clear.setVisibility(empty ? View.GONE : View.VISIBLE);
+            buttons.setVisibility(empty ? View.GONE : View.VISIBLE);
             double meters = 0;
             for (int i = 1; i < points.size(); i++) meters += RouteStart.meters(points.get(i - 1)[0], points.get(i - 1)[1], points.get(i)[0], points.get(i)[1]);
-            summary.setText(empty ? "Touche la carte pour poser des points" : (name == null ? "Route" : name) + " · " + points.size() + (points.size() == 1 ? " point" : " points")
+            summary.setText(empty ? "Touche la carte pour ajouter des points" : (name == null ? "Route" : name) + " · " + points.size() + (points.size() == 1 ? " point" : " points")
                 + (points.size() > 1 ? " · " + HubUi.length(meters) : ""));
             save.setEnabled(changed); save.setAlpha(changed ? 1f : .5f); save.setText(changed ? "Enregistrer" : "Enregistrée");
             map.setRoute(points);
@@ -609,7 +658,19 @@ public final class WorldMapDialog {
         private double zoomScale=1;
         /** Gesture state: where the touch began, and the fingers' midpoint and spread on the last event. */
         private float downX, downY, focusX, focusY, spread;
-        private boolean dragged, multiTouch;
+        private boolean dragged, multiTouch, longPressed;
+        /** A finger held still on the map; set when routes are available. */
+        LongPress onLongPress;
+        private final Runnable longPress = new Runnable() {
+            public void run() {
+                if (closed || dragged || multiTouch || onLongPress == null) return;
+                double[] point = pointAt(downX, downY);
+                if (point == null) return;
+                longPressed = true;
+                performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+                onLongPress.at(point[0], point[1]);
+            }
+        };
         /** A tap: on a marker it picks that PokéStop/Arène/Raid, elsewhere the spot under the finger. */
         Pick onPick;
         /** Runs after every move or zoom, so what floats on the map can follow it. */
@@ -809,40 +870,54 @@ public final class WorldMapDialog {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     getParent().requestDisallowInterceptTouchEvent(true);
-                    track(event, -1); downX = focusX; downY = focusY; dragged = false; multiTouch = false;
+                    track(event, -1); downX = focusX; downY = focusY; dragged = false; multiTouch = false; longPressed = false;
+                    removeCallbacks(longPress);
+                    if (onLongPress != null) postDelayed(longPress, ViewConfiguration.getLongPressTimeout());
                     return true;
-                case MotionEvent.ACTION_POINTER_DOWN: multiTouch = true; track(event, -1); return true;
+                case MotionEvent.ACTION_POINTER_DOWN: multiTouch = true; removeCallbacks(longPress); track(event, -1); return true;
                 case MotionEvent.ACTION_POINTER_UP: track(event, event.getActionIndex()); return true;
                 case MotionEvent.ACTION_MOVE: {
                     float lastX = focusX, lastY = focusY, lastSpread = spread;
                     track(event, -1);
-                    if (!dragged && (multiTouch || Math.hypot(focusX - downX, focusY - downY) > slop)) dragged = true;
+                    if (!dragged && (multiTouch || Math.hypot(focusX - downX, focusY - downY) > slop)) { dragged = true; removeCallbacks(longPress); }
                     if (!dragged) return true;
                     if (event.getPointerCount() > 1 && lastSpread > 0 && spread > 0) moveAndZoom(lastX, lastY, focusX, focusY, spread / lastSpread);
                     else if (zoom != 0 || zoomScale > 1) moveAndZoom(lastX, lastY, focusX, focusY, 1);
                     return true;
                 }
                 case MotionEvent.ACTION_UP:
-                    boolean insideWorld = zoom != 0 || (Math.abs(event.getX() - getWidth() / 2.0) <= world() / 2 && Math.abs(event.getY() - getHeight() / 2.0) <= world() / 2);
-                    if (!dragged && !multiTouch) {
+                    removeCallbacks(longPress);
+                    if (!dragged && !multiTouch && !longPressed) {
                         // A tap only picks a point (a marker first); moving there needs a button in the bubble.
-                        List<JSONObject> hits = poiLayer.hasLayers() ? poiLayer.hits(event.getX(), event.getY()) : Collections.<JSONObject>emptyList();
-                        JSONObject marker = hits.isEmpty() ? null : hits.get(0);
-                        double lat = marker == null ? Double.NaN : marker.optDouble("lat", Double.NaN), lon = marker == null ? Double.NaN : marker.optDouble("lon", Double.NaN);
-                        if (marker != null && Double.isFinite(lat) && Double.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
-                            performClick();
-                            if (onPick != null) onPick.at(lat, lon, MapPoiLayer.kind(marker));
-                        } else if (insideWorld) {
-                            performClick();
-                            if (onPick != null) onPick.at(MapProjection.latitude(MapProjection.offsetY(centerY, event.getY() - getHeight() / 2.0, world())),
-                                MapProjection.longitude(MapProjection.offsetX(centerX, event.getX() - getWidth() / 2.0, world())), null);
-                        }
+                        double[] point = pointAt(event.getX(), event.getY());
+                        if (point != null) { performClick(); if (onPick != null) onPick.at(point[0], point[1], point.length > 2 ? KINDS[(int) point[2]] : null); }
                     }
                     getParent().requestDisallowInterceptTouchEvent(false); return true;
-                case MotionEvent.ACTION_CANCEL: getParent().requestDisallowInterceptTouchEvent(false); return true;
+                case MotionEvent.ACTION_CANCEL: removeCallbacks(longPress); getParent().requestDisallowInterceptTouchEvent(false); return true;
                 default: return true;
             }
         }
+        private static final String[] KINDS = {"PokéStop", "Arène", "Raid"};
+        /**
+         * The map point under (x, y): a visible marker's own point when one is there ({lat, lon, kind index}),
+         * else the spot itself ({lat, lon}); null outside the world at the widest zoom.
+         */
+        private double[] pointAt(float x, float y) {
+            List<JSONObject> hits = poiLayer.hasLayers() ? poiLayer.hits(x, y) : Collections.<JSONObject>emptyList();
+            JSONObject marker = hits.isEmpty() ? null : hits.get(0);
+            if (marker != null) {
+                double lat = marker.optDouble("lat", Double.NaN), lon = marker.optDouble("lon", Double.NaN);
+                if (Double.isFinite(lat) && Double.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+                    String kind = MapPoiLayer.kind(marker);
+                    return new double[]{lat, lon, kind.equals("PokéStop") ? 0 : kind.equals("Arène") ? 1 : 2};
+                }
+            }
+            boolean insideWorld = zoom != 0 || (Math.abs(x - getWidth() / 2.0) <= world() / 2 && Math.abs(y - getHeight() / 2.0) <= world() / 2);
+            if (!insideWorld) return null;
+            return new double[]{MapProjection.latitude(MapProjection.offsetY(centerY, y - getHeight() / 2.0, world())),
+                MapProjection.longitude(MapProjection.offsetX(centerX, x - getWidth() / 2.0, world()))};
+        }
+
         /** Midpoint and mean distance from it of the fingers still down, leaving out {@code skip} (a finger lifting). */
         private void track(MotionEvent event, int skip) {
             float sumX = 0, sumY = 0; int count = 0;
@@ -870,7 +945,7 @@ public final class WorldMapDialog {
         public boolean performClick() { super.performClick(); return true; }
 
         void close() {
-            removeCallbacks(locationRefresh);
+            removeCallbacks(locationRefresh); removeCallbacks(longPress);
             if (closed) return;
             closed = true;
             poiLayer.close();

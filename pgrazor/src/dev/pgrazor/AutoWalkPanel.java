@@ -98,7 +98,7 @@ final class AutoWalkPanel {
         card.addView(start, startParams);
         start.setOnClickListener(v -> start());
 
-        TextView tip = SettingsUi.text(ui, "Pour suivre un trajet enregistré, importé ou prédéfini, ouvre l'onglet Lieux.", 12, SettingsUi.faint());
+        TextView tip = SettingsUi.text(ui, "Pour suivre un trajet enregistré, importé ou prédéfini, ouvre Lieux sur la carte.", 12, SettingsUi.faint());
         tip.setPadding(dp(4), dp(12), dp(4), 0);
         body.addView(tip);
         update();

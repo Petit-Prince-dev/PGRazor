@@ -114,7 +114,7 @@ final class PlacesPanel {
         if (loading) HubUi.empty(body, MenuIcon.AUTOWALK, "Chargement…", "Lecture de tes trajets enregistrés.");
         else if (walks == null) HubUi.empty(body, MenuIcon.AUTOWALK, "Trajets illisibles", "Impossible de lire les trajets enregistrés.");
         else if (walks.isEmpty())
-            HubUi.empty(body, MenuIcon.AUTOWALK, "Aucun trajet", "Sur la carte, touche ✎ puis pose des points, et Enregistrer. Ou importe un fichier .gpx.");
+            HubUi.empty(body, MenuIcon.AUTOWALK, "Aucun trajet", "Sur la carte, reste appuyé pour commencer un trajet, touche pour ajouter des points, puis Enregistrer. Ou importe un fichier .gpx.");
         else {
             LinearLayout card = HubUi.card(body);
             for (GpxStore.Entry entry : walks) {
