@@ -41,9 +41,8 @@ final class MapTileSource {
         }
     }
 
-    /** Callbacks into the owning view: the current zoom (for status text) and a redraw request. */
+    /** Callback into the owning view: a redraw request. */
     interface Host {
-        int zoom();
         void onTilesChanged();
     }
 
@@ -103,7 +102,8 @@ final class MapTileSource {
             if (failedAt != null && now - failedAt < RETRY_MS) { blocked++; continue; }
             wanted.add(tile);
         }
-        status.setText(wanted.isEmpty() ? (blocked > 0 ? OFFLINE : "Zoom " + host.zoom() + " · Touche la carte pour sélectionner") : "Chargement de la carte…");
+        // The status only ever shows a problem; an empty text hides it.
+        status.setText(wanted.isEmpty() && blocked > 0 ? OFFLINE : "");
         if (blocked > 0) scheduleRetry();
         if (wanted.isEmpty()) return;
         // Middle of the screen first: tiles nearest the centre of the placed ones load before the edges.
@@ -147,7 +147,7 @@ final class MapTileSource {
                 if (closed || Thread.currentThread().isInterrupted()) return;
                 cache.trim();
                 final int finalErrors = errors.get() + blockedTiles;
-                main.post(() -> { if (!closed && revision == generation) { status.setText(finalErrors == 0 ? "Zoom " + host.zoom() + " · Touche la carte pour sélectionner" : OFFLINE); if (finalErrors > 0) scheduleRetry(); } });
+                main.post(() -> { if (!closed && revision == generation) { status.setText(finalErrors == 0 ? "" : OFFLINE); if (finalErrors > 0) scheduleRetry(); } });
             } catch (IOException | RuntimeException e) {
                 main.post(() -> { if (!closed && revision == generation) status.setText("Cache de la carte indisponible. Ferme la carte et réessaie."); });
             } finally { main.post(() -> { if (!closed) { pending = null; if (revision != generation) loadVisible(); } }); }

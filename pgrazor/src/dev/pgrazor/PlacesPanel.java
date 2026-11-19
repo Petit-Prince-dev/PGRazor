@@ -89,7 +89,7 @@ final class PlacesPanel {
         if (loading) HubUi.empty(body, MenuIcon.FAVORITES, "Chargement…", "Lecture de tes lieux enregistrés.");
         else if (places == null) HubUi.empty(body, MenuIcon.FAVORITES, "Favoris illisibles", "Impossible de lire les lieux enregistrés.");
         else if (places.entries.isEmpty())
-            HubUi.empty(body, MenuIcon.FAVORITES, "Aucun favori", "Touche un point sur la carte, puis « ☆ Favori ».");
+            HubUi.empty(body, MenuIcon.FAVORITES, "Aucun favori", "Touche un point sur la carte, puis ☆ dans la bulle.");
         else {
             LinearLayout card = HubUi.card(body);
             for (SavedPlaces.Entry entry : places.entries) {
@@ -114,7 +114,7 @@ final class PlacesPanel {
         if (loading) HubUi.empty(body, MenuIcon.AUTOWALK, "Chargement…", "Lecture de tes trajets enregistrés.");
         else if (walks == null) HubUi.empty(body, MenuIcon.AUTOWALK, "Trajets illisibles", "Impossible de lire les trajets enregistrés.");
         else if (walks.isEmpty())
-            HubUi.empty(body, MenuIcon.AUTOWALK, "Aucun trajet", "Sur la carte, reste appuyé pour poser des points, puis Enregistrer. Ou importe un fichier .gpx.");
+            HubUi.empty(body, MenuIcon.AUTOWALK, "Aucun trajet", "Sur la carte, touche ✎ puis pose des points, et Enregistrer. Ou importe un fichier .gpx.");
         else {
             LinearLayout card = HubUi.card(body);
             for (GpxStore.Entry entry : walks) {

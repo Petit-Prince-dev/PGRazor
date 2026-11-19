@@ -11,7 +11,6 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.os.Handler;
 import android.os.Looper;
-import android.widget.TextView;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.IOException;
@@ -61,7 +60,6 @@ final class MapPoiLayer {
     private final Map<String, Bitmap> markerIcons = new HashMap<>();
     private final Runnable poiRefresh = this::refresh;
     private int layers;
-    private TextView poiStatus;
     private JSONArray pois = new JSONArray();
     private String lastPois = "";
     private boolean closed;
@@ -78,17 +76,11 @@ final class MapPoiLayer {
 
     boolean hasLayers() { return layers != 0; }
     void setLayer(int bit, boolean on) { layers = on ? layers | bit : layers & ~bit; }
-    void setStatusView(TextView status) { poiStatus = status; }
 
     void refresh() {
         if (closed) return; snapshots.setOpen(layers != 0);
         String snapshot = snapshots.read();
         if (!snapshot.equals(lastPois)) { lastPois = snapshot; try { pois = new JSONObject(snapshot).optJSONArray("points"); } catch (Exception e) { pois = null; } if (pois == null) pois = new JSONArray(); invalidate.run(); }
-        if (poiStatus != null) { String message = layers == 0 ? "Calques proches désactivés" : "Lieux proches chargés par le jeu (" + pois.length() + ")";
-            if (layers != 0 && snapshot.isEmpty()) message = "En attente des lieux proches du jeu";
-            else if (layers != 0) try { if (new JSONObject(snapshot).has("error")) message = "Calques proches indisponibles"; } catch (Exception ignored) {}
-            poiStatus.setText(message);
-        }
         invalidate.run(); main.removeCallbacks(poiRefresh); main.postDelayed(poiRefresh, 1000);
     }
 
