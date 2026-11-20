@@ -68,8 +68,16 @@ public final class DialogStyle {
                 && ((android.graphics.drawable.ColorDrawable) root.getBackground()).getColor() == SettingsUi.surface()) root.setBackground(null);
         }
 
+        // The button bar is a ScrollView around the row of buttons: padding the ScrollView itself clips the
+        // buttons' tops and leaves it scrolled. Space the inner row instead, and keep the bar at its top.
         View bar = find(dialog, "buttonPanel", View.class);
-        if (bar != null) bar.setPadding(dp(c, 12), dp(c, 4), dp(c, 12), dp(c, 12));
+        if (bar != null) {
+            View row = bar instanceof ViewGroup && ((ViewGroup) bar).getChildCount() > 0 ? ((ViewGroup) bar).getChildAt(0) : bar;
+            if (row != bar) bar.setPadding(0, 0, 0, 0);
+            row.setPadding(dp(c, 12), dp(c, 8), dp(c, 12), dp(c, 14));
+            if (bar instanceof ViewGroup) ((ViewGroup) bar).setClipToPadding(false);
+            bar.post(() -> bar.scrollTo(0, 0));
+        }
         for (int which : new int[]{AlertDialog.BUTTON_POSITIVE, AlertDialog.BUTTON_NEGATIVE, AlertDialog.BUTTON_NEUTRAL}) {
             Button b = dialog.getButton(which);
             if (b == null || b.getText() == null || b.getText().length() == 0) continue;
@@ -84,7 +92,7 @@ public final class DialogStyle {
                 new int[]{SettingsUi.faint(), primary ? SettingsUi.accentInk() : SettingsUi.ink()}));
             if (b.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
                 ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) b.getLayoutParams();
-                lp.setMargins(dp(c, 4), dp(c, 4), dp(c, 4), dp(c, 4)); b.setLayoutParams(lp);
+                lp.setMargins(dp(c, 4), 0, dp(c, 4), 0); b.setLayoutParams(lp);
             }
         }
     }
