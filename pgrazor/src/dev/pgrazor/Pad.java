@@ -163,7 +163,6 @@ public final class Pad {
             public void releaseJoystick(boolean preserveWalk){ stick.release(preserveWalk); }
             public void setJoystickVisible(boolean visible){ stick.release(true); Control.setJoystickVisible(visible); joystickOverlay.setVisibility(visible?View.VISIBLE:View.GONE); }
             public void openMap(){ openWorldMap(WorldMapDialog.TAB_MAP); }
-            public void editLocation(){ edit(); }
         });
 
         stick = new Stick(host);
@@ -452,32 +451,6 @@ public final class Pad {
             handler.postDelayed(this, 100);
         }
     };
-    private EditText input(String value, String hint) {
-        EditText e = new EditText(dialogContext()); e.setSingleLine(true); e.setHint(hint); e.setText(value);
-        e.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL|InputType.TYPE_NUMBER_FLAG_SIGNED); return e;
-    }
-    private void edit() {
-        if (Control.engine.walking) Control.event("walk-cancelled", "Coordinates editor opened");
-        stick.release(); refresh();
-        LinearLayout form = new LinearLayout(activity); form.setOrientation(LinearLayout.VERTICAL); form.setPadding(dp(24),dp(8),dp(24),dp(8));
-        EditText lat = input(Double.toString(Control.engine.latitude), "Latitude (-90 à 90)");
-        EditText lon = input(Double.toString(Control.engine.longitude), "Longitude (-180 à 180)");
-        EditText speed = input(Double.toString(Control.engine.speedKmh), "Vitesse (0,5–30 km/h)");
-        for (EditText field : new EditText[]{lat, lon, speed}) form.addView(field);
-        AlertDialog dialog = new AlertDialog.Builder(dialogContext()).setTitle("Coordonnées & vitesse").setView(form).setNegativeButton("Annuler",null).setPositiveButton("Appliquer",null).create();
-        DialogLifecycle.bind(activity,dialog,null);
-        dialog.setOnShowListener(d -> dialog.getButton(-1).setOnClickListener(v -> {
-            try {
-                // Validate all fields before committing any state.
-                MotionEngine check = new MotionEngine(); check.position(Double.parseDouble(lat.getText().toString().trim()), Double.parseDouble(lon.getText().toString().trim())); check.speed(Double.parseDouble(speed.getText().toString().trim()));
-                double latitude = check.latitude, longitude = check.longitude;
-                if(!quickTeleport(latitude,longitude))return;
-                Control.engine.speed(check.speedKmh); Control.saveState();
-                Control.event("coordinates-set", latitude + "," + longitude + " speed=" + check.speedKmh);
-                refresh(); dialog.dismiss();
-            } catch (IllegalArgumentException error) { speed.setError("Entre des coordonnées et une vitesse valides (0,5–30)."); }
-        })); dialog.show();styleTree(form);
-    }
     /** A ground tap must never silently replace a planned route. */
     void confirmStopRoute() {
         if(closed||activity.isFinishing()||activity.isDestroyed()||stopRouteDialog!=null)return;

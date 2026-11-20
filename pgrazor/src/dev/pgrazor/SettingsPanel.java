@@ -31,8 +31,6 @@ final class SettingsPanel {
         void setJoystickVisible(boolean visible);
         /** Open the shared World map (also used by the quick menu). */
         void openMap();
-        /** Open the coordinates & speed editor (tied to engine/joystick state Pad owns). */
-        void editLocation();
     }
 
     private final Activity activity;
@@ -351,7 +349,6 @@ final class SettingsPanel {
         locationSwitch=switchRow(core,"Spoof de position");locationSwitch.setChecked(Control.desiredEnabled());
         locationSwitch.setOnCheckedChangeListener((v,checked)->{if(checked==Control.desiredEnabled())return;host.releaseJoystick(true);Control.setLocationSpoofing(checked);host.refresh();});
         steeringStatus = caption(core, "Le joystick suit la caméra");
-        launch(core, "Coordonnées & vitesse", host::editLocation);
         launch(core, "Carte du monde", host::openMap);
         joystickSwitch = switchRow(core, "Joystick à l'écran"); joystickSwitch.setChecked(Control.joystickVisible());
         joystickSwitch.setOnCheckedChangeListener((v,checked) -> { if(checked==Control.joystickVisible())return; host.setJoystickVisible(checked); });
