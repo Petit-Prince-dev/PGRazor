@@ -118,11 +118,10 @@ final class PlacesPanel {
         else {
             LinearLayout card = HubUi.card(body);
             for (GpxStore.Entry entry : walks) {
-                Button see = HubUi.button(ui, "Voir", false), jump = HubUi.button(ui, "Téléporter", false), go = HubUi.button(ui, "Démarrer", true);
+                Button see = HubUi.button(ui, "Voir", false), go = HubUi.button(ui, "Démarrer", true);
                 see.setOnClickListener(v -> loadWalk(entry, route -> host.openRoute(route, true)));
-                jump.setOnClickListener(v -> loadWalk(entry, route -> teleportThenWalk(route, false)));
                 go.setOnClickListener(v -> loadWalk(entry, route -> startWalk(route, false)));
-                View line = HubUi.row(card, "GPX", entry.name, entry.count + (entry.count == 1 ? " arrêt" : " arrêts"), HubUi.actions(ui, see, jump, go), null, unfolded);
+                View line = HubUi.row(card, "GPX", entry.name, entry.count + (entry.count == 1 ? " arrêt" : " arrêts"), HubUi.actions(ui, see, go), null, unfolded);
                 line.setOnLongClickListener(v -> { confirmDeleteWalk(entry); return true; });
             }
         }
@@ -136,11 +135,10 @@ final class PlacesPanel {
             for (PresetRoutes.Preset preset : PresetRoutes.ALL) {
                 double[][] stops = preset.route.points();
                 String detail = preset.place + " · " + stops.length + " arrêts" + (preset.loop ? " · boucle" : "") + " · " + HubUi.away(stops[0][0], stops[0][1]);
-                Button see = HubUi.button(ui, "Voir", false), jump = HubUi.button(ui, "Téléporter", false), go = HubUi.button(ui, "Démarrer", true);
+                Button see = HubUi.button(ui, "Voir", false), go = HubUi.button(ui, "Démarrer", true);
                 see.setOnClickListener(v -> host.openRoute(preset.route, false));
-                jump.setOnClickListener(v -> teleportThenWalk(preset.route, preset.loop));
                 go.setOnClickListener(v -> startWalk(preset.route, preset.loop));
-                HubUi.row(card, preset.loop ? "Boucle" : "Trajet", preset.route.name, detail, HubUi.actions(ui, see, jump, go), null, unfolded);
+                HubUi.row(card, preset.loop ? "Boucle" : "Trajet", preset.route.name, detail, HubUi.actions(ui, see, go), null, unfolded);
             }
         }
         scroll.post(() -> scroll.scrollTo(0, y));
@@ -181,41 +179,16 @@ final class PlacesPanel {
         });
     }
 
-    /**
-     * Starts a walk from where the player is. When a later stop is closer than the first one, asks
-     * whether to join the walk there; otherwise starts at once from the first stop.
-     */
+    /** Asks Marcher or Téléporter (to the first stop), then walks the whole route from its first stop. */
     private void startWalk(GpxRoute route, boolean loop) {
         double[][] stops = route.points();
-        double lat = Control.engine.latitude, lon = Control.engine.longitude;
-        int nearest = RouteStart.closest(stops, lat, lon);
-        double toFirst = RouteStart.meters(lat, lon, stops[0][0], stops[0][1]);
-        double toNearest = RouteStart.meters(lat, lon, stops[nearest][0], stops[nearest][1]);
-        if (nearest == 0 || toNearest >= toFirst) { walk(route, stops, loop, 0); return; }
-        String[] choices = {
-            "Depuis l'arrêt le plus proche\nArrêt " + (nearest + 1) + " sur " + stops.length + ", à " + RouteStart.distance(toNearest),
-            "Depuis le début\nÀ " + RouteStart.distance(toFirst)
-        };
-        AlertDialog choose = ChoiceList.attach(new AlertDialog.Builder(ui).setTitle("Démarrer « " + route.name + " »")
-            .setNegativeButton("Annuler", null).create(), choices, which -> {
-                if (which == 0) walk(route, RouteStart.from(stops, nearest, loop), loop, nearest);
-                else walk(route, stops, loop, 0);
-            });
-        DialogLifecycle.bind(activity, choose, null);
-        track(choose); choose.show();
-    }
-
-    /** Teleports to the first stop, then walks the whole route. */
-    private void teleportThenWalk(GpxRoute route, boolean loop) {
-        double[][] stops = route.points();
-        if (host.teleport(stops[0][0], stops[0][1])) walk(route, stops, loop, 0);
-    }
-
-    private void walk(GpxRoute route, double[][] stops, boolean loop, int first) {
-        if (!host.walkRoute(stops, loop)) return;
-        Control.event("trajet-started", String.format(Locale.US, "name=%s stops=%d from=%d loop=%s", route.name, stops.length, first + 1, loop));
-        Toast.makeText(activity, "En route : " + route.name + (first > 0 ? " (depuis l'arrêt " + (first + 1) + ")" : "") + (loop ? ", en boucle" : ""), Toast.LENGTH_SHORT).show();
-        host.done();
+        track(RouteLaunch.ask(activity, ui, route.name, stops, loop, teleport -> {
+            if (teleport && !host.teleport(stops[0][0], stops[0][1])) return;
+            if (!host.walkRoute(stops, loop)) return;
+            Control.event("trajet-started", String.format(Locale.US, "name=%s stops=%d loop=%s teleport=%s", route.name, stops.length, loop, teleport));
+            Toast.makeText(activity, "En route : " + route.name + (loop ? ", en boucle" : ""), Toast.LENGTH_SHORT).show();
+            host.done();
+        }));
     }
 
     /** Imports a .gpx and keeps it in "Mes trajets". The file picker closes the map, which then reopens here. */

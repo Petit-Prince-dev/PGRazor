@@ -1,4 +1,4 @@
-"""Pure Java GPX route-start helpers (closest stop, distances, resume order)."""
+"""Pure Java route helpers (great-circle distances and their text)."""
 from pathlib import Path
 import subprocess
 import tempfile

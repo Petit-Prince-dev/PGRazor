@@ -185,7 +185,7 @@ public final class WorldMapDialog {
 
         // Two modes: exploring (a touch opens the bubble) and drawing a route, started by holding a finger on the
         // map; every touch then adds a point until ✕ closes the route.
-        RouteDraft draft = route == null ? null : new RouteDraft(activity, ui, map, routeSummary, routeButtons, undo, saveRoute, startRoute, route);
+        RouteDraft draft = route == null ? null : new RouteDraft(activity, ui, map, routeSummary, routeButtons, undo, saveRoute, startRoute, route, listener);
         final boolean[] routing = {false};
         final Runnable applyMode = () -> {
             routeBar.setVisibility(routing[0] ? View.VISIBLE : View.GONE);
@@ -407,7 +407,7 @@ public final class WorldMapDialog {
             public void run() {
                 main.removeCallbacks(this);
                 if (!shown || closed) return;
-                teleport.setText(teleportLabel(Cooldown.remainingAt(latitude, longitude)));
+                teleport.setText(Cooldown.teleportLabel(latitude, longitude));
                 main.postDelayed(this, 1000);
             }
         };
@@ -567,14 +567,6 @@ public final class WorldMapDialog {
 
         void close() { closed = true; main.removeCallbacksAndMessages(null); }
 
-        /** "Téléporter" when it is free, else with the cooldown it would start: "Téléporter · 12m05", "· 1h04". */
-        static String teleportLabel(long millis) {
-            long seconds = (Math.max(0, millis) + 999) / 1000;
-            if (seconds == 0) return "Téléporter";
-            String wait = seconds >= 3600 ? String.format(Locale.US, "%dh%02d", seconds / 3600, seconds / 60 % 60)
-                : seconds >= 60 ? String.format(Locale.US, "%dm%02d", seconds / 60, seconds % 60) : seconds + "s";
-            return "Téléporter · " + wait;
-        }
     }
 
     /** A rounded card with a small tail pointing at {@link #tipX}: under the card, or above it when {@link #flipped}. */
@@ -640,8 +632,10 @@ public final class WorldMapDialog {
         final TextView summary;
         final Button undo, save, start;
         final RouteListener listener;
+        /** Moves the player to the first stop when the walk is started with Téléporter. */
+        final DestinationListener teleport;
         final List<double[]> points = new ArrayList<>();
-        AlertDialog parent, saveDialog;
+        AlertDialog parent, saveDialog, launchDialog;
         /** Runs after a save, so Lieux shows the new walk. */
         Runnable saved;
         /** Runs after a save, to leave route mode. */
@@ -650,9 +644,9 @@ public final class WorldMapDialog {
         String name;
         /** Something to save: false right after a saved walk is opened or this one is saved. */
         boolean changed;
-        RouteDraft(Activity activity, Context ui, MapView map, TextView summary, View buttons, Button undo, Button save, Button start, RouteListener listener) {
+        RouteDraft(Activity activity, Context ui, MapView map, TextView summary, View buttons, Button undo, Button save, Button start, RouteListener listener, DestinationListener teleport) {
             this.activity = activity; this.ui = ui; this.map = map; this.summary = summary; this.buttons = buttons;
-            this.undo = undo; this.save = save; this.start = start; this.listener = listener;
+            this.undo = undo; this.save = save; this.start = start; this.listener = listener; this.teleport = teleport;
             undo.setOnClickListener(v -> undo());
             save.setOnClickListener(v -> save());
             start.setOnClickListener(v -> start());
@@ -696,17 +690,23 @@ public final class WorldMapDialog {
                 if (finished != null) finished.run();
             });
         }
+        /** Asks Marcher or Téléporter, then walks the route from its first point. */
         void start() {
-            if (points.isEmpty() || !listener.onRoute(toArray(), false)) return;
-            Toast.makeText(activity, "En route : " + points.size() + (points.size() == 1 ? " point" : " points"), Toast.LENGTH_SHORT).show();
-            if (parent != null) parent.dismiss();
+            if (points.isEmpty() || (launchDialog != null && launchDialog.isShowing())) return;
+            double[][] stops = toArray();
+            launchDialog = RouteLaunch.ask(activity, ui, name == null ? "Route" : name, stops, false, jump -> {
+                if (jump && !teleport.onDestination(stops[0][0], stops[0][1])) return;
+                if (!listener.onRoute(stops, false)) return;
+                Toast.makeText(activity, "En route : " + stops.length + (stops.length == 1 ? " point" : " points"), Toast.LENGTH_SHORT).show();
+                if (parent != null) parent.dismiss();
+            });
         }
         private double[][] toArray() {
             double[][] copy = new double[points.size()][];
             for (int i = 0; i < copy.length; i++) copy[i] = new double[]{points.get(i)[0], points.get(i)[1]};
             return copy;
         }
-        void close() { if (saveDialog != null) saveDialog.dismiss(); }
+        void close() { if (saveDialog != null) saveDialog.dismiss(); if (launchDialog != null) launchDialog.dismiss(); }
     }
 
     private static final class MapView extends View {

@@ -30,6 +30,13 @@ public final class Cooldown {
     public static synchronized long remaining(){if(!Control.locationKnown())return 0;return state.remaining(System.currentTimeMillis(),Control.currentLatitude(),Control.currentLongitude());}
     /** Read-only destination estimate: never records teleporting as a cooldown action. */
     public static synchronized long remainingAt(double lat,double lon){return state.remaining(System.currentTimeMillis(),lat,lon);}
+    /** "Téléporter" when going there starts no cooldown, else with the one it would: "Téléporter · 12m05", "· 1h04". */
+    static String teleportLabel(double lat,double lon){
+        long seconds=(Math.max(0,remainingAt(lat,lon))+999)/1000;
+        if(seconds==0)return "Téléporter";
+        String wait=seconds>=3600?String.format(Locale.US,"%dh%02d",seconds/3600,seconds/60%60):seconds>=60?String.format(Locale.US,"%dm%02d",seconds/60,seconds%60):seconds+"s";
+        return "Téléporter · "+wait;
+    }
     public static synchronized boolean hasHistory(){return !state.rows.isEmpty();}
     public static synchronized String label(){if(state.rows.isEmpty())return "Est. 0:00:00";if(!Control.locationKnown())return "En attente du GPS";long seconds=(remaining()+999)/1000;return String.format(Locale.US,"Est. %d:%02d:%02d",seconds/3600,(seconds/60)%60,seconds%60);}
     private static synchronized ArrayList<CooldownState.Entry> entries(){return new ArrayList<>(state.rows);}
